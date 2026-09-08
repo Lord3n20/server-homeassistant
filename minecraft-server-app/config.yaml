@@ -2,7 +2,7 @@ name: Minecraft Server
 description: minecraft server with itzg/minecraft-server
 slug: minecraft_server
 homeassistant_api: true
-version: "2.0.4"
+version: "2.0.5"
 arch:
   - aarch64
   - amd64
