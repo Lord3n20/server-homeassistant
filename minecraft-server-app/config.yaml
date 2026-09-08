@@ -17,6 +17,8 @@ environment:
   MEMORY: "6G"
   SERVER_PORT: "25565"
   VIEW_DISTANCE: "16"
+  TYPE: "PAPER"
 map:
-  - type: data
+  - type: share
     read_only: false
+    path: /minecraft_data
