@@ -21,4 +21,4 @@ environment:
 map:
   - type: share
     read_only: false
-    path: /minecraft_data
+    path: /data
