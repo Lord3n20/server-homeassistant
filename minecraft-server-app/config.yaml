@@ -18,7 +18,3 @@ environment:
   SERVER_PORT: "25565"
   VIEW_DISTANCE: "16"
   TYPE: "PAPER"
-map:
-  - type: share
-    read_only: false
-    path: /data
