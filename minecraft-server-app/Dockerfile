@@ -1,3 +1,3 @@
 FROM itzg/minecraft-server:latest
 
-WORKDIR /data
+WORKDIR /minecraft-data
