@@ -15,7 +15,7 @@ environment:
   DIFFICULTY: "2"
   MAX_PLAYERS: "10"
   MOTD: "Stierzunge"
-  MEMORY: "6G"
+  MEMORY: "4G"
   SERVER_PORT: "25565"
   VIEW_DISTANCE: "16"
   TYPE: "PAPER"
