@@ -31,6 +31,24 @@ Schlüssel, den nur App und Handy kennen. Der Schlüssel selbst wird nie übertr
    - **Kein** „Force SSL“, sonst kommt das Handy nicht mehr dran.
 5. In der Handy-App unter „Einstellungen“ die Adresse und den Schlüssel eintragen.
 
+### Anruf bei neuen Nachrichten (optional)
+
+Das Nokia kann Java-Apps nicht im Hintergrund laufen lassen. Damit man trotzdem merkt, dass etwas
+Neues da ist, ruft die App das Handy kurz an und legt auf, bevor jemand abnimmt. Das kostet nichts,
+weil kein Gespräch zustande kommt. Es klingelt nur, wenn die Handy-App seit über 75 s nichts
+gefragt hat (also zu ist), und nur einmal, bis sich die Handy-App wieder gemeldet hat.
+
+1. FritzBox: *Telefonie → Telefoniegeräte → Neues Gerät einrichten → Telefon → LAN/WLAN
+   (IP-Telefon)*. Benutzername und Kennwort vergeben, als ausgehende Nummer die Festnetznummer,
+   eingehende Anrufe: **keine** Nummer (sonst „klingelt“ die App bei Anrufen mit).
+2. In der Konfiguration der App eintragen: `anruf_nummer` (Handynummer), `sip_benutzer`,
+   `sip_passwort`, ggf. `sip_server` (Standard `fritz.box`) und `klingeln_sekunden` (Standard 15;
+   kürzer als die Zeit, nach der die Mailbox drangeht).
+3. Am Nokia die Festnetznummer als Kontakt „Signal“ speichern, gern mit eigenem Klingelton.
+
+Jeder andere SIP-Anbieter mit Benutzer/Passwort geht genauso. Das Ergebnis des letzten Anrufs steht
+auf der Oberfläche und im Protokoll. Zum Testen: `python3 sipcall.py SERVER BENUTZER PASSWORT NUMMER`.
+
 Wird das Gerät am Handy entkoppelt, zeigt die Oberfläche „vom Handy entkoppelt“; mit
 **Neu koppeln** gibt es einen neuen QR-Code. Gespeicherte Chats und Bilder bleiben erhalten.
 

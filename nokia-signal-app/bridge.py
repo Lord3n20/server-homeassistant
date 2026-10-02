@@ -32,6 +32,8 @@ import qrcode.image.svg
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
 from PIL import Image, ImageOps
 
+import sipcall
+
 DATA = os.environ.get("DATA_DIR", "/data")
 PORT = int(os.environ.get("PORT", "8080"))
 INGRESS_PORT = int(os.environ.get("INGRESS_PORT", "8099"))
@@ -103,6 +105,70 @@ def load_key():
 
 
 KEY = load_key()
+
+
+def load_options():
+    try:
+        with open(os.path.join(DATA, "options.json")) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+# --- missed call on news -----------------------------------------------------
+
+class Ringer:
+    """
+    Rings the Nokia over SIP (e.g. a FritzBox IP phone) when a message comes
+    in while the phone app is closed, and hangs up before anyone answers.
+    Rings once; the next ring needs the phone app to have been in touch again.
+    """
+
+    QUIET = 75  # seconds without a request from the phone = app is closed
+
+    def __init__(self, opts):
+        self.number = (opts.get("anruf_nummer") or "").strip()
+        self.server = (opts.get("sip_server") or "fritz.box").strip()
+        self.user = (opts.get("sip_benutzer") or "").strip()
+        self.password = opts.get("sip_passwort") or ""
+        self.seconds = int(opts.get("klingeln_sekunden") or 15)
+        self.lock = threading.Lock()
+        # Counts the start as contact, so messages signal-cli delivers late
+        # after a restart do not ring.
+        self.last_seen = time.time()
+        self.armed = True
+        self.busy = False
+        self.result = ""
+
+    def enabled(self):
+        return bool(self.number and self.user and self.password)
+
+    def phone_seen(self):
+        with self.lock:
+            self.last_seen = time.time()
+            self.armed = True
+
+    def news(self):
+        with self.lock:
+            if (not self.enabled() or not self.armed or self.busy
+                    or time.time() - self.last_seen < self.QUIET):
+                return
+            self.armed = False
+            self.busy = True
+        threading.Thread(target=self.ring, daemon=True).start()
+
+    def ring(self):
+        try:
+            res = sipcall.ring(self.server, self.user, self.password, self.number, self.seconds)
+        except (sipcall.SipError, OSError) as e:
+            res = "Fehler: %s" % e
+        self.result = datetime.now().strftime("%H:%M ") + res
+        log("Anruf: " + res)
+        with self.lock:
+            self.busy = False
+
+
+ringer = Ringer(load_options())
 
 
 def subkey(label):
@@ -522,6 +588,8 @@ def store_data(conv, author, out, dm, ts):
     if not body and not atts:
         return  # profile key updates, expiration timers, group changes, …
     store.add_msg(conv, ts, author, out, body, atts)
+    if not out:
+        ringer.news()
 
 
 def handle_envelope(env):
@@ -766,6 +834,7 @@ class PhoneHandler(BaseHTTPRequestHandler):
             return self.reply(200, seal(b"ERR\tZEIT\t%d\n" % int(time.time() * 1000)))
         if not fresh_nonce(nonce):
             return self.reply(200, seal(b"ERR\tdoppelte Anfrage\n"))
+        ringer.phone_seen()
         if fields and fields[0] != "wait":
             log("Handy: " + fields[0])
         try:
@@ -827,6 +896,10 @@ class IngressHandler(BaseHTTPRequestHandler):
             n = store.q("SELECT count(*) FROM msgs")[0][0]
             c = store.q("SELECT count(*) FROM convs")[0][0]
             parts.append("<p>%d Nachrichten in %d Chats gespeichert.</p>" % (n, c))
+            if ringer.enabled():
+                parts.append("<p>Anruf bei Neuem an %s%s</p>" % (
+                    html.escape(ringer.number),
+                    ", zuletzt " + html.escape(ringer.result) if ringer.result else ""))
             if st in ("entkoppelt", "fehler", "getrennt") and signal.error:
                 parts.append("<p><small>%s</small></p>" % html.escape(signal.error))
             parts.append('<form method="post" action="relink" onsubmit="return confirm('
