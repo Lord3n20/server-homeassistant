@@ -51,6 +51,7 @@ Zeilenumbruch, danach der Inhalt. Weicht die Uhr des Handys mehr als 10 min ab, 
 | Befehl | Nutzdaten | Antwort |
 |---|---|---|
 | `ping` | – | `status<TAB>nummer` |
+| `wait<TAB>version<TAB>sekunden` | – | aktuelle Version, sobald sie sich ändert (höchstens 25 s warten) |
 | `chats` | – | je Chat: `id, name, ungelesen, zeit, vorschau` |
 | `msgs<TAB>chat<TAB>nach_id<TAB>vor_id` | – | je Nachricht: `id, von_mir, absender, zeit, text, bild_ids` (höchstens 30) |
 | `send<TAB>chat` | Text (UTF-8) | neue Nachrichten-ID |

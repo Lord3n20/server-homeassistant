@@ -186,6 +186,9 @@ class Store:
     def __init__(self, path):
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.lock = threading.RLock()
+        # Bumped on every change from Signal; the phone long-polls on it.
+        self.version = 1
+        self.changed = threading.Condition()
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS convs (
                 id TEXT PRIMARY KEY, name TEXT, read_upto INTEGER DEFAULT 0,
@@ -249,7 +252,19 @@ class Store:
                 # Writing from any device means the chat has been seen.
                 self.db.execute("UPDATE convs SET read_upto=? WHERE id=?", (mid, conv))
             self.db.commit()
-            return mid
+        self.bump()
+        return mid
+
+    def bump(self):
+        with self.changed:
+            self.version += 1
+            self.changed.notify_all()
+
+    def wait(self, since, seconds):
+        """Returns the version as soon as it differs from since, or after the timeout."""
+        with self.changed:
+            self.changed.wait_for(lambda: self.version != since, timeout=seconds)
+            return self.version
 
     def find(self, conv, author, ts):
         row = self.q("SELECT id FROM msgs WHERE conv=? AND author=? AND ts=?", (conv, author, ts))
@@ -500,6 +515,7 @@ def store_data(conv, author, out, dm, ts):
         if mid:
             store.x("UPDATE msgs SET body='[gelöscht]' WHERE id=?", (mid,))
             store.x("DELETE FROM atts WHERE msg=?", (mid,))
+            store.bump()
         return
     atts = attachments(dm.get("attachments"))
     body = describe(dm, atts)
@@ -528,6 +544,7 @@ def handle_envelope(env):
             if mid:
                 store.x("UPDATE msgs SET body=? WHERE id=?",
                         (describe(dm, []) + " (bearbeitet)", mid))
+                store.bump()
                 return
         store_data(conv, author, 0, dm, dm.get("timestamp") or ts)
         return
@@ -547,6 +564,7 @@ def handle_envelope(env):
             row = store.q("SELECT conv, id FROM msgs WHERE author=? AND ts=?", (sender, r.get("timestamp")))
             if row:
                 store.mark_read(row[0][0], row[0][1])
+                store.bump()
 
 
 # --- phone API ---------------------------------------------------------------
@@ -659,6 +677,9 @@ def dispatch(fields, payload):
     if cmd == "ping":
         return "%s\t%s" % (signal.state, signal.number or "")
     need_signal()
+    if cmd == "wait" and len(fields) >= 3:
+        # Long poll: answers at once when something changed, else after the timeout.
+        return str(store.wait(int(fields[1]), max(0, min(25, int(fields[2])))))
     if cmd == "chats":
         return cmd_chats()
     if cmd == "msgs" and len(fields) >= 4:
@@ -745,7 +766,8 @@ class PhoneHandler(BaseHTTPRequestHandler):
             return self.reply(200, seal(b"ERR\tZEIT\t%d\n" % int(time.time() * 1000)))
         if not fresh_nonce(nonce):
             return self.reply(200, seal(b"ERR\tdoppelte Anfrage\n"))
-        log("Handy: " + (fields[0] if fields else "?"))
+        if fields and fields[0] != "wait":
+            log("Handy: " + fields[0])
         try:
             res = dispatch(fields, payload)
         except (ValueError, RuntimeError) as e:
