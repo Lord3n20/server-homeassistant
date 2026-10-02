@@ -1,0 +1,22 @@
+name: "Nokia-Signal"
+description: "Signal als verknüpftes Gerät, verschlüsselt erreichbar für ein altes Nokia (J2ME)"
+version: "1.0.0"
+slug: "nokia_signal"
+arch:
+  - amd64
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: "mdi:message-lock"
+panel_title: "Nokia-Signal"
+panel_admin: true
+ports:
+  8080/tcp: 8791
+ports_description:
+  8080/tcp: "Schnittstelle für das Handy (über den Reverse Proxy freigeben, Inhalt ist verschlüsselt)"
+watchdog: "tcp://[HOST]:[PORT:8080]"
+options:
+  schluessel: ""
+schema:
+  schluessel: "password?"
