@@ -208,6 +208,7 @@ class Ringer:
 
 
 ringer = Ringer(load_options())
+READ_RECEIPTS = load_options().get("lesebestaetigungen", True)
 
 
 def subkey(label):
@@ -721,8 +722,27 @@ def cmd_msgs(conv, after, before):
         lines.append("\t".join([str(mid), "1" if out else "0", phone_text(who), when(ts),
                                 phone_text(body), ",".join(imgs)]))
     if rows:
+        prev = store.q("SELECT read_upto FROM convs WHERE id=?", (conv,))
+        prev = prev[0][0] if prev else 0
         store.mark_read(conv, rows[-1][0])
+        if READ_RECEIPTS:
+            unseen = [(author, ts) for mid, ts, author, out, _ in rows if mid > prev and not out]
+            if unseen:
+                threading.Thread(target=send_read_receipts, args=(unseen,), daemon=True).start()
     return "\n".join(lines)
+
+
+def send_read_receipts(unseen):
+    """Tells each sender that the Nokia has shown their messages (Signal's blue ticks)."""
+    by_author = {}
+    for author, ts in unseen:
+        if author.startswith(("u:", "n:")) and ts:
+            by_author.setdefault(author[2:], []).append(ts)
+    for ident, stamps in by_author.items():
+        try:
+            signal.rpc("sendReceipt", {"recipient": ident, "targetTimestamp": stamps, "type": "read"})
+        except Exception as e:
+            log("Lesebestätigung an %s fehlgeschlagen: %r" % (ident[:8], e))
 
 
 def recipient(conv):
