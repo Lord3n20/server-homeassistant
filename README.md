@@ -3,7 +3,8 @@
 This is a repo of simple Home Assistant Apps for serving stuff.\
 It has a simple minecraft java server, a simple nginx webserver,\
 a Claude connector for mail (IMAP/SMTP) and calendar (CalDAV), see `claude-mail-mcp-app/README.md`,\
-and a plain-HTTP bridge for an old Nokia (J2ME) phone, see `nokia-bridge-app/README.md`
+a plain-HTTP bridge for an old Nokia (J2ME) phone, see `nokia-bridge-app/README.md`,\
+and Signal for that phone (linked device, encrypted transport), see `nokia-signal-app/README.md`
 
 For installation add this repository to your Home Assistant App repositories.
 
