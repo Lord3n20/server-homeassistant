@@ -124,6 +124,10 @@ class Ringer:
     Rings once; the next ring needs the phone app to have been in touch again,
     or the messages to have been read (or answered) on another device. No ring
     while Signal is in use on another device anyway.
+
+    Optional further lines (each its own IP phone with its own outgoing
+    number) for chosen chats, so the caller ID tells who wrote. Each line
+    rings once, so news from another such chat rings again.
     """
 
     QUIET = 75  # seconds without a request from the phone = app is closed
@@ -132,52 +136,75 @@ class Ringer:
     def __init__(self, opts):
         self.number = (opts.get("anruf_nummer") or "").strip()
         self.server = (opts.get("sip_server") or "fritz.box").strip()
-        self.user = (opts.get("sip_benutzer") or "").strip()
-        self.password = opts.get("sip_passwort") or ""
         self.seconds = int(opts.get("klingeln_sekunden") or 15)
+        # (user, password, chat names in lower case); line 0 is for everything else.
+        self.lines = [((opts.get("sip_benutzer") or "").strip(), opts.get("sip_passwort") or "", set())]
+        for extra in opts.get("weitere_nummern") or []:
+            chats = set(c.strip().lower() for c in (extra.get("chats") or "").split(",") if c.strip())
+            user = (extra.get("sip_benutzer") or "").strip()
+            if user and extra.get("sip_passwort") and chats:
+                self.lines.append((user, extra["sip_passwort"], chats))
         self.lock = threading.Lock()
         # Counts the start as contact, so messages signal-cli delivers late
         # after a restart do not ring.
         self.last_seen = time.time()
-        self.armed = True
         self.last_elsewhere = 0.0
-        self.busy = False
+        self.rung = set()  # lines that rang since the news were last seen
+        self.pending = []  # lines waiting to ring, one call at a time
         self.result = ""
 
     def enabled(self):
-        return bool(self.number and self.user and self.password)
+        return bool(self.number and self.lines[0][0] and self.lines[0][1])
 
     def phone_seen(self):
         with self.lock:
             self.last_seen = time.time()
-            self.armed = True
+            self.rung.clear()
 
     def seen_elsewhere(self):
         """Read or written on another device: the news are known, ring again next time."""
         with self.lock:
             self.last_elsewhere = time.time()
-            self.armed = True
+            self.rung.clear()
 
-    def news(self):
+    def line_for(self, conv):
+        name = store.name(conv).strip().lower()
+        for i, line in enumerate(self.lines):
+            if name in line[2]:
+                return i
+        return 0
+
+    def news(self, conv):
+        if not self.enabled():
+            return
+        line = self.line_for(conv)
         with self.lock:
             now = time.time()
-            if (not self.enabled() or not self.armed or self.busy
-                    or now - self.last_seen < self.QUIET
+            if (line in self.rung or now - self.last_seen < self.QUIET
                     or now - self.last_elsewhere < self.ELSEWHERE):
                 return
-            self.armed = False
-            self.busy = True
+            self.rung.add(line)
+            self.pending.append(line)
+            if len(self.pending) > 1:
+                return  # the running thread takes it next
         threading.Thread(target=self.ring, daemon=True).start()
 
     def ring(self):
-        try:
-            res = sipcall.ring(self.server, self.user, self.password, self.number, self.seconds)
-        except (sipcall.SipError, OSError) as e:
-            res = "Fehler: %s" % e
-        self.result = datetime.now().strftime("%H:%M ") + res
-        log("Anruf: " + res)
-        with self.lock:
-            self.busy = False
+        while True:
+            with self.lock:
+                line = self.pending[0]
+            user, password, _ = self.lines[line]
+            try:
+                res = sipcall.ring(self.server, user, password, self.number, self.seconds)
+            except (sipcall.SipError, OSError) as e:
+                res = "Fehler: %s" % e
+            res = "über %s: %s" % (user, res)
+            self.result = datetime.now().strftime("%H:%M ") + res
+            log("Anruf " + res)
+            with self.lock:
+                self.pending.pop(0)
+                if not self.pending:
+                    return
 
 
 ringer = Ringer(load_options())
@@ -603,7 +630,7 @@ def store_data(conv, author, out, dm, ts):
     if out:
         ringer.seen_elsewhere()
     else:
-        ringer.news()
+        ringer.news(conv)
 
 
 def handle_envelope(env):

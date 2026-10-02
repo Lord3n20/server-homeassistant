@@ -48,6 +48,13 @@ Gerät liest oder schreibt (letzte 2 min), wird nicht angerufen.
    kürzer als die Zeit, nach der die Mailbox drangeht).
 3. Am Nokia die Festnetznummer als Kontakt „Signal“ speichern, gern mit eigenem Klingelton.
 
+**Mehrere Nummern (optional):** Hat der Anschluss mehrere Rufnummern, kann man sehen, wer
+geschrieben hat. Für jede weitere Nummer in der FritzBox ein eigenes IP-Telefon mit dieser Nummer
+als ausgehender anlegen und unter `weitere_nummern` eintragen: `sip_benutzer`, `sip_passwort` und
+`chats` (Chatnamen wie in der Liste am Handy, durch Komma getrennt, z. B. `Lisa, Familie`). Alle
+anderen Chats rufen über das Haupt-IP-Telefon an. Jede Nummer klingelt einmal, eine Nachricht aus
+einem Chat mit anderer Nummer klingelt also nochmal. Ohne Eintrag bleibt alles bei einer Nummer.
+
 Jeder andere SIP-Anbieter mit Benutzer/Passwort geht genauso. Das Ergebnis des letzten Anrufs steht
 auf der Oberfläche und im Protokoll. Zum Testen: `python3 sipcall.py SERVER BENUTZER PASSWORT NUMMER`.
 
