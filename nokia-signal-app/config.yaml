@@ -1,6 +1,6 @@
 name: "Nokia-Signal"
 description: "Signal als verknüpftes Gerät, verschlüsselt erreichbar für ein altes Nokia (J2ME)"
-version: "1.0.0"
+version: "1.0.1"
 slug: "nokia_signal"
 arch:
   - amd64
