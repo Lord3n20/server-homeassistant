@@ -121,10 +121,13 @@ class Ringer:
     """
     Rings the Nokia over SIP (e.g. a FritzBox IP phone) when a message comes
     in while the phone app is closed, and hangs up before anyone answers.
-    Rings once; the next ring needs the phone app to have been in touch again.
+    Rings once; the next ring needs the phone app to have been in touch again,
+    or the messages to have been read (or answered) on another device. No ring
+    while Signal is in use on another device anyway.
     """
 
     QUIET = 75  # seconds without a request from the phone = app is closed
+    ELSEWHERE = 120  # seconds after reading/writing on another device without a ring
 
     def __init__(self, opts):
         self.number = (opts.get("anruf_nummer") or "").strip()
@@ -137,6 +140,7 @@ class Ringer:
         # after a restart do not ring.
         self.last_seen = time.time()
         self.armed = True
+        self.last_elsewhere = 0.0
         self.busy = False
         self.result = ""
 
@@ -148,10 +152,18 @@ class Ringer:
             self.last_seen = time.time()
             self.armed = True
 
+    def seen_elsewhere(self):
+        """Read or written on another device: the news are known, ring again next time."""
+        with self.lock:
+            self.last_elsewhere = time.time()
+            self.armed = True
+
     def news(self):
         with self.lock:
+            now = time.time()
             if (not self.enabled() or not self.armed or self.busy
-                    or time.time() - self.last_seen < self.QUIET):
+                    or now - self.last_seen < self.QUIET
+                    or now - self.last_elsewhere < self.ELSEWHERE):
                 return
             self.armed = False
             self.busy = True
@@ -588,7 +600,9 @@ def store_data(conv, author, out, dm, ts):
     if not body and not atts:
         return  # profile key updates, expiration timers, group changes, …
     store.add_msg(conv, ts, author, out, body, atts)
-    if not out:
+    if out:
+        ringer.seen_elsewhere()
+    else:
         ringer.news()
 
 
@@ -633,6 +647,7 @@ def handle_envelope(env):
             if row:
                 store.mark_read(row[0][0], row[0][1])
                 store.bump()
+                ringer.seen_elsewhere()
 
 
 # --- phone API ---------------------------------------------------------------

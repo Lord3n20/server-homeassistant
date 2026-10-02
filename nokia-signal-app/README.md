@@ -36,7 +36,9 @@ Schlüssel, den nur App und Handy kennen. Der Schlüssel selbst wird nie übertr
 Das Nokia kann Java-Apps nicht im Hintergrund laufen lassen. Damit man trotzdem merkt, dass etwas
 Neues da ist, ruft die App das Handy kurz an und legt auf, bevor jemand abnimmt. Das kostet nichts,
 weil kein Gespräch zustande kommt. Es klingelt nur, wenn die Handy-App seit über 75 s nichts
-gefragt hat (also zu ist), und nur einmal, bis sich die Handy-App wieder gemeldet hat.
+gefragt hat (also zu ist), und nur einmal, bis sich die Handy-App wieder gemeldet hat oder die
+Nachrichten auf einem anderen Gerät gelesen bzw. beantwortet wurden. Wer gerade auf einem anderen
+Gerät liest oder schreibt (letzte 2 min), wird nicht angerufen.
 
 1. FritzBox: *Telefonie → Telefoniegeräte → Neues Gerät einrichten → Telefon → LAN/WLAN
    (IP-Telefon)*. Benutzername und Kennwort vergeben, als ausgehende Nummer die Festnetznummer,
