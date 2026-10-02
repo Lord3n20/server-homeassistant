@@ -150,10 +150,14 @@ def call(domain, service, data):
 
 def fmt_number(value):
     try:
-        float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return str(value)
-    return str(value).replace(".", ",")
+    text = str(value)
+    # Raw sensor noise like 25.0005874633789 is shown with one decimal.
+    if "." in text and len(text.split(".")[1]) > 2:
+        text = "%.1f" % number
+    return text.replace(".", ",")
 
 
 def state_text(kind, st):
