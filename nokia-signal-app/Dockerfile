@@ -16,7 +16,7 @@ RUN apt-get update \
     && apt-get purge -y curl && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY bridge.py /bridge.py
+COPY bridge.py sipcall.py /
 
 EXPOSE 8080 8099
 CMD ["python3", "-u", "/bridge.py"]

@@ -1,6 +1,6 @@
 name: "Nokia-Signal"
 description: "Signal als verknüpftes Gerät, verschlüsselt erreichbar für ein altes Nokia (J2ME)"
-version: "1.0.1"
+version: "1.0.2"
 slug: "nokia_signal"
 arch:
   - amd64
@@ -18,5 +18,15 @@ ports_description:
 watchdog: "tcp://[HOST]:[PORT:8080]"
 options:
   schluessel: ""
+  anruf_nummer: ""
+  sip_server: "fritz.box"
+  sip_benutzer: ""
+  sip_passwort: ""
+  klingeln_sekunden: 15
 schema:
   schluessel: "password?"
+  anruf_nummer: "str?"
+  sip_server: "str?"
+  sip_benutzer: "str?"
+  sip_passwort: "password?"
+  klingeln_sekunden: "int(5,40)?"
