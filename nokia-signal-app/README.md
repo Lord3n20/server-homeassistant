@@ -58,6 +58,11 @@ einem Chat mit anderer Nummer klingelt also nochmal. Ohne Eintrag bleibt alles b
 Jeder andere SIP-Anbieter mit Benutzer/Passwort geht genauso. Das Ergebnis des letzten Anrufs steht
 auf der Oberfläche und im Protokoll. Zum Testen: `python3 sipcall.py SERVER BENUTZER PASSWORT NUMMER`.
 
+### Lesebestätigungen
+
+Öffnet man am Nokia einen Chat, bekommen die Absender der bisher ungelesenen Nachrichten eine
+Lesebestätigung (wie in Signal üblich). Abschalten mit `lesebestaetigungen: false`.
+
 Wird das Gerät am Handy entkoppelt, zeigt die Oberfläche „vom Handy entkoppelt“; mit
 **Neu koppeln** gibt es einen neuen QR-Code. Gespeicherte Chats und Bilder bleiben erhalten.
 
