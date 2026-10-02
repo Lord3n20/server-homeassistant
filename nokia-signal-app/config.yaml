@@ -1,6 +1,6 @@
 name: "Nokia-Signal"
 description: "Signal als verknüpftes Gerät, verschlüsselt erreichbar für ein altes Nokia (J2ME)"
-version: "1.0.3"
+version: "1.0.4"
 slug: "nokia_signal"
 arch:
   - amd64
@@ -23,6 +23,7 @@ options:
   sip_benutzer: ""
   sip_passwort: ""
   klingeln_sekunden: 15
+  weitere_nummern: []
 schema:
   schluessel: "password?"
   anruf_nummer: "str?"
@@ -30,3 +31,7 @@ schema:
   sip_benutzer: "str?"
   sip_passwort: "password?"
   klingeln_sekunden: "int(5,40)?"
+  weitere_nummern:
+    - sip_benutzer: str
+      sip_passwort: password
+      chats: str
