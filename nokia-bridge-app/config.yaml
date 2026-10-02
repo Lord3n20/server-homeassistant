@@ -1,6 +1,6 @@
 name: "Nokia-Brücke"
 description: "Schlanke HTTP-Schnittstelle, damit ein altes Nokia (J2ME) das Dashboard anzeigen und schalten kann"
-version: "1.0.0"
+version: "1.0.1"
 slug: "nokia_bridge"
 arch:
   - aarch64
