@@ -2,7 +2,7 @@ name: Minecraft Server
 description: minecraft server with itzg/minecraft-server
 slug: minecraft_server
 homeassistant_api: true
-version: "3.0.1"
+version: "3.1.0"
 arch:
   - aarch64
   - amd64
@@ -15,7 +15,12 @@ environment:
   DIFFICULTY: "2"
   MAX_PLAYERS: "10"
   MOTD: "Stierzunge"
-  MEMORY: "4G"
+  INIT_MEMORY: "1G"
+  MAX_MEMORY: "4G"
+  ENABLE_AUTOPAUSE: "TRUE"
+  AUTOPAUSE_TIMEOUT_EST: "600"
+  AUTOPAUSE_TIMEOUT_INIT: "600"
   SERVER_PORT: "25565"
-  VIEW_DISTANCE: "16"
+  VIEW_DISTANCE: "12"
+  SIMULATION_DISTANCE: "8"
   TYPE: "PAPER"
