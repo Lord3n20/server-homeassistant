@@ -1,7 +1,7 @@
 # some servers for Home Assistant
 
 This is a repo of simple Home Assistant Apps for serving stuff.\
-It has a simple minecraft java server, a simple nginx webserver,\
+It has a simple minecraft java server and a simple nginx webserver.
 
 For installation add this repository to your Home Assistant App repositories.
 
