@@ -17,6 +17,7 @@ environment:
   MOTD: "Stierzunge"
   SERVER_PORT: "25565"
   TYPE: "PAPER"
+  MODRINTH_PROJECTS: "voxy-server-side,chunky"
 options:
   max_memory: "4G"
   init_memory: "1G"
