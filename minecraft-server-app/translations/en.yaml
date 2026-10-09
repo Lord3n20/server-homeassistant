@@ -1,0 +1,13 @@
+configuration:
+  max_memory:
+    name: Max RAM
+    description: Maximum Java heap, e.g. 4G or 3072M
+  init_memory:
+    name: Start RAM
+    description: Java heap at startup, e.g. 1G
+  view_distance:
+    name: View distance
+    description: In chunks (3–32)
+  simulation_distance:
+    name: Simulation distance
+    description: In chunks (3–32), how far mobs and crops keep ticking

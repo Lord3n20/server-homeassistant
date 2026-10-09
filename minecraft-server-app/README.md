@@ -3,3 +3,5 @@ without whitelist\
 Port 25565\
 Survival\
 Maybe options will be added later
+
+RAM, view distance and simulation distance can be changed in the app's Configuration tab (restart the app afterwards).

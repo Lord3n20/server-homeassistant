@@ -1,0 +1,13 @@
+configuration:
+  max_memory:
+    name: Maximaler RAM
+    description: Höchstens so viel Arbeitsspeicher für Java, z. B. 4G oder 3072M
+  init_memory:
+    name: Start-RAM
+    description: Arbeitsspeicher beim Start, z. B. 1G
+  view_distance:
+    name: Sichtweite
+    description: In Chunks (3–32)
+  simulation_distance:
+    name: Simulationsweite
+    description: In Chunks (3–32), wie weit Mobs und Pflanzen weiterlaufen
