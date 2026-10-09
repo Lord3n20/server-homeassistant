@@ -4,6 +4,7 @@ Port 25565\
 Survival\
 Maybe options will be added later
 
-The server pauses itself 10 minutes after the last player leaves (itzg autopause)
-and wakes up automatically on the next connection attempt — no manual start needed.
-The first join after a pause can take a few seconds.
+RAM, view distance and simulation distance can be changed in the app's Configuration tab (restart the app afterwards).
+
+Plugins (downloaded from Modrinth on every start): Voxy Server Side (sends far terrain to players
+with the Voxy client mod, same Minecraft version needed) and Chunky (pre-generating chunks).

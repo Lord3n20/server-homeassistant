@@ -2,7 +2,7 @@ name: Minecraft Server
 description: minecraft server with itzg/minecraft-server
 slug: minecraft_server
 homeassistant_api: true
-version: "3.1.0"
+version: "3.2.0"
 arch:
   - aarch64
   - amd64
@@ -15,12 +15,16 @@ environment:
   DIFFICULTY: "2"
   MAX_PLAYERS: "10"
   MOTD: "Stierzunge"
-  INIT_MEMORY: "1G"
-  MAX_MEMORY: "4G"
-  ENABLE_AUTOPAUSE: "TRUE"
-  AUTOPAUSE_TIMEOUT_EST: "600"
-  AUTOPAUSE_TIMEOUT_INIT: "600"
   SERVER_PORT: "25565"
-  VIEW_DISTANCE: "12"
-  SIMULATION_DISTANCE: "8"
   TYPE: "PAPER"
+  MODRINTH_PROJECTS: "voxy-server-side,chunky"
+options:
+  max_memory: "4G"
+  init_memory: "1G"
+  view_distance: 12
+  simulation_distance: 8
+schema:
+  max_memory: match(^[0-9]+[MG]$)
+  init_memory: match(^[0-9]+[MG]$)
+  view_distance: int(3,32)
+  simulation_distance: int(3,32)
