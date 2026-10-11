@@ -7,4 +7,6 @@ if [ -f "$OPTIONS" ]; then
   export VIEW_DISTANCE="$(jq -r '.view_distance' "$OPTIONS")"
   export SIMULATION_DISTANCE="$(jq -r '.simulation_distance' "$OPTIONS")"
 fi
+# Console panel for the HA sidebar (Ingress, port 8099), next to the server
+python3 /konsole.py &
 exec /image/scripts/start "$@"
