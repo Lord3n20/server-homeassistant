@@ -8,3 +8,6 @@ RAM, view distance and simulation distance can be changed in the app's Configura
 
 Plugins (downloaded from Modrinth on every start): Voxy Server Side (sends far terrain to players
 with the Voxy client mod, same Minecraft version needed) and Chunky (pre-generating chunks).
+
+Console: the sidebar entry "Minecraft-Konsole" (admins only, via Ingress) shows the live server log and
+sends commands through RCON, e.g. `list`, `say …`, `chunky progress`.
