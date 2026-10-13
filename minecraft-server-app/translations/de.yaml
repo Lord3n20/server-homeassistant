@@ -11,3 +11,15 @@ configuration:
   simulation_distance:
     name: Simulationsweite
     description: In Chunks (3–32), wie weit Mobs und Pflanzen weiterlaufen
+  enforce_whitelist:
+    name: Whitelist erzwingen
+    description: Kickt Spieler sofort, wenn sie von der Whitelist entfernt werden
+  enable_status:
+    name: In Serverliste sichtbar
+    description: Aus = Server antwortet nicht auf Ping (unsichtbar für Scanner wie Shodan); Beitreten geht trotzdem
+  prevent_proxy_connections:
+    name: Proxy-Verbindungen blockieren
+    description: Lehnt Spieler ab, deren IP nicht zur Mojang-Anmeldung passt
+  rate_limit:
+    name: Paket-Limit
+    description: Max. Pakete pro Sekunde je Spieler, darüber wird gekickt (0 = aus)

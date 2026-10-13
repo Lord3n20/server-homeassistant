@@ -11,3 +11,15 @@ configuration:
   simulation_distance:
     name: Simulation distance
     description: In chunks (3–32), how far mobs and crops keep ticking
+  enforce_whitelist:
+    name: Enforce whitelist
+    description: Kicks players right away when they are removed from the whitelist
+  enable_status:
+    name: Visible in server list
+    description: Off = server does not answer pings (hidden from scanners like Shodan); joining still works
+  prevent_proxy_connections:
+    name: Block proxy connections
+    description: Rejects players whose IP does not match their Mojang login
+  rate_limit:
+    name: Packet limit
+    description: Max packets per second per player before a kick (0 = off)
