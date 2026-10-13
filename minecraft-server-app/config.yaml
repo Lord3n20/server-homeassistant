@@ -2,7 +2,7 @@ name: Minecraft Server
 description: minecraft server with itzg/minecraft-server
 slug: minecraft_server
 homeassistant_api: true
-version: "3.3.0"
+version: "3.4.0"
 arch:
   - aarch64
   - amd64
@@ -29,8 +29,16 @@ options:
   init_memory: "1G"
   view_distance: 12
   simulation_distance: 8
+  enforce_whitelist: true
+  enable_status: false
+  prevent_proxy_connections: true
+  rate_limit: 500
 schema:
   max_memory: match(^[0-9]+[MG]$)
   init_memory: match(^[0-9]+[MG]$)
   view_distance: int(3,32)
   simulation_distance: int(3,32)
+  enforce_whitelist: bool
+  enable_status: bool
+  prevent_proxy_connections: bool
+  rate_limit: int(0,10000)
