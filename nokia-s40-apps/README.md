@@ -1,8 +1,8 @@
 # nokia-s40-apps
 
 Small Java ME apps (CLDC 1.1 / MIDP 2.0) for a Nokia 6303i classic (Series 40) that talk to today's
-world through their own bridge running in Home Assistant. The bridges live in
-[Lord3n20/server-homeassistant](https://github.com/Lord3n20/server-homeassistant).
+world through their own bridge running in Home Assistant. The bridges are the Home Assistant apps
+[`nokia-signal-app`](../nokia-signal-app) and [`nokia-bridge-app`](../nokia-bridge-app) in this repository.
 The apps themselves are in German.
 
 | App | Folder | Bridge | What |
@@ -17,6 +17,9 @@ You need Java, `jar`, `openssl`, `curl` and the MIDP/CLDC libraries from
 location via `MICROEMU_LIB=/path/to/lib`). The compiler (ecj 4.5.1) is downloaded from Maven
 Central on the first build and checked by SHA-256.
 
+Run everything from inside `nokia-s40-apps/`:
+
+    cd nokia-s40-apps
     signal/build.sh          # → signal/dist/Signal.jad + Signal.jar
     homeassistant/build.sh
 
@@ -24,7 +27,7 @@ Central on the first build and checked by SHA-256.
 
 ## Your own data: `private/`
 
-Everything personal goes into `private/`, which is excluded by `.gitignore`:
+Everything personal goes into `nokia-s40-apps/private/`, which is excluded by `.gitignore`:
 
 | File | Purpose |
 |---|---|

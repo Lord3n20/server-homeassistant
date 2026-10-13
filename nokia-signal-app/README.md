@@ -92,3 +92,5 @@ Zeilenumbruch, danach der Inhalt. Weicht die Uhr des Handys mehr als 10 min ab, 
 
 Zeilenumbrüche in Texten kommen als Zeichen `0x1E`. Emoji werden zu Text-Smileys (`:)`, `<3`, `(Y)`),
 unbekannte zu `[?]`, weil die Schrift des Handys keine kennt.
+
+The phone side of this bridge is in [`nokia-s40-apps/`](../nokia-s40-apps).

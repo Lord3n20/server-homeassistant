@@ -42,3 +42,5 @@ Arten: `H` Überschrift, `R` nur lesen, `G` lesen mit Verlauf, `T` Schalter, `S`
 ## Einträge ändern
 
 `ITEMS` in `bridge.py` anpassen, `version` in `config.yaml` erhöhen, App neu bauen.
+
+The phone side of this bridge is in [`nokia-s40-apps/`](../nokia-s40-apps).
