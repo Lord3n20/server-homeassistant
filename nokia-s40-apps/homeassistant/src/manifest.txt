@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+MIDlet-1: 2 Home Assistant, /icon.png, HomeAssistant
+MIDlet-Icon: /icon.png
+MIDlet-Name: 2 Home Assistant
+MIDlet-Vendor: Enzo
+MIDlet-Version: 1.0.3
+MicroEdition-Profile: MIDP-2.0
+MicroEdition-Configuration: CLDC-1.1

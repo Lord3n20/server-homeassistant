@@ -1,0 +1,4 @@
+[gammu]
+device = 00:00:00:00:00:00
+connection = bluephonet
+model = 6303i

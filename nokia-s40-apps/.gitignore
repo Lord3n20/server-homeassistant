@@ -1,0 +1,7 @@
+# Keys, URLs, signing certificate, Bluetooth address – never publish
+private/
+# Generated
+*/build/
+*/dist/
+tools/ecj.jar
+tools/ecj.jar.tmp
