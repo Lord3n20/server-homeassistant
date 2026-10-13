@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <rect x="1" y="1" width="46" height="46" rx="10" fill="#3a76f0"/>
+  <!-- speech bubble with a tail at the bottom left -->
+  <path d="M24 9 C33.4 9 40 15.3 40 23 C40 30.7 33.4 37 24 37 C21.6 37 19.4 36.6 17.4 35.8 L10 38.5 L12.4 31.6 C9.6 29.2 8 26.2 8 23 C8 15.3 14.6 9 24 9 Z" fill="#ffffff"/>
+  <!-- three dots: a message -->
+  <circle cx="17" cy="23" r="2.4" fill="#3a76f0"/>
+  <circle cx="24" cy="23" r="2.4" fill="#3a76f0"/>
+  <circle cx="31" cy="23" r="2.4" fill="#3a76f0"/>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <rect x="1" y="1" width="46" height="46" rx="10" fill="#18bcf2"/>
+  <!-- house: roof + body with a door -->
+  <path d="M24 9 L40 23 L36 23 L36 38 L12 38 L12 23 L8 23 Z" fill="#ffffff"/>
+  <rect x="20.5" y="27" width="7" height="11" rx="1" fill="#18bcf2"/>
+  <!-- small "connected" dots in the gable -->
+  <circle cx="24" cy="19.5" r="2.4" fill="#18bcf2"/>
+</svg>
