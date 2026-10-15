@@ -1,20 +1,19 @@
-"""Bibliothek: Bücher per ISBN oder Suche erfassen und als Website-Seite veröffentlichen.
+"""Bibliothek: Bücher per ISBN oder Suche erfassen und für die Website bereitstellen.
 
 Das Ingress-Panel (panel.html) spricht mit der kleinen JSON-API hier. Die
 Buchdaten liegen in /data/buecher.json (kommt so mit ins HA-Backup), die Cover
-in /data/cover/. Nach jeder Änderung schreibt die App eine fertige statische
-Seite (ohne Cover) in den Website-Ordner unter /media, den die nginx-App
-ausliefert. Die Website lädt dadurch nichts von fremden Servern.
+in /data/cover/. Nach jeder Änderung schreibt die App die öffentlichen
+Daten als buecher.json in den Website-Ordner unter /media, den die nginx-App
+ausliefert. Die Seite selbst (bibliothek/index.html) gehört zur Website und lädt
+nur diese Datei, also nichts von fremden Servern.
 
 Metadaten kommen von der Deutschen Nationalbibliothek (SRU, ohne Schlüssel)
 und ersatzweise von Open Library.
 """
-import html
 import json
 import os
 import re
 import secrets
-import shutil
 import threading
 import unicodedata
 import urllib.error
@@ -37,7 +36,6 @@ BUECHER = DATA / "buecher.json"
 COVER = DATA / "cover"
 UA = "Bibliothek-HA-App/1.0 (privater Buchkatalog)"
 STATUS = ("lese", "gelesen", "ungelesen")
-STATUS_TITEL = {"lese": "Gerade am Lesen", "gelesen": "Gelesen", "ungelesen": "Noch ungelesen"}
 LEIHE = ("", "verliehen", "geliehen")
 FELDER = ("isbn", "titel", "untertitel", "autor", "verlag", "jahr", "seiten",
           "genre", "status", "oeffentlich", "notiz", "gelesen_am",
@@ -510,147 +508,20 @@ def website_ordner():
     return MEDIA / teil, teil
 
 
+# Nur diese Felder kommen auf die Website (keine Notizen, keine Namen aus der Ausleihe).
+OEFFENTLICH = ("titel", "untertitel", "autor", "verlag", "jahr", "genre", "status", "bewertung")
+
+
 def veroeffentlichen(buecher):
-    ziel, teil = website_ordner()
-    tiefe = len(teil.split("/")) - 1
-    zurueck = "../" * tiefe if tiefe else "./"
-    wurzel = MEDIA / teil.split("/")[0]
-    try:
-        m = re.search(r"style\.css\?v=(\w+)", (wurzel / "index.html").read_text())
-        css = f"style.css?v={m.group(1)}" if m else "style.css"
-    except OSError:
-        css = "style.css"
-
+    ziel, _ = website_ordner()
     sichtbar = sorted((b for b in buecher if b.get("oeffentlich")), key=sortierschluessel)
+    daten = {"stand": date.today().isoformat(), "buecher": [
+        {**{k: b.get(k) or ("" if k != "bewertung" else 0) for k in OEFFENTLICH},
+         "geliehen": b.get("leihe") == "geliehen"} for b in sichtbar]}
     ziel.mkdir(parents=True, exist_ok=True)
-    # Cover bleiben bewusst nur im Panel (Urheberrecht der Verlage).
-    shutil.rmtree(ziel / "cover", ignore_errors=True)
-
-    tmp = ziel / "index.html.tmp"
-    tmp.write_text(seite(sichtbar, zurueck, css))
-    os.replace(tmp, ziel / "index.html")
-
-
-def e(text):
-    return html.escape(str(text or ""), quote=True)
-
-
-def karte(b):
-    meta = " · ".join(x for x in (e(b.get("jahr")), e(b.get("verlag"))) if x)
-    genre = f'<span class="tag-sm">{e(b["genre"])}</span>' if b.get("genre") else ""
-    unter = f'<p class="buch-unter">{e(b["untertitel"])}</p>' if b.get("untertitel") else ""
-    n = b.get("bewertung") or 0
-    sterne = (f'<p class="sterne" title="{n} von 5 Sternen" aria-label="{n} von 5 Sternen">'
-              f'{"★" * n}<span>{"★" * (5 - n)}</span></p>') if n else ""
-    return f"""<li class="buch" data-genre="{e(b.get('genre'))}">
-  <p class="buch-autor">{e(b.get('autor'))}</p>
-  <h3>{e(b['titel'])}</h3>
-  {unter}
-  <p class="buch-meta">{genre}{meta}</p>
-  {sterne}
-</li>"""
-
-
-def seite(buecher, zurueck, css):
-    genres = sorted({b["genre"] for b in buecher if b.get("genre")}, key=str.lower)
-    abschnitte = []
-    for status in STATUS:
-        liste = [b for b in buecher if b.get("status") == status]
-        if not liste:
-            continue
-        abschnitte.append(
-            f'<section class="regal" id="{status}">\n'
-            f'<h2>{STATUS_TITEL[status]} <span class="anzahl">{len(liste)}</span></h2>\n'
-            f'<ul class="buecher">\n' + "\n".join(karte(b) for b in liste) + "\n</ul>\n</section>")
-    if not abschnitte:
-        abschnitte.append('<p class="article-meta">Hier stehen bald meine Bücher.</p>')
-    knoepfe = "".join(f'<button type="button" data-genre="{e(g)}">{e(g)}</button>' for g in genres)
-    filter_html = (f'<div class="genre-filter" hidden><button type="button" data-genre="" '
-                   f'aria-pressed="true">Alle</button>{knoepfe}</div>') if len(genres) > 1 else ""
-    anzahl = len(buecher)
-    return f"""<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bibliothek – Enzo Brandsch</title>
-  <meta name="description" content="Was neben meinem Lesesessel steht: gelesen, ungelesen und gerade am Lesen.">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#030506">
-  <link rel="icon" href="{zurueck}wappen-transparent.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="{zurueck}{css}">
-  <style>
-    .regal {{ margin: 0 0 3rem; }}
-    .regal h2 {{ font-size: 1.6rem; margin: 0 0 1.2rem; }}
-    .anzahl {{ font-family: var(--sans); font-size: 0.9rem; color: var(--muted); font-weight: 400; }}
-    .buecher {{ list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem;
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); }}
-    .buch {{ padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: 12px;
-      background: rgba(8, 18, 20, 0.7); min-width: 0; }}
-    .buch h3 {{ margin: 0.1rem 0 0; font-size: 1.15rem; line-height: 1.3; }}
-    .buch-autor, .buch-unter, .buch-meta {{ margin: 0; color: var(--muted); font-size: 0.88rem; }}
-    .buch-unter {{ font-family: var(--serif); font-style: italic; }}
-    .buch-meta {{ margin-top: 0.5rem; font-size: 0.8rem; }}
-    .buch-meta .tag-sm {{ margin: 0 0.5rem 0 0; }}
-    .sterne {{ margin: 0.4rem 0 0; color: var(--accent); letter-spacing: 0.1em; font-size: 0.9rem; }}
-    .sterne span {{ opacity: 0.25; }}
-    .genre-filter {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 2.5rem; }}
-    .genre-filter button {{ font: inherit; font-size: 0.85rem; padding: 0.25rem 0.8rem; cursor: pointer;
-      border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); }}
-    .genre-filter button[aria-pressed="true"] {{ background: var(--accent-soft); color: var(--accent); }}
-  </style>
-</head>
-<body class="subpage">
-  <div class="crest" aria-hidden="true"></div>
-
-  <nav class="navbar" aria-label="Navigation">
-    <a class="brand" href="{zurueck}index.html">
-      <img src="{zurueck}wappen-transparent.svg" alt="" width="30" height="33">
-      <span>Enzo Brandsch</span>
-    </a>
-    <ul>
-      <li><a href="{zurueck}index.html#ueber">Über mich</a></li>
-      <li><a href="{zurueck}index.html#werdegang">Werdegang</a></li>
-      <li><a href="{zurueck}texte/index.html">Beiträge</a></li>
-    </ul>
-  </nav>
-
-  <header class="page-head">
-    <div class="page-head-inner">
-      <a class="back" href="{zurueck}index.html">← Zur Startseite</a>
-      <p class="eyebrow">Neben dem Lesesessel</p>
-      <h1 class="article-title">Bibliothek</h1>
-      <p class="article-meta">{anzahl} {"Buch" if anzahl == 1 else "Bücher"} aus meinem Regal – was ich gerade lese, was ich gelesen habe und was noch wartet.</p>
-    </div>
-  </header>
-
-  <main class="article">
-    {filter_html}
-    {chr(10).join(abschnitte)}
-  </main>
-
-  <footer class="footer">
-    <img src="{zurueck}wappen-transparent.svg" alt="" width="36" height="39">
-    <p>© {date.today().year} Enzo Brandsch · Aachen · <a href="{zurueck}impressum.html">Impressum &amp; Datenschutz</a></p>
-  </footer>
-  <script>
-    (function () {{
-      var leiste = document.querySelector(".genre-filter");
-      if (!leiste) return;
-      leiste.hidden = false;
-      leiste.addEventListener("click", function (ev) {{
-        var k = ev.target.closest("button");
-        if (!k) return;
-        var g = k.getAttribute("data-genre");
-        leiste.querySelectorAll("button").forEach(function (b) {{ b.setAttribute("aria-pressed", b === k); }});
-        document.querySelectorAll(".buch").forEach(function (b) {{ b.hidden = g && b.getAttribute("data-genre") !== g; }});
-        document.querySelectorAll(".regal").forEach(function (r) {{ r.hidden = !r.querySelector(".buch:not([hidden])"); }});
-      }});
-    }})();
-  </script>
-</body>
-</html>
-"""
+    tmp = ziel / "buecher.json.tmp"
+    tmp.write_text(json.dumps(daten, ensure_ascii=False, separators=(",", ":")))
+    os.replace(tmp, ziel / "buecher.json")
 
 
 def nach_aenderung(buecher):

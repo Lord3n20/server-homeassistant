@@ -1,6 +1,6 @@
 name: "Bibliothek"
 description: "Bücher per ISBN erfassen, im Panel sortieren und als Unterseite der Website veröffentlichen"
-version: "1.3.0"
+version: "1.4.0"
 slug: "bibliothek"
 arch:
   - aarch64

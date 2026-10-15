@@ -4,10 +4,13 @@ Home-Assistant-App für den eigenen Bücherschrank. Bücher kommen über die ISB
 Titel/Autor oder von Hand hinein. Im Panel „Bibliothek“ (Seitenleiste) lassen sie sich nach Status
 (am Lesen, gelesen, ungelesen), Genre und Autor sortieren und bearbeiten.
 
-Nach jeder Änderung schreibt die App eine fertige, statische Seite nach
+Nach jeder Änderung schreibt die App die öffentlichen Daten als `buecher.json` nach
 `/media/<website_ordner>/` (Standard: `website/bibliothek`), den die nginx-App dieses Repos
-ausliefert. Die Seite übernimmt `style.css`, Navigation und Wappen der Website und lädt nichts von
-fremden Servern. Cover erscheinen bewusst nur im Panel, nicht auf der Website.
+ausliefert. Die Seite selbst (`bibliothek/index.html`) gehört zur Website, wird dort gepflegt
+und lädt nur diese Datei – nichts von fremden Servern.
+
+`buecher.json` enthält je Buch nur Titel, Untertitel, Autor, Verlag, Jahr, Genre, Status,
+Bewertung und ob es geliehen ist. Cover, Notizen, ISBN und Namen aus der Ausleihe bleiben im Panel.
 
 ## Daten
 
@@ -29,7 +32,7 @@ fremden Servern. Cover erscheinen bewusst nur im Panel, nicht auf der Website.
   Die Sterne erscheinen auch auf der Website.
 - **Ausleihe**: beim Bearbeiten „Verliehen an …“ oder „Geliehen von …“ mit Person und Datum.
   In der Liste steht dann ein Hinweis mit „zurück“-Knopf; Filter „Verliehen“/„Geliehen“.
-  Namen und Ausleihe bleiben nur im Panel.
+  Auf der Website steht bei geliehenen Büchern nur „geliehen“, Namen bleiben im Panel.
 
 Das Panel ist nur über Home Assistant (Ingress) erreichbar, die App öffnet keinen Port nach außen.
 
