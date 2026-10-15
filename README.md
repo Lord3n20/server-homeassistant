@@ -1,8 +1,9 @@
 # some servers for Home Assistant
 
 This is a repo of simple Home Assistant Apps for serving stuff.\
-It has a simple minecraft java server, a simple nginx webserver and two bridges for an old Nokia phone
-(`nokia-bridge-app` for the Home Assistant dashboard, `nokia-signal-app` for Signal).
+It has a simple minecraft java server, a simple nginx webserver, two bridges for an old Nokia phone
+(`nokia-bridge-app` for the Home Assistant dashboard, `nokia-signal-app` for Signal) and `bibliothek-app`,
+a book catalogue (ISBN lookup, admin panel) that publishes a page into the nginx website folder.
 The matching phone apps (J2ME) are in [`nokia-s40-apps/`](nokia-s40-apps); they are not Home Assistant apps.
 
 For installation add this repository to your Home Assistant App repositories.

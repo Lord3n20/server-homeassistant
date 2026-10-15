@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bibliothek</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --text: #1c1f23; --muted: #69707a; --line: #dfe2e6;
+    --accent: #03a9f4; --accent-soft: rgba(3, 169, 244, 0.12); --danger: #db4437;
+    --lese: #ff9800; --gelesen: #43a047; --ungelesen: #8a919a;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111315; --card: #1c1e21; --text: #e3e5e8; --muted: #9aa1a9; --line: #2e3236;
+      --accent-soft: rgba(3, 169, 244, 0.18); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.5rem; margin: 4px 0 2px; }
+  h2 { font-size: 1.05rem; margin: 0 0 12px; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  input, select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.primaer { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.gefahr { color: var(--danger); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .reiter { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .reiter button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 12px; color: var(--muted); }
+  .reiter button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .zeile { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .zeile > input { flex: 1 1 180px; }
+  .raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .raster label, dialog label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+  .raster label input, dialog label input, dialog label textarea { color: var(--text); font-size: 0.95rem; }
+  .hinweis { color: var(--muted); font-size: 0.85rem; margin: 10px 0 0; }
+  .meldung { margin: 10px 0 0; font-size: 0.9rem; }
+  .meldung.fehler { color: var(--danger); }
+  video { width: 100%; max-height: 260px; border-radius: 8px; background: #000; margin-top: 10px; object-fit: cover; }
+  .treffer { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  .treffer li { display: flex; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .treffer .info { flex: 1; min-width: 0; }
+  .treffer .info small { color: var(--muted); display: block; }
+  .mini { width: 40px; height: 60px; object-fit: cover; border-radius: 3px; background: var(--line); flex: 0 0 40px; }
+  .werkzeug { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .werkzeug input { flex: 1 1 200px; }
+  .zaehler { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
+  .liste { list-style: none; margin: 0; padding: 0; }
+  .liste li { display: flex; gap: 12px; align-items: center; padding: 10px 4px; border-top: 1px solid var(--line); }
+  .liste li:first-child { border-top: 0; }
+  .liste .info { flex: 1; min-width: 0; cursor: pointer; }
+  .liste .titel { font-weight: 600; }
+  .liste .autor, .liste .klein { color: var(--muted); font-size: 0.85rem; }
+  .liste .versteckt { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+  .genre { display: inline-block; font-size: 0.75rem; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-right: 6px; }
+  .status { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 0 0 auto; }
+  .status button { border: 0; border-radius: 0; padding: 6px 9px; font-size: 0.8rem; background: none; color: var(--muted); }
+  .status button + button { border-left: 1px solid var(--line); }
+  .status button[aria-pressed="true"][data-s="lese"] { background: var(--lese); color: #fff; }
+  .status button[aria-pressed="true"][data-s="gelesen"] { background: var(--gelesen); color: #fff; }
+  .status button[aria-pressed="true"][data-s="ungelesen"] { background: var(--ungelesen); color: #fff; }
+  .leer { color: var(--muted); padding: 20px 0; text-align: center; }
+  dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); padding: 0; width: min(560px, calc(100vw - 24px)); }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+  dialog form { padding: 18px; display: grid; gap: 10px; }
+  dialog .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  dialog .cover-zeile { display: flex; gap: 14px; align-items: center; }
+  dialog .cover-zeile img, dialog .cover-zeile .ohne { width: 70px; height: 105px; object-fit: cover; border-radius: 4px; background: var(--line); }
+  dialog .knoepfe { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; margin-top: 6px; }
+  .check { display: flex !important; align-items: center; gap: 8px; color: var(--text) !important; font-size: 0.95rem !important; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg);
+    padding: 10px 16px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: 90vw; }
+  #toast.an { opacity: 1; }
+  @media (max-width: 600px) {
+    .liste li { flex-wrap: wrap; }
+    .liste .status { margin-left: 52px; }
+    dialog .zwei { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bibliothek</h1>
+  <p class="sub" id="stand">Lade …</p>
+
+  <section class="card">
+    <div class="reiter" role="tablist">
+      <button type="button" role="tab" data-reiter="isbn" aria-selected="true">ISBN</button>
+      <button type="button" role="tab" data-reiter="suche" aria-selected="false">Suchen</button>
+      <button type="button" role="tab" data-reiter="hand" aria-selected="false">Von Hand</button>
+    </div>
+
+    <form id="f-isbn" data-teil="isbn">
+      <div class="zeile">
+        <input id="isbn" inputmode="numeric" autocomplete="off" placeholder="ISBN eingeben oder scannen" autofocus>
+        <button class="primaer" type="submit">Hinzufügen</button>
+        <button type="button" id="scan" hidden>Kamera</button>
+      </div>
+      <video id="video" playsinline muted hidden></video>
+      <p class="hinweis">Barcode-Scanner per USB/Bluetooth funktionieren hier direkt. Daten kommen von der Deutschen Nationalbibliothek und Open Library.</p>
+      <p class="meldung" id="m-isbn" role="status"></p>
+    </form>
+
+    <form id="f-suche" data-teil="suche" hidden>
+      <div class="zeile">
+        <input id="s-titel" placeholder="Titel">
+        <input id="s-autor" placeholder="Autor">
+        <button class="primaer" type="submit">Suchen</button>
+      </div>
+      <p class="meldung" id="m-suche" role="status"></p>
+      <ul class="treffer" id="treffer"></ul>
+    </form>
+
+    <form id="f-hand" data-teil="hand" hidden>
+      <div class="raster">
+        <label>Titel *<input name="titel" required></label>
+        <label>Autor<input name="autor"></label>
+        <label>Genre<input name="genre" list="genres"></label>
+        <label>Jahr<input name="jahr" inputmode="numeric"></label>
+        <label>Verlag<input name="verlag"></label>
+        <label>ISBN (falls vorhanden)<input name="isbn" inputmode="numeric"></label>
+      </div>
+      <div class="zeile" style="margin-top:12px"><button class="primaer" type="submit">Eintragen</button></div>
+      <p class="hinweis">Ein Cover kannst du danach beim Bearbeiten als Foto hochladen.</p>
+      <p class="meldung" id="m-hand" role="status"></p>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="werkzeug">
+      <input id="filter" type="search" placeholder="In der Bibliothek suchen …">
+      <select id="f-status" aria-label="Status">
+        <option value="">Alle</option>
+        <option value="lese">Am Lesen</option>
+        <option value="gelesen">Gelesen</option>
+        <option value="ungelesen">Ungelesen</option>
+      </select>
+      <select id="f-genre" aria-label="Genre"><option value="">Alle Genres</option></select>
+      <select id="sortierung" aria-label="Sortierung">
+        <option value="autor">nach Autor</option>
+        <option value="titel">nach Titel</option>
+        <option value="genre">nach Genre</option>
+        <option value="neu">zuletzt hinzugefügt</option>
+        <option value="jahr">nach Jahr</option>
+      </select>
+    </div>
+    <div class="zaehler" id="zaehler"></div>
+    <ul class="liste" id="liste"></ul>
+  </section>
+</main>
+
+<datalist id="genres"></datalist>
+
+<dialog id="dlg">
+  <form method="dialog" id="f-edit">
+    <div class="cover-zeile">
+      <img id="e-cover" alt="" hidden><div class="ohne" id="e-ohne"></div>
+      <div class="zeile">
+        <button type="button" id="e-hoch">Foto hochladen</button>
+        <input type="file" id="e-datei" accept="image/*" hidden>
+        <button type="button" id="e-cover-suchen">Cover suchen</button>
+      </div>
+    </div>
+    <label>Titel<input name="titel" required></label>
+    <label>Untertitel<input name="untertitel"></label>
+    <label>Autor<input name="autor"></label>
+    <div class="zwei">
+      <label>Genre<input name="genre" list="genres"></label>
+      <label>Status
+        <select name="status"><option value="ungelesen">Ungelesen</option><option value="lese">Am Lesen</option><option value="gelesen">Gelesen</option></select>
+      </label>
+      <label>Jahr<input name="jahr"></label>
+      <label>Verlag<input name="verlag"></label>
+      <label>Seiten<input name="seiten" inputmode="numeric"></label>
+      <label>ISBN<input name="isbn" inputmode="numeric"></label>
+      <label>Gelesen am<input name="gelesen_am" type="date"></label>
+    </div>
+    <label>Notiz (nur hier sichtbar, nicht auf der Website)<textarea name="notiz" rows="2"></textarea></label>
+    <label class="check"><input type="checkbox" name="oeffentlich"> Auf der Website zeigen</label>
+    <p class="meldung fehler" id="m-edit"></p>
+    <div class="knoepfe">
+      <button type="button" class="gefahr" id="e-loeschen">Löschen</button>
+      <span class="zeile">
+        <button type="button" id="e-abbrechen">Abbrechen</button>
+        <button type="submit" class="primaer">Speichern</button>
+      </span>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+const STATUS = { lese: "Am Lesen", gelesen: "Gelesen", ungelesen: "Ungelesen" };
+let buecher = [];
+let aktuell = null;
+const $ = (s) => document.querySelector(s);
+
+async function api(pfad, opt = {}) {
+  const r = await fetch(pfad, opt);
+  let daten = {};
+  try { daten = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(daten.fehler || `Fehler ${r.status}`);
+  return daten;
+}
+const json = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+function toast(text) {
+  const t = $("#toast");
+  t.textContent = text;
+  t.classList.add("an");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("an"), 2600);
+}
+
+function meldung(id, text, fehler = false) {
+  const m = $(id);
+  m.textContent = text;
+  m.classList.toggle("fehler", fehler);
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function nachname(autor) {
+  const erster = (autor || "").split(/,| und | & |;/)[0].trim();
+  return erster ? erster.split(/\s+/).pop().toLowerCase() : "￿";
+}
+
+async function laden() {
+  const d = await api("api/buecher");
+  buecher = d.buecher;
+  const v = d.veroeffentlicht;
+  $("#stand").textContent = v.fehler
+    ? `Website konnte nicht aktualisiert werden: ${v.fehler}`
+    : `${buecher.length} Bücher · Website-Seite in /media/${d.website_ordner}/ wird automatisch aktualisiert`;
+  zeichnen();
+}
+
+function zeichnen() {
+  const genres = [...new Set(buecher.map((b) => b.genre).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
+  const gewaehlt = $("#f-genre").value;
+  $("#f-genre").innerHTML = '<option value="">Alle Genres</option>' +
+    genres.map((g) => `<option${g === gewaehlt ? " selected" : ""}>${esc(g)}</option>`).join("");
+  const vorschlaege = new Set([...genres, "Belletristik", "Klassiker", "Philosophie", "Gesellschaft", "Politik", "Geschichte", "Sachbuch", "Lyrik", "Drama"]);
+  $("#genres").innerHTML = [...vorschlaege].map((g) => `<option value="${esc(g)}">`).join("");
+
+  const z = { lese: 0, gelesen: 0, ungelesen: 0 };
+  buecher.forEach((b) => z[b.status]++);
+  $("#zaehler").innerHTML = `<span>${buecher.length} insgesamt</span>` +
+    Object.entries(STATUS).map(([k, t]) => `<span>${t}: ${z[k]}</span>`).join("");
+
+  const q = $("#filter").value.trim().toLowerCase();
+  const st = $("#f-status").value;
+  const sort = $("#sortierung").value;
+  const vergleich = {
+    autor: (a, b) => nachname(a.autor).localeCompare(nachname(b.autor), "de") || a.titel.localeCompare(b.titel, "de"),
+    titel: (a, b) => a.titel.localeCompare(b.titel, "de"),
+    genre: (a, b) => (a.genre || "￿").localeCompare(b.genre || "￿", "de") || nachname(a.autor).localeCompare(nachname(b.autor), "de"),
+    neu: (a, b) => (b.hinzugefuegt || "").localeCompare(a.hinzugefuegt || "") || buecher.indexOf(b) - buecher.indexOf(a),
+    jahr: (a, b) => (a.jahr || "9999").localeCompare(b.jahr || "9999"),
+  }[sort];
+  const liste = buecher
+    .filter((b) => !st || b.status === st)
+    .filter((b) => !gewaehlt || b.genre === gewaehlt)
+    .filter((b) => !q || [b.titel, b.untertitel, b.autor, b.genre, b.verlag, b.isbn, b.notiz].join(" ").toLowerCase().includes(q))
+    .sort(vergleich);
+
+  $("#liste").innerHTML = liste.length ? liste.map((b) => `
+    <li data-id="${esc(b.id)}">
+      ${b.cover ? `<img class="mini" src="cover/${esc(b.cover)}" alt="" loading="lazy">` : '<span class="mini"></span>'}
+      <div class="info" data-bearbeiten>
+        <div class="titel">${esc(b.titel)}${b.oeffentlich ? "" : '<span class="versteckt">nicht öffentlich</span>'}</div>
+        <div class="autor">${esc(b.autor || "Autor unbekannt")}</div>
+        <div class="klein">${b.genre ? `<span class="genre">${esc(b.genre)}</span>` : ""}${esc([b.jahr, b.verlag].filter(Boolean).join(" · "))}</div>
+      </div>
+      <div class="status">${Object.entries(STATUS).map(([k, t]) =>
+        `<button type="button" data-s="${k}" aria-pressed="${b.status === k}">${t}</button>`).join("")}</div>
+    </li>`).join("") : `<li class="leer">${buecher.length ? "Nichts gefunden." : "Noch keine Bücher – oben die erste ISBN eingeben."}</li>`;
+}
+
+// Reiter
+document.querySelectorAll("[data-reiter]").forEach((k) => k.addEventListener("click", () => {
+  document.querySelectorAll("[data-reiter]").forEach((x) => x.setAttribute("aria-selected", x === k));
+  document.querySelectorAll("[data-teil]").forEach((f) => f.hidden = f.dataset.teil !== k.dataset.reiter);
+  if (k.dataset.reiter === "isbn") { $("#isbn").focus(); } else { stopScan(); }
+  if (k.dataset.reiter === "suche") $("#s-titel").focus();
+}));
+
+function hinzugefuegt(d, meldungId) {
+  if (d.neu) {
+    buecher.push(d.buch);
+    meldung(meldungId, `„${d.buch.titel}“ von ${d.buch.autor || "unbekannt"} hinzugefügt.`);
+    toast(`„${d.buch.titel}“ hinzugefügt`);
+  } else {
+    meldung(meldungId, `„${d.buch.titel}“ ist schon in der Bibliothek.`);
+  }
+  zeichnen();
+}
+
+// ISBN
+let isbnLaeuft = false;
+async function isbnHinzufuegen(isbn) {
+  if (!isbn.trim() || isbnLaeuft) return;
+  isbnLaeuft = true;
+  meldung("#m-isbn", "Suche …");
+  try {
+    hinzugefuegt(await api("api/isbn", json("POST", { isbn })), "#m-isbn");
+    $("#isbn").value = "";
+  } catch (e) {
+    meldung("#m-isbn", e.message, true);
+  } finally {
+    isbnLaeuft = false;
+    $("#isbn").focus();
+  }
+}
+$("#f-isbn").addEventListener("submit", (ev) => { ev.preventDefault(); isbnHinzufuegen($("#isbn").value); });
+
+// Kamera (nur wo der Browser Barcodes erkennen kann, z. B. Chrome auf Android)
+let strom = null;
+if ("BarcodeDetector" in window && navigator.mediaDevices) $("#scan").hidden = false;
+function stopScan() {
+  if (strom) strom.getTracks().forEach((t) => t.stop());
+  strom = null;
+  $("#video").hidden = true;
+  $("#scan").textContent = "Kamera";
+}
+$("#scan").addEventListener("click", async () => {
+  if (strom) return stopScan();
+  try {
+    const erkenner = new BarcodeDetector({ formats: ["ean_13"] });
+    strom = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    const v = $("#video");
+    v.srcObject = strom;
+    v.hidden = false;
+    await v.play();
+    $("#scan").textContent = "Kamera aus";
+    let zuletzt = "";
+    const runde = async () => {
+      if (!strom) return;
+      try {
+        const codes = await erkenner.detect(v);
+        const c = codes.find((x) => /^97[89]/.test(x.rawValue));
+        if (c && c.rawValue !== zuletzt) {
+          zuletzt = c.rawValue;
+          if (navigator.vibrate) navigator.vibrate(80);
+          await isbnHinzufuegen(c.rawValue);
+        }
+      } catch (e) {}
+      setTimeout(runde, 300);
+    };
+    runde();
+  } catch (e) {
+    stopScan();
+    meldung("#m-isbn", "Kamera nicht verfügbar: " + e.message, true);
+  }
+});
+
+// Suche
+let treffer = [];
+$("#f-suche").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const p = new URLSearchParams({ titel: $("#s-titel").value.trim(), autor: $("#s-autor").value.trim() });
+  if (!p.get("titel") && !p.get("autor")) return meldung("#m-suche", "Titel oder Autor eingeben.", true);
+  meldung("#m-suche", "Suche bei DNB und Open Library …");
+  $("#treffer").innerHTML = "";
+  try {
+    const d = await api("api/suche?" + p);
+    treffer = d.treffer;
+    meldung("#m-suche", (treffer.length ? `${treffer.length} Treffer – nimm die Ausgabe, die du im Regal hast.` : "Nichts gefunden – trag das Buch von Hand ein.")
+      + (d.fehler.length ? " (" + d.fehler.join("; ") + ")" : ""), !treffer.length);
+    $("#treffer").innerHTML = treffer.map((t, i) => `
+      <li>
+        ${t.cover_url ? `<img class="mini" src="${esc(t.cover_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">` : '<span class="mini"></span>'}
+        <div class="info">
+          <strong>${esc(t.titel)}</strong>${t.untertitel ? ` – ${esc(t.untertitel)}` : ""}
+          <small>${esc(t.autor || "Autor unbekannt")}</small>
+          <small>${esc([t.jahr, t.verlag, t.isbn ? "ISBN " + t.isbn : "ohne ISBN", t.quelle].filter(Boolean).join(" · "))}</small>
+        </div>
+        <button type="button" data-treffer="${i}">Hinzufügen</button>
+      </li>`).join("");
+  } catch (e) {
+    meldung("#m-suche", e.message, true);
+  }
+});
+$("#treffer").addEventListener("click", async (ev) => {
+  const k = ev.target.closest("[data-treffer]");
+  if (!k) return;
+  k.disabled = true;
+  try {
+    hinzugefuegt(await api("api/buecher", json("POST", treffer[k.dataset.treffer])), "#m-suche");
+    k.textContent = "✓";
+  } catch (e) {
+    k.disabled = false;
+    meldung("#m-suche", e.message, true);
+  }
+});
+
+// Von Hand
+$("#f-hand").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const felder = Object.fromEntries(new FormData(ev.target));
+  try {
+    hinzugefuegt(await api("api/buecher", json("POST", felder)), "#m-hand");
+    ev.target.reset();
+  } catch (e) {
+    meldung("#m-hand", e.message, true);
+  }
+});
+
+// Liste: Status direkt umschalten, Klick auf Buch öffnet Bearbeiten
+$("#liste").addEventListener("click", async (ev) => {
+  const li = ev.target.closest("li[data-id]");
+  if (!li) return;
+  const buch = buecher.find((b) => b.id === li.dataset.id);
+  const k = ev.target.closest("[data-s]");
+  if (k) {
+    if (buch.status === k.dataset.s) return;
+    try {
+      Object.assign(buch, (await api("api/buecher/" + buch.id, json("PATCH", { status: k.dataset.s }))).buch);
+      zeichnen();
+    } catch (e) { toast(e.message); }
+  } else if (ev.target.closest("[data-bearbeiten], .mini")) {
+    bearbeiten(buch);
+  }
+});
+["#filter", "#f-status", "#f-genre", "#sortierung"].forEach((s) => $(s).addEventListener("input", zeichnen));
+
+// Bearbeiten
+const dlg = $("#dlg");
+const fe = $("#f-edit");
+function coverZeigen(b) {
+  $("#e-cover").hidden = !b.cover;
+  $("#e-ohne").hidden = !!b.cover;
+  if (b.cover) $("#e-cover").src = "cover/" + b.cover;
+  $("#e-cover-suchen").hidden = !b.isbn;
+}
+function bearbeiten(b) {
+  aktuell = b;
+  for (const el of fe.elements) {
+    if (!el.name) continue;
+    if (el.type === "checkbox") el.checked = !!b[el.name];
+    else el.value = b[el.name] ?? "";
+  }
+  meldung("#m-edit", "");
+  coverZeigen(b);
+  dlg.showModal();
+}
+$("#e-abbrechen").addEventListener("click", () => dlg.close());
+fe.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const felder = {};
+  for (const el of fe.elements) {
+    if (el.name) felder[el.name] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  try {
+    Object.assign(aktuell, (await api("api/buecher/" + aktuell.id, json("PATCH", felder))).buch);
+    dlg.close();
+    zeichnen();
+    toast("Gespeichert");
+  } catch (e) { meldung("#m-edit", e.message); }
+});
+$("#e-loeschen").addEventListener("click", async () => {
+  if (!confirm(`„${aktuell.titel}“ wirklich löschen?`)) return;
+  try {
+    await api("api/buecher/" + aktuell.id, { method: "DELETE" });
+    buecher = buecher.filter((b) => b !== aktuell);
+    dlg.close();
+    zeichnen();
+    toast("Gelöscht");
+  } catch (e) { meldung("#m-edit", e.message); }
+});
+$("#e-cover-suchen").addEventListener("click", async () => {
+  try {
+    Object.assign(aktuell, (await api(`api/buecher/${aktuell.id}/cover-suchen`, { method: "POST" })).buch);
+    coverZeigen(aktuell);
+    zeichnen();
+  } catch (e) { meldung("#m-edit", e.message); }
+});
+$("#e-hoch").addEventListener("click", () => $("#e-datei").click());
+// Fotos vor dem Hochladen auf 600 px verkleinern, das reicht für die Vorschau.
+$("#e-datei").addEventListener("change", async (ev) => {
+  const datei = ev.target.files[0];
+  ev.target.value = "";
+  if (!datei) return;
+  try {
+    const bild = await createImageBitmap(datei);
+    const f = Math.min(1, 600 / Math.max(bild.width, bild.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bild.width * f);
+    c.height = Math.round(bild.height * f);
+    c.getContext("2d").drawImage(bild, 0, 0, c.width, c.height);
+    const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.85));
+    Object.assign(aktuell, (await api(`api/buecher/${aktuell.id}/cover`, { method: "PUT", body: blob })).buch);
+    coverZeigen(aktuell);
+    zeichnen();
+  } catch (e) { meldung("#m-edit", "Hochladen fehlgeschlagen: " + e.message); }
+});
+
+laden().catch((e) => { $("#stand").textContent = e.message; });
+</script>
+</body>
+</html>
