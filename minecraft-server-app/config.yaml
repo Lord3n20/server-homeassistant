@@ -2,7 +2,7 @@ name: Minecraft Server
 description: minecraft server with itzg/minecraft-server
 slug: minecraft_server
 homeassistant_api: true
-version: "3.4.0"
+version: "3.5.0"
 arch:
   - aarch64
   - amd64
@@ -23,8 +23,10 @@ environment:
   MOTD: "Stierzunge"
   SERVER_PORT: "25565"
   TYPE: "PAPER"
-  MODRINTH_PROJECTS: "voxy-server-side,chunky"
+  MODRINTH_PROJECTS: "voxy-server-side?,chunky?"
 options:
+  version: "LATEST"
+  welt: "world"
   max_memory: "4G"
   init_memory: "1G"
   view_distance: 12
@@ -34,6 +36,8 @@ options:
   prevent_proxy_connections: true
   rate_limit: 500
 schema:
+  version: match(^(LATEST|[0-9]+(\.[0-9]+){1,2})$)
+  welt: match(^[A-Za-z0-9_-]+$)
   max_memory: match(^[0-9]+[MG]$)
   init_memory: match(^[0-9]+[MG]$)
   view_distance: int(3,32)

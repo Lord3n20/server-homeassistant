@@ -4,6 +4,11 @@ Port 25565\
 Survival\
 Maybe options will be added later
 
+Minecraft version (`version`, default `LATEST`) and world folder (`welt`, default `world`) are app options.
+Minecraft cannot load a world in an older version than the one that last saved it (Paper refuses to start),
+so for a downgrade pick a new world name or restore a backup from that version; the current world stays untouched.
+The plugins are optional (`?` in `MODRINTH_PROJECTS`): if one has no build for the chosen version, the server starts without it.
+
 RAM, view distance, simulation distance and the security settings (enforce whitelist, visibility in the server list,
 proxy blocking, packet limit) can be changed in the app's Configuration tab (restart the app afterwards).
 RCON stays enabled for the console but is not published as a port.
