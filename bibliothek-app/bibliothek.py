@@ -620,7 +620,7 @@ def seite(buecher, zurueck, css):
       <a class="back" href="{zurueck}index.html">← Zur Startseite</a>
       <p class="eyebrow">Neben dem Lesesessel</p>
       <h1 class="article-title">Bibliothek</h1>
-      <p class="article-meta">{anzahl} {"Buch" if anzahl == 1 else "Bücher"} aus meinem Regal – was ich gerade lese, was ich gelesen habe und was noch wartet.</p>
+      <p class="article-meta">In meinem Regal {"steht" if anzahl == 1 else "stehen"} gerade {anzahl} {"Buch" if anzahl == 1 else "Bücher"}. Ein paar ausgeliehene finden sich hier auch – und viele, die ich gelesen habe, fehlen, weil ich die Titel nicht mehr weiß.</p>
     </div>
   </header>
 
