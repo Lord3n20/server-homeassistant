@@ -343,19 +343,28 @@ def cover_url_dnb(isbn):
     return f"https://portal.dnb.de/opac/mvb/cover?isbn={isbn}"
 
 
+class NichtErreichbar(Exception):
+    pass
+
+
 def isbn_nachschlagen(isbn):
-    treffer = None
+    treffer, fehler = None, []
     try:
         saetze = dnb_suche(f"num={isbn}", 5)
         treffer = next((s for s in saetze if isbn in s["isbns"]), None)
     except (urllib.error.URLError, OSError, ET.ParseError) as e:
         print(f"DNB: {e}")
+        fehler.append("DNB")
     try:
         ol = ol_isbn(isbn)
     except (urllib.error.URLError, OSError, ValueError) as e:
         print(f"Open Library: {e}")
+        fehler.append("Open Library")
         ol = None
     if treffer is None and ol is None:
+        # Nicht "nichts gefunden" melden, wenn eine Quelle gar nicht geantwortet hat.
+        if fehler:
+            raise NichtErreichbar(" und ".join(fehler))
         return None
     if treffer is None:
         treffer = ol
@@ -709,7 +718,10 @@ class Handler(BaseHTTPRequestHandler):
                     vorhanden = next((b for b in laden() if b.get("isbn") == isbn), None)
                 if vorhanden:
                     return self.antwort(200, {"buch": vorhanden, "neu": False})
-                treffer = isbn_nachschlagen(isbn)
+                try:
+                    treffer = isbn_nachschlagen(isbn)
+                except NichtErreichbar as ex:
+                    return self.fehler(503, f"{ex} gerade nicht erreichbar – bitte gleich noch einmal versuchen")
                 if not treffer:
                     return self.fehler(404, "Zu dieser ISBN nichts gefunden – über die Suche oder von Hand eintragen")
                 with lock:
