@@ -25,6 +25,11 @@ fremden Servern. Cover erscheinen bewusst nur im Panel, nicht auf der Website.
   In Browsern mit Barcode-Erkennung (z. B. Chrome auf Android) gibt es zusätzlich den Knopf „Kamera“.
 - **Suchen**: Titel und/oder Autor; die Trefferliste zeigt Ausgaben mit Jahr, Verlag und ISBN.
 - **Von Hand**: für Bücher, die nirgends verzeichnet sind.
+- **Sterne**: in der Liste 1–5 Sterne anklicken, derselbe Stern noch einmal = keine Bewertung.
+  Die Sterne erscheinen auch auf der Website.
+- **Ausleihe**: beim Bearbeiten „Verliehen an …“ oder „Geliehen von …“ mit Person und Datum.
+  In der Liste steht dann ein Hinweis mit „zurück“-Knopf; Filter „Verliehen“/„Geliehen“.
+  Namen und Ausleihe bleiben nur im Panel.
 
 Das Panel ist nur über Home Assistant (Ingress) erreichbar, die App öffnet keinen Port nach außen.
 

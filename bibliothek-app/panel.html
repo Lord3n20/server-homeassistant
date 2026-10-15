@@ -8,12 +8,12 @@
   :root {
     --bg: #f4f5f7; --card: #fff; --text: #1c1f23; --muted: #69707a; --line: #dfe2e6;
     --accent: #03a9f4; --accent-soft: rgba(3, 169, 244, 0.12); --danger: #db4437;
-    --lese: #ff9800; --gelesen: #43a047; --ungelesen: #8a919a;
+    --lese: #ff9800; --gelesen: #43a047; --ungelesen: #8a919a; --stern: #f5a623; --geliehen: #8e24aa;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #111315; --card: #1c1e21; --text: #e3e5e8; --muted: #9aa1a9; --line: #2e3236;
-      --accent-soft: rgba(3, 169, 244, 0.18); }
+      --accent-soft: rgba(3, 169, 244, 0.18); --geliehen: #ce93d8; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
@@ -67,6 +67,13 @@
   .status button[aria-pressed="true"][data-s="lese"] { background: var(--lese); color: #fff; }
   .status button[aria-pressed="true"][data-s="gelesen"] { background: var(--gelesen); color: #fff; }
   .status button[aria-pressed="true"][data-s="ungelesen"] { background: var(--ungelesen); color: #fff; }
+  .sterne { display: inline-flex; flex: 0 0 auto; }
+  .sterne button { border: 0; background: none; padding: 2px 1px; font-size: 1.05rem; line-height: 1; color: var(--line); }
+  .sterne button.an { color: var(--stern); }
+  .leihe { display: inline-block; font-size: 0.75rem; padding: 0 8px; border-radius: 999px; margin-right: 6px; }
+  .leihe.verliehen { background: rgba(219, 68, 55, 0.14); color: var(--danger); }
+  .leihe.geliehen { background: rgba(142, 36, 170, 0.14); color: var(--geliehen); }
+  .leihe button { border: 0; background: none; padding: 0 0 0 6px; font-size: 0.75rem; color: inherit; text-decoration: underline; }
   .leer { color: var(--muted); padding: 20px 0; text-align: center; }
   dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); padding: 0; width: min(560px, calc(100vw - 24px)); }
   dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
@@ -143,6 +150,9 @@
         <option value="gelesen">Gelesen</option>
         <option value="ungelesen">Ungelesen</option>
         <option value="ausgeblendet">Nicht auf der Website</option>
+        <option value="verliehen">Verliehen</option>
+        <option value="geliehen">Geliehen</option>
+        <option value="bewertet">Bewertet</option>
       </select>
       <select id="f-genre" aria-label="Genre"><option value="">Alle Genres</option></select>
       <select id="sortierung" aria-label="Sortierung">
@@ -151,6 +161,7 @@
         <option value="genre">nach Genre</option>
         <option value="neu">zuletzt hinzugefügt</option>
         <option value="jahr">nach Jahr</option>
+        <option value="bewertung">nach Bewertung</option>
       </select>
     </div>
     <div class="zaehler" id="zaehler"></div>
@@ -159,6 +170,7 @@
 </main>
 
 <datalist id="genres"></datalist>
+<datalist id="personen"></datalist>
 
 <dialog id="dlg">
   <form method="dialog" id="f-edit">
@@ -183,8 +195,16 @@
       <label>Seiten<input name="seiten" inputmode="numeric"></label>
       <label>ISBN<input name="isbn" inputmode="numeric"></label>
       <label>Gelesen am<input name="gelesen_am" type="date"></label>
+      <label>Bewertung
+        <select name="bewertung"><option value="0">keine</option><option value="1">★</option><option value="2">★★</option><option value="3">★★★</option><option value="4">★★★★</option><option value="5">★★★★★</option></select>
+      </label>
+      <label>Ausleihe
+        <select name="leihe"><option value="">Steht im Regal</option><option value="verliehen">Verliehen an …</option><option value="geliehen">Geliehen von …</option></select>
+      </label>
+      <label data-leihe>Person<input name="leihe_person" list="personen"></label>
+      <label data-leihe>Seit<input name="leihe_seit" type="date"></label>
     </div>
-    <label>Notiz (nur hier sichtbar, nicht auf der Website)<textarea name="notiz" rows="2"></textarea></label>
+    <label>Notiz (nur hier sichtbar, nicht auf der Website; Ausleihe ebenso)<textarea name="notiz" rows="2"></textarea></label>
     <label class="check"><input type="checkbox" name="oeffentlich"> Auf der Website zeigen</label>
     <p class="meldung fehler" id="m-edit"></p>
     <div class="knoepfe">
@@ -201,6 +221,7 @@
 
 <script>
 const STATUS = { lese: "Am Lesen", gelesen: "Gelesen", ungelesen: "Ungelesen" };
+const LEIHE = { verliehen: "Verliehen an", geliehen: "Geliehen von" };
 let buecher = [];
 let aktuell = null;
 const $ = (s) => document.querySelector(s);
@@ -232,6 +253,11 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+function datum(iso) {
+  const [j, m, t] = iso.split("-");
+  return t ? `${+t}.${+m}.${j}` : iso;
+}
+
 function nachname(autor) {
   const erster = (autor || "").split(/,| und | & |;/)[0].trim();
   return erster ? erster.split(/\s+/).pop().toLowerCase() : "￿";
@@ -255,10 +281,15 @@ function zeichnen() {
   const vorschlaege = new Set([...genres, "Belletristik", "Klassiker", "Philosophie", "Gesellschaft", "Politik", "Geschichte", "Sachbuch", "Lyrik", "Drama"]);
   $("#genres").innerHTML = [...vorschlaege].map((g) => `<option value="${esc(g)}">`).join("");
 
-  const z = { lese: 0, gelesen: 0, ungelesen: 0 };
-  buecher.forEach((b) => z[b.status]++);
+  $("#personen").innerHTML = [...new Set(buecher.map((b) => b.leihe_person).filter(Boolean))]
+    .map((n) => `<option value="${esc(n)}">`).join("");
+
+  const z = { lese: 0, gelesen: 0, ungelesen: 0, verliehen: 0, geliehen: 0 };
+  buecher.forEach((b) => { z[b.status]++; if (b.leihe) z[b.leihe]++; });
   $("#zaehler").innerHTML = `<span>${buecher.length} insgesamt</span>` +
-    Object.entries(STATUS).map(([k, t]) => `<span>${t}: ${z[k]}</span>`).join("");
+    Object.entries(STATUS).map(([k, t]) => `<span>${t}: ${z[k]}</span>`).join("") +
+    (z.verliehen ? `<span>Verliehen: ${z.verliehen}</span>` : "") +
+    (z.geliehen ? `<span>Geliehen: ${z.geliehen}</span>` : "");
 
   const q = $("#filter").value.trim().toLowerCase();
   const st = $("#f-status").value;
@@ -269,11 +300,15 @@ function zeichnen() {
     genre: (a, b) => (a.genre || "￿").localeCompare(b.genre || "￿", "de") || nachname(a.autor).localeCompare(nachname(b.autor), "de"),
     neu: (a, b) => (b.hinzugefuegt || "").localeCompare(a.hinzugefuegt || "") || buecher.indexOf(b) - buecher.indexOf(a),
     jahr: (a, b) => (a.jahr || "9999").localeCompare(b.jahr || "9999"),
+    bewertung: (a, b) => (b.bewertung || 0) - (a.bewertung || 0) || nachname(a.autor).localeCompare(nachname(b.autor), "de"),
   }[sort];
+  const passt = (b) => !st || ({
+    ausgeblendet: !b.oeffentlich, verliehen: b.leihe === "verliehen", geliehen: b.leihe === "geliehen", bewertet: b.bewertung > 0,
+  }[st] ?? b.status === st);
   const liste = buecher
-    .filter((b) => !st || (st === "ausgeblendet" ? !b.oeffentlich : b.status === st))
+    .filter(passt)
     .filter((b) => !gewaehlt || b.genre === gewaehlt)
-    .filter((b) => !q || [b.titel, b.untertitel, b.autor, b.genre, b.verlag, b.isbn, b.notiz].join(" ").toLowerCase().includes(q))
+    .filter((b) => !q || [b.titel, b.untertitel, b.autor, b.genre, b.verlag, b.isbn, b.notiz, b.leihe_person].join(" ").toLowerCase().includes(q))
     .sort(vergleich);
 
   $("#liste").innerHTML = liste.length ? liste.map((b) => `
@@ -283,8 +318,11 @@ function zeichnen() {
         <div class="titel">${esc(b.titel)}</div>
         <div class="autor">${esc(b.autor || "Autor unbekannt")}</div>
         <div class="klein">${b.genre ? `<span class="genre">${esc(b.genre)}</span>` : ""}${esc([b.jahr, b.verlag].filter(Boolean).join(" · "))}</div>
+        ${b.leihe ? `<div class="klein"><span class="leihe ${b.leihe}">${LEIHE[b.leihe]} ${esc(b.leihe_person || "?")}${b.leihe_seit ? " seit " + datum(b.leihe_seit) : ""}<button type="button" data-zurueck>zurück</button></span></div>` : ""}
       </div>
       <div class="aktionen">
+        <div class="sterne" title="Bewerten (nochmal klicken = keine Bewertung)">${[1, 2, 3, 4, 5].map((n) =>
+          `<button type="button" data-stern="${n}" class="${n <= (b.bewertung || 0) ? "an" : ""}" aria-label="${n} Sterne">★</button>`).join("")}</div>
         <div class="status">${Object.entries(STATUS).map(([k, t]) =>
           `<button type="button" data-s="${k}" aria-pressed="${b.status === k}">${t}</button>`).join("")}</div>
         <button type="button" class="website" data-website aria-pressed="${!!b.oeffentlich}"
@@ -428,7 +466,21 @@ $("#liste").addEventListener("click", async (ev) => {
   if (!li) return;
   const buch = buecher.find((b) => b.id === li.dataset.id);
   const k = ev.target.closest("[data-s]");
-  if (ev.target.closest("[data-website]")) {
+  const stern = ev.target.closest("[data-stern]");
+  if (stern) {
+    const n = +stern.dataset.stern === buch.bewertung ? 0 : +stern.dataset.stern;
+    try {
+      Object.assign(buch, (await api("api/buecher/" + buch.id, json("PATCH", { bewertung: n }))).buch);
+      zeichnen();
+    } catch (e) { toast(e.message); }
+  } else if (ev.target.closest("[data-zurueck]")) {
+    const war = buch.leihe;
+    try {
+      Object.assign(buch, (await api("api/buecher/" + buch.id, json("PATCH", { leihe: "" }))).buch);
+      zeichnen();
+      toast(war === "verliehen" ? `„${buch.titel}“ ist wieder da` : `„${buch.titel}“ zurückgegeben`);
+    } catch (e) { toast(e.message); }
+  } else if (ev.target.closest("[data-website]")) {
     try {
       Object.assign(buch, (await api("api/buecher/" + buch.id, json("PATCH", { oeffentlich: !buch.oeffentlich }))).buch);
       zeichnen();
@@ -463,9 +515,14 @@ function bearbeiten(b) {
     else el.value = b[el.name] ?? "";
   }
   meldung("#m-edit", "");
+  leiheZeigen();
   coverZeigen(b);
   dlg.showModal();
 }
+function leiheZeigen() {
+  fe.querySelectorAll("[data-leihe]").forEach((l) => l.hidden = !fe.elements.leihe.value);
+}
+fe.elements.leihe.addEventListener("change", leiheZeigen);
 $("#e-abbrechen").addEventListener("click", () => dlg.close());
 fe.addEventListener("submit", async (ev) => {
   ev.preventDefault();

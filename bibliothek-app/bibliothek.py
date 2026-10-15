@@ -38,8 +38,10 @@ COVER = DATA / "cover"
 UA = "Bibliothek-HA-App/1.0 (privater Buchkatalog)"
 STATUS = ("lese", "gelesen", "ungelesen")
 STATUS_TITEL = {"lese": "Gerade am Lesen", "gelesen": "Gelesen", "ungelesen": "Noch ungelesen"}
+LEIHE = ("", "verliehen", "geliehen")
 FELDER = ("isbn", "titel", "untertitel", "autor", "verlag", "jahr", "seiten",
-          "genre", "status", "oeffentlich", "notiz", "gelesen_am")
+          "genre", "status", "oeffentlich", "notiz", "gelesen_am",
+          "bewertung", "leihe", "leihe_person", "leihe_seit")
 MAX_COVER = 3 * 1024 * 1024
 
 lock = threading.Lock()
@@ -450,6 +452,17 @@ def bereinigen(eingabe):
             if v not in STATUS:
                 raise ValueError("Unbekannter Status")
             buch[k] = v
+        elif k == "bewertung":
+            try:
+                buch[k] = int(v or 0)
+            except (TypeError, ValueError):
+                raise ValueError("Bewertung muss 0 bis 5 sein")
+            if not 0 <= buch[k] <= 5:
+                raise ValueError("Bewertung muss 0 bis 5 sein")
+        elif k == "leihe":
+            if v not in LEIHE:
+                raise ValueError("Unbekannte Ausleihe")
+            buch[k] = v
         elif k == "isbn":
             buch[k] = isbn_normalisieren(v) or "" if v else ""
             if v and not buch[k]:
@@ -462,6 +475,7 @@ def bereinigen(eingabe):
 def buch_anlegen(buecher, felder, cover_urls=()):
     neu = {"titel": "", "untertitel": "", "autor": "", "verlag": "", "jahr": "", "seiten": "",
            "genre": "", "status": "ungelesen", "oeffentlich": True, "notiz": "", "gelesen_am": "",
+           "bewertung": 0, "leihe": "", "leihe_person": "", "leihe_seit": "",
            "isbn": "", "cover": ""}
     neu.update(bereinigen(felder))
     if not neu["titel"]:
@@ -525,11 +539,15 @@ def karte(b):
     meta = " · ".join(x for x in (e(b.get("jahr")), e(b.get("verlag"))) if x)
     genre = f'<span class="tag-sm">{e(b["genre"])}</span>' if b.get("genre") else ""
     unter = f'<p class="buch-unter">{e(b["untertitel"])}</p>' if b.get("untertitel") else ""
+    n = b.get("bewertung") or 0
+    sterne = (f'<p class="sterne" title="{n} von 5 Sternen" aria-label="{n} von 5 Sternen">'
+              f'{"★" * n}<span>{"★" * (5 - n)}</span></p>') if n else ""
     return f"""<li class="buch" data-genre="{e(b.get('genre'))}">
   <p class="buch-autor">{e(b.get('autor'))}</p>
   <h3>{e(b['titel'])}</h3>
   {unter}
   <p class="buch-meta">{genre}{meta}</p>
+  {sterne}
 </li>"""
 
 
@@ -574,6 +592,8 @@ def seite(buecher, zurueck, css):
     .buch-unter {{ font-family: var(--serif); font-style: italic; }}
     .buch-meta {{ margin-top: 0.5rem; font-size: 0.8rem; }}
     .buch-meta .tag-sm {{ margin: 0 0.5rem 0 0; }}
+    .sterne {{ margin: 0.4rem 0 0; color: var(--accent); letter-spacing: 0.1em; font-size: 0.9rem; }}
+    .sterne span {{ opacity: 0.25; }}
     .genre-filter {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 2.5rem; }}
     .genre-filter button {{ font: inherit; font-size: 0.85rem; padding: 0.25rem 0.8rem; cursor: pointer;
       border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); }}
@@ -784,6 +804,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fehler(404, "Buch nicht gefunden")
             if aenderung.get("status") == "gelesen" and buch.get("status") != "gelesen" and "gelesen_am" not in aenderung:
                 aenderung["gelesen_am"] = date.today().isoformat()
+            if "leihe" in aenderung:
+                if not aenderung["leihe"]:
+                    # zurückgegeben: Name und Datum nicht aufheben
+                    aenderung.update(leihe_person="", leihe_seit="")
+                elif aenderung["leihe"] != buch.get("leihe") and not aenderung.get("leihe_seit"):
+                    aenderung["leihe_seit"] = date.today().isoformat()
             if "titel" in aenderung and not aenderung["titel"]:
                 return self.fehler(400, "Titel darf nicht leer sein")
             buch.update(aenderung)
