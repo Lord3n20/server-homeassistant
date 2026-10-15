@@ -185,11 +185,34 @@ def genre_bestimmen(ddc, schlagwoerter):
     return ""
 
 
-def name_umdrehen(name):
-    """'Hesse, Hermann' → 'Hermann Hesse', 'Horkheimer, Max, (1895-1973)' → 'Max Horkheimer'"""
+# Chinesische Klassiker: die DNB setzt sie wie westliche Namen ("Sun, Wu" → "Wu Sun"),
+# gebräuchlich ist aber der Ehrenname.
+NAMEN_KLASSIKER = {
+    "sun, wu": "Sunzi",
+    "sun tsu, sun": "Sunzi",
+    "kong, qiu": "Konfuzius",
+    "meng, ke": "Mengzi",
+    "zhuang, zhou": "Zhuangzi",
+    "li, er": "Laozi",
+    "han, fei": "Han Fei",
+    "mo, di": "Mozi",
+    "xun, kuang": "Xunzi",
+}
+
+
+def name_umdrehen(name, direkt=False):
+    """'Hesse, Hermann' → 'Hermann Hesse', 'Horkheimer, Max, (1895-1973)' → 'Max Horkheimer'
+    direkt=True (MARC ind1=0, z. B. 'Sunzi'): Name steht schon in Lesereihenfolge."""
     name = unicodedata.normalize("NFC", name.replace("\x98", "").replace("\x9c", ""))
     name = re.sub(r"\(.*?\)", "", name)
     teile = [t.strip() for t in name.split(",") if t.strip(" /:;")]
+    if not teile:
+        return ""
+    klassiker = NAMEN_KLASSIKER.get(", ".join(teile[:2]).lower())
+    if klassiker:
+        return klassiker
+    if direkt:
+        return teile[0]
     if len(teile) >= 2:
         return f"{teile[1]} {teile[0]}"
     return teile[0] if teile else ""
@@ -229,7 +252,7 @@ def dnb_satz(rec):
             if tag == "700" and not any(r in ("aut", "Verfasser") for r in rollen):
                 continue
             for n in unter(f, "a"):
-                n = name_umdrehen(n)
+                n = name_umdrehen(n, direkt=f.get("ind1") == "0")
                 if n and n not in autoren:
                     autoren.append(n)
     if not autoren:
