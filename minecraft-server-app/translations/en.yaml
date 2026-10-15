@@ -1,4 +1,10 @@
 configuration:
+  version:
+    name: Minecraft version
+    description: LATEST or e.g. 26.2. A world cannot be moved to an older version – pick a new world for a downgrade
+  welt:
+    name: World
+    description: World folder name (default world). A new name creates a new world, the old one is kept
   max_memory:
     name: Max RAM
     description: Maximum Java heap, e.g. 4G or 3072M

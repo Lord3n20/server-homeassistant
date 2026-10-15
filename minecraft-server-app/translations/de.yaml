@@ -1,4 +1,10 @@
 configuration:
+  version:
+    name: Minecraft-Version
+    description: LATEST oder z. B. 26.2. Eine Welt lässt sich nicht auf eine ältere Version bringen – für ein Downgrade eine neue Welt wählen
+  welt:
+    name: Welt
+    description: Ordnername der Welt (Standard world). Ein neuer Name erzeugt eine neue Welt, die alte bleibt erhalten
   max_memory:
     name: Maximaler RAM
     description: Höchstens so viel Arbeitsspeicher für Java, z. B. 4G oder 3072M

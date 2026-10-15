@@ -1,7 +1,9 @@
 #!/bin/bash
-# Take RAM, distances and security settings from the add-on options (HA UI), then start the itzg server
+# Take Minecraft version, world folder, RAM, distances and security settings from the add-on options (HA UI), then start the itzg server
 OPTIONS=/data/options.json
 if [ -f "$OPTIONS" ]; then
+  export VERSION="$(jq -r '.version // "LATEST"' "$OPTIONS")"
+  export LEVEL="$(jq -r '.welt // "world"' "$OPTIONS")"
   export INIT_MEMORY="$(jq -r '.init_memory' "$OPTIONS")"
   export MAX_MEMORY="$(jq -r '.max_memory' "$OPTIONS")"
   export VIEW_DISTANCE="$(jq -r '.view_distance' "$OPTIONS")"
