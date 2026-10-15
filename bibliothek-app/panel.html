@@ -56,7 +56,10 @@
   .liste .info { flex: 1; min-width: 0; cursor: pointer; }
   .liste .titel { font-weight: 600; }
   .liste .autor, .liste .klein { color: var(--muted); font-size: 0.85rem; }
-  .liste .versteckt { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+  .liste li.ausgeblendet .info, .liste li.ausgeblendet .mini { opacity: 0.5; }
+  .aktionen { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+  .website { padding: 6px 9px; font-size: 0.8rem; color: var(--muted); }
+  .website[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .genre { display: inline-block; font-size: 0.75rem; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-right: 6px; }
   .status { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 0 0 auto; }
   .status button { border: 0; border-radius: 0; padding: 6px 9px; font-size: 0.8rem; background: none; color: var(--muted); }
@@ -78,7 +81,7 @@
   #toast.an { opacity: 1; }
   @media (max-width: 600px) {
     .liste li { flex-wrap: wrap; }
-    .liste .status { margin-left: 52px; }
+    .liste .aktionen { margin-left: 52px; flex-wrap: wrap; }
     dialog .zwei { grid-template-columns: 1fr; }
   }
 </style>
@@ -139,6 +142,7 @@
         <option value="lese">Am Lesen</option>
         <option value="gelesen">Gelesen</option>
         <option value="ungelesen">Ungelesen</option>
+        <option value="ausgeblendet">Nicht auf der Website</option>
       </select>
       <select id="f-genre" aria-label="Genre"><option value="">Alle Genres</option></select>
       <select id="sortierung" aria-label="Sortierung">
@@ -267,21 +271,25 @@ function zeichnen() {
     jahr: (a, b) => (a.jahr || "9999").localeCompare(b.jahr || "9999"),
   }[sort];
   const liste = buecher
-    .filter((b) => !st || b.status === st)
+    .filter((b) => !st || (st === "ausgeblendet" ? !b.oeffentlich : b.status === st))
     .filter((b) => !gewaehlt || b.genre === gewaehlt)
     .filter((b) => !q || [b.titel, b.untertitel, b.autor, b.genre, b.verlag, b.isbn, b.notiz].join(" ").toLowerCase().includes(q))
     .sort(vergleich);
 
   $("#liste").innerHTML = liste.length ? liste.map((b) => `
-    <li data-id="${esc(b.id)}">
+    <li data-id="${esc(b.id)}"${b.oeffentlich ? "" : ' class="ausgeblendet"'}>
       ${b.cover ? `<img class="mini" src="cover/${esc(b.cover)}" alt="" loading="lazy">` : '<span class="mini"></span>'}
       <div class="info" data-bearbeiten>
-        <div class="titel">${esc(b.titel)}${b.oeffentlich ? "" : '<span class="versteckt">nicht öffentlich</span>'}</div>
+        <div class="titel">${esc(b.titel)}</div>
         <div class="autor">${esc(b.autor || "Autor unbekannt")}</div>
         <div class="klein">${b.genre ? `<span class="genre">${esc(b.genre)}</span>` : ""}${esc([b.jahr, b.verlag].filter(Boolean).join(" · "))}</div>
       </div>
-      <div class="status">${Object.entries(STATUS).map(([k, t]) =>
-        `<button type="button" data-s="${k}" aria-pressed="${b.status === k}">${t}</button>`).join("")}</div>
+      <div class="aktionen">
+        <div class="status">${Object.entries(STATUS).map(([k, t]) =>
+          `<button type="button" data-s="${k}" aria-pressed="${b.status === k}">${t}</button>`).join("")}</div>
+        <button type="button" class="website" data-website aria-pressed="${!!b.oeffentlich}"
+          title="${b.oeffentlich ? "Steht auf der Website – klicken zum Ausblenden" : "Ausgeblendet – klicken, um es auf der Website zu zeigen"}">${b.oeffentlich ? "Auf Website" : "Ausgeblendet"}</button>
+      </div>
     </li>`).join("") : `<li class="leer">${buecher.length ? "Nichts gefunden." : "Noch keine Bücher – oben die erste ISBN eingeben."}</li>`;
 }
 
@@ -414,13 +422,19 @@ $("#f-hand").addEventListener("submit", async (ev) => {
   }
 });
 
-// Liste: Status direkt umschalten, Klick auf Buch öffnet Bearbeiten
+// Liste: Status und Website-Sichtbarkeit direkt umschalten, Klick auf Buch öffnet Bearbeiten
 $("#liste").addEventListener("click", async (ev) => {
   const li = ev.target.closest("li[data-id]");
   if (!li) return;
   const buch = buecher.find((b) => b.id === li.dataset.id);
   const k = ev.target.closest("[data-s]");
-  if (k) {
+  if (ev.target.closest("[data-website]")) {
+    try {
+      Object.assign(buch, (await api("api/buecher/" + buch.id, json("PATCH", { oeffentlich: !buch.oeffentlich }))).buch);
+      zeichnen();
+      toast(buch.oeffentlich ? `„${buch.titel}“ steht wieder auf der Website` : `„${buch.titel}“ ausgeblendet`);
+    } catch (e) { toast(e.message); }
+  } else if (k) {
     if (buch.status === k.dataset.s) return;
     try {
       Object.assign(buch, (await api("api/buecher/" + buch.id, json("PATCH", { status: k.dataset.s }))).buch);
