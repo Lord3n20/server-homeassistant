@@ -204,7 +204,7 @@
       <label data-leihe>Person<input name="leihe_person" list="personen"></label>
       <label data-leihe>Seit<input name="leihe_seit" type="date"></label>
     </div>
-    <label>Notiz (nur hier sichtbar, nicht auf der Website; Ausleihe ebenso)<textarea name="notiz" rows="2"></textarea></label>
+    <label>Notiz (nur hier sichtbar, nicht auf der Website; Namen aus der Ausleihe ebenso)<textarea name="notiz" rows="2"></textarea></label>
     <label class="check"><input type="checkbox" name="oeffentlich"> Auf der Website zeigen</label>
     <p class="meldung fehler" id="m-edit"></p>
     <div class="knoepfe">
@@ -269,7 +269,7 @@ async function laden() {
   const v = d.veroeffentlicht;
   $("#stand").textContent = v.fehler
     ? `Website konnte nicht aktualisiert werden: ${v.fehler}`
-    : `${buecher.length} Bücher · Website-Seite in /media/${d.website_ordner}/ wird automatisch aktualisiert`;
+    : `${buecher.length} Bücher · Daten für die Website in /media/${d.website_ordner}/buecher.json werden automatisch aktualisiert`;
   zeichnen();
 }
 
