@@ -16,6 +16,7 @@ import re
 import secrets
 import shutil
 import threading
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -149,9 +150,44 @@ def genre_aus_ddc(werte):
     return ""
 
 
+# GND-Schlagwörter der DNB (Wortteile, Kleinschreibung). Die Sachgruppe ordnet nach dem
+# Gegenstand ein ("KI und Kunst" → Kunst); ein Philosophie-Schlagwort zeigt dagegen das Fach.
+PHILOSOPHIE = ("philosoph", "ästhetik", "ethik", "metaphysik", "erkenntnistheorie",
+               "ontologie", "logik", "moral", "stoa", "stoizismus", "utilitarismus", "existenzialismus",
+               "absurde", "phänomenologie", "kritische theorie", "deontologie")
+# Nur wenn die DNB keine Sachgruppe vergeben hat (oft bei älteren Ausgaben); erste passende Gruppe gewinnt.
+SCHLAGWORT_GENRES = [
+    ("Philosophie", PHILOSOPHIE),
+    ("Soziologie", ("soziologie", "gesellschaft", "massenkultur",
+                    "kulturindustrie", "massenpsychologie", "öffentliche meinung")),
+    ("Politik", ("politik", "demokratie", "diktatur", "faschismus", "totalitarismus", "staat")),
+    ("Wirtschaft", ("kapitalismus", "ökonomie", "wirtschaft")),
+    ("Psychologie", ("psychologie",)),
+    ("Religion", ("religion", "theologie", "christentum", "bibel")),
+    ("Geschichte", ("geschichte",)),
+]
+
+
+def schlagwort_passt(schlagwoerter, teile):
+    # Teilwort genügt: "Umweltethik" → ethik, "Geschichte 1949-1962" → geschichte
+    return any(t in sw.lower() for sw in schlagwoerter for t in teile)
+
+
+def genre_bestimmen(ddc, schlagwoerter):
+    if "B" not in ddc and schlagwort_passt(schlagwoerter, PHILOSOPHIE):
+        return "Philosophie"
+    genre = genre_aus_ddc(ddc)
+    if genre:
+        return genre
+    for name, teile in SCHLAGWORT_GENRES:
+        if schlagwort_passt(schlagwoerter, teile):
+            return name
+    return ""
+
+
 def name_umdrehen(name):
     """'Hesse, Hermann' → 'Hermann Hesse', 'Horkheimer, Max, (1895-1973)' → 'Max Horkheimer'"""
-    name = name.replace("\x98", "").replace("\x9c", "")
+    name = unicodedata.normalize("NFC", name.replace("\x98", "").replace("\x9c", ""))
     name = re.sub(r"\(.*?\)", "", name)
     teile = [t.strip() for t in name.split(",") if t.strip(" /:;")]
     if len(teile) >= 2:
@@ -160,8 +196,8 @@ def name_umdrehen(name):
 
 
 def aufraeumen(text):
-    # DNB markiert Artikel zum Sortieren mit U+0098/U+009C.
-    text = (text or "").replace("\x98", "").replace("\x9c", "")
+    # DNB markiert Artikel zum Sortieren mit U+0098/U+009C und liefert Umlaute teils zerlegt (NFD).
+    text = unicodedata.normalize("NFC", (text or "").replace("\x98", "").replace("\x9c", ""))
     return re.sub(r"\s*[/:;,.=]\s*$", "", text.strip()).strip()
 
 
@@ -207,6 +243,7 @@ def dnb_satz(rec):
             break
     m = re.search(r"(\d+)\s*S\.", erstes("300", "a"))
     ddc = [w for f in felder("082") + felder("083") for w in unter(f, "a")]
+    schlagwoerter = [aufraeumen(w) for f in felder("650") + felder("689") for w in unter(f, "a")]
 
     return {
         "quelle": "DNB",
@@ -218,7 +255,7 @@ def dnb_satz(rec):
         "verlag": aufraeumen(erstes("264", "b") or erstes("260", "b")),
         "jahr": jahr,
         "seiten": m.group(1) if m else "",
-        "genre": genre_aus_ddc(ddc),
+        "genre": genre_bestimmen(ddc, schlagwoerter),
     }
 
 
