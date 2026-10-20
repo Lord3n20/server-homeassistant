@@ -1,7 +1,7 @@
 name: Pumpkin Server
 description: Minecraft server written in Rust (Pumpkin fork with seed protection, anti-cheat and anti-xray)
 slug: pumpkin_server
-version: "1.1.1"
+version: "1.1.2"
 arch:
   - amd64
 startup: services
