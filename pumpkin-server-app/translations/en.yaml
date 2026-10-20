@@ -41,6 +41,9 @@ configuration:
   anti_xray:
     name: Anti-xray
     description: Hides ores that do not touch air, water or lava
+  lod_distanz:
+    name: LOD distance (Voxy)
+    description: Radius in chunks served as far terrain to players with Voxy/LOD Server Support; pregenerated chunks only. 0 = off
   seed_schutz:
     name: Seed protection
     description: New worlds get a secret that makes structures unpredictable (seed crackers become useless). Only applies when a world is created and stays fixed after that

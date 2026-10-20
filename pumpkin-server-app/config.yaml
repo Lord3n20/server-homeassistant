@@ -1,7 +1,7 @@
 name: Pumpkin Server
 description: Minecraft server written in Rust (Pumpkin fork with seed protection, anti-cheat and anti-xray)
 slug: pumpkin_server
-version: "1.0.1"
+version: "1.1.0"
 arch:
   - amd64
 startup: services
@@ -36,6 +36,7 @@ options:
   rate_limit: 500
   anticheat: true
   anti_xray: true
+  lod_distanz: 256
   seed_schutz: true
   voice_chat: true
   pregen_oberwelt: 4000
@@ -58,6 +59,7 @@ schema:
   rate_limit: int(0,10000)
   anticheat: bool
   anti_xray: bool
+  lod_distanz: int(0,1024)
   seed_schutz: bool
   voice_chat: bool
   pregen_oberwelt: int(0,30000)
