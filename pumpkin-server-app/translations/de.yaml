@@ -1,0 +1,61 @@
+configuration:
+  welt:
+    name: Welt
+    description: Ordnername der Welt (Standard world). Ein neuer Name erzeugt eine neue Welt, die alte bleibt erhalten
+  motd:
+    name: Servernachricht
+    description: Text in der Serverliste
+  max_players:
+    name: Max. Spieler
+    description: Wie viele Spieler gleichzeitig online sein dürfen
+  schwierigkeit:
+    name: Schwierigkeit
+    description: Peaceful, Easy, Normal oder Hard (gilt für neue Welten)
+  view_distance:
+    name: Sichtweite
+    description: In Chunks (3–32)
+  simulation_distance:
+    name: Simulationsweite
+    description: In Chunks (3–32), wie weit Mobs und Pflanzen weiterlaufen
+  whitelist:
+    name: Whitelist
+    description: Spielernamen, die beitreten dürfen. Die Liste ist maßgeblich – wer hier fehlt, wird beim Start von der Whitelist entfernt
+  ops:
+    name: Operatoren
+    description: Spielernamen mit allen Rechten. Ebenfalls maßgeblich, wer fehlt, verliert beim Start die OP-Rechte
+  enforce_whitelist:
+    name: Whitelist erzwingen
+    description: Kickt Spieler sofort, wenn sie von der Whitelist entfernt werden
+  enable_status:
+    name: In Serverliste sichtbar
+    description: Aus = Server antwortet nicht auf Ping (unsichtbar für Scanner wie Shodan); Beitreten geht trotzdem
+  prevent_proxy_connections:
+    name: Proxy-Verbindungen blockieren
+    description: Lehnt Spieler ab, deren IP nicht zur Mojang-Anmeldung passt
+  rate_limit:
+    name: Paket-Limit
+    description: Max. Pakete pro Sekunde je Spieler, darüber wird gekickt (0 = aus)
+  anticheat:
+    name: Anticheat
+    description: Leichter Schutz gegen Speed- und Flug-Hacks (zurücksetzen bzw. kicken)
+  anti_xray:
+    name: Anti-Xray
+    description: Versteckt Erze, die keinen Kontakt zu Luft, Wasser oder Lava haben
+  seed_schutz:
+    name: Seed-Schutz
+    description: Neue Welten bekommen ein Geheimnis, das Strukturen unvorhersagbar macht (Seed-Cracker nutzlos). Wirkt nur beim Erzeugen einer Welt und bleibt dann fest
+  voice_chat:
+    name: Simple Voice Chat
+    description: Sprachchat-Plugin (Clients brauchen die Mod Simple Voice Chat, UDP-Port 24454)
+  pregen_oberwelt:
+    name: Vorgenerieren Oberwelt
+    description: Radius in Blöcken um 0 0, der einmalig im Hintergrund erzeugt wird (0 = aus)
+  pregen_nether:
+    name: Vorgenerieren Nether
+    description: Radius in Blöcken, läuft nach der Oberwelt (0 = aus)
+  pregen_end:
+    name: Vorgenerieren End
+    description: Radius in Blöcken, läuft nach dem Nether (0 = aus)
+network:
+  25565/tcp: Minecraft (Java)
+  24454/udp: Simple Voice Chat
