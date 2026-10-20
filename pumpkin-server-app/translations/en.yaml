@@ -1,0 +1,61 @@
+configuration:
+  welt:
+    name: World
+    description: World folder name (default world). A new name creates a new world, the old one is kept
+  motd:
+    name: Server message
+    description: Text shown in the server list
+  max_players:
+    name: Max players
+    description: How many players may be online at the same time
+  schwierigkeit:
+    name: Difficulty
+    description: Peaceful, Easy, Normal or Hard (applies to new worlds)
+  view_distance:
+    name: View distance
+    description: In chunks (3–32)
+  simulation_distance:
+    name: Simulation distance
+    description: In chunks (3–32), how far mobs and crops keep ticking
+  whitelist:
+    name: Whitelist
+    description: Player names allowed to join. The list is authoritative – names missing here are removed from the whitelist on start
+  ops:
+    name: Operators
+    description: Player names with all permissions. Also authoritative, missing names lose OP on start
+  enforce_whitelist:
+    name: Enforce whitelist
+    description: Kicks players right away when they are removed from the whitelist
+  enable_status:
+    name: Visible in server list
+    description: Off = server does not answer pings (hidden from scanners like Shodan); joining still works
+  prevent_proxy_connections:
+    name: Block proxy connections
+    description: Rejects players whose IP does not match their Mojang login
+  rate_limit:
+    name: Packet limit
+    description: Max packets per second per player before a kick (0 = off)
+  anticheat:
+    name: Anti-cheat
+    description: Light protection against speed and fly hacks (set back or kick)
+  anti_xray:
+    name: Anti-xray
+    description: Hides ores that do not touch air, water or lava
+  seed_schutz:
+    name: Seed protection
+    description: New worlds get a secret that makes structures unpredictable (seed crackers become useless). Only applies when a world is created and stays fixed after that
+  voice_chat:
+    name: Simple Voice Chat
+    description: Voice chat plugin (clients need the Simple Voice Chat mod, UDP port 24454)
+  pregen_oberwelt:
+    name: Pre-generate Overworld
+    description: Radius in blocks around 0 0, generated once in the background (0 = off)
+  pregen_nether:
+    name: Pre-generate Nether
+    description: Radius in blocks, runs after the Overworld (0 = off)
+  pregen_end:
+    name: Pre-generate End
+    description: Radius in blocks, runs after the Nether (0 = off)
+network:
+  25565/tcp: Minecraft (Java)
+  24454/udp: Simple Voice Chat

@@ -1,0 +1,65 @@
+name: Pumpkin Server
+description: Minecraft server written in Rust (Pumpkin fork with seed protection, anti-cheat and anti-xray)
+slug: pumpkin_server
+version: "1.0.0"
+arch:
+  - amd64
+startup: services
+# Time for the world save on stop
+timeout: 120
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:minecraft
+panel_title: Pumpkin-Konsole
+panel_admin: true
+ports:
+  25565/tcp: 25565
+  24454/udp: 24454
+environment:
+  TZ: "Europe/Berlin"
+options:
+  welt: "world"
+  motd: "Stierzunge"
+  max_players: 10
+  schwierigkeit: "Normal"
+  view_distance: 12
+  simulation_distance: 8
+  whitelist:
+    - 3n20
+    - drkcdmy
+    - tierlunge
+  ops:
+    - 3n20
+  enforce_whitelist: true
+  enable_status: false
+  prevent_proxy_connections: true
+  rate_limit: 500
+  anticheat: true
+  anti_xray: true
+  seed_schutz: true
+  voice_chat: true
+  pregen_oberwelt: 4000
+  pregen_nether: 1000
+  pregen_end: 1000
+schema:
+  welt: match(^[A-Za-z0-9_-]+$)
+  motd: str
+  max_players: int(1,1000)
+  schwierigkeit: list(Peaceful|Easy|Normal|Hard)
+  view_distance: int(3,32)
+  simulation_distance: int(3,32)
+  whitelist:
+    - match(^[A-Za-z0-9_]{3,16}$)
+  ops:
+    - match(^[A-Za-z0-9_]{3,16}$)
+  enforce_whitelist: bool
+  enable_status: bool
+  prevent_proxy_connections: bool
+  rate_limit: int(0,10000)
+  anticheat: bool
+  anti_xray: bool
+  seed_schutz: bool
+  voice_chat: bool
+  pregen_oberwelt: int(0,30000)
+  pregen_nether: int(0,30000)
+  pregen_end: int(0,30000)
