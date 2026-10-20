@@ -41,6 +41,9 @@ configuration:
   anti_xray:
     name: Anti-Xray
     description: Versteckt Erze, die keinen Kontakt zu Luft, Wasser oder Lava haben
+  lod_distanz:
+    name: LOD-Distanz (Voxy)
+    description: Radius in Chunks, den Spieler mit Voxy/LOD Server Support als ferne Landschaft bekommen; nur vorgenerierte Chunks. 0 = aus
   seed_schutz:
     name: Seed-Schutz
     description: Neue Welten bekommen ein Geheimnis, das Strukturen unvorhersagbar macht (Seed-Cracker nutzlos). Wirkt nur beim Erzeugen einer Welt und bleibt dann fest

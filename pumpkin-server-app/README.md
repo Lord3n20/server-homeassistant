@@ -12,6 +12,10 @@ Additions of the fork, all switchable in the Configuration tab:
   for the normal seed. The secret is kept for the world's lifetime – never delete or change that file.
 - Light anti-cheat (moved-too-quickly set-back, kick for flying) and anti-xray (hidden ores).
 - Hidden from the server list (`enable_status` off), like vanilla `enable-status=false`.
+- Far terrain for [Voxy](https://modrinth.com/mod/voxy) players with the
+  [LOD Server Support](https://modrinth.com/mod/lod-server-support) client mod: chunks within `lod_distanz`
+  (in chunks, 0 = off) are sent as LOD columns, with the same ore hiding as normal chunks. Only chunks that
+  exist are sent, so pre-generate at least as far.
 
 Plugins: Simple Voice Chat (PumpkinVoice) and PumpkinPregen. On start the app pre-generates the Overworld,
 then the Nether, then the End around 0 0 (radii in the options, 0 = off). Finished radii are remembered in

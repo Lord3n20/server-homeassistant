@@ -114,6 +114,11 @@ sections = {
     },
     "anticheat": {"enabled": opt("anticheat", True)},
     "anti_xray": {"enabled": opt("anti_xray", True)},
+    # Far terrain for Voxy clients (LOD Server Support); 0 switches it off
+    "lod_server": {
+        "enabled": opt("lod_distanz", 256) > 0,
+        "lod_distance_chunks": max(opt("lod_distanz", 256), 1),
+    },
 }
 
 lines = ["# Written by the add-on on every start – change the options in Home Assistant instead"]
