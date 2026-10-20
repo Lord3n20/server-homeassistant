@@ -1,7 +1,7 @@
 FROM alpine:3.22
 
 # Server binary and WASM plugins from the Stierzunge release of the Pumpkin fork
-ARG PUMPKIN_RELEASE=stierzunge-0.2.0-7
+ARG PUMPKIN_RELEASE=stierzunge-0.2.0-8
 RUN apk add --no-cache bash jq python3 tzdata ca-certificates \
     && mkdir -p /opt/pumpkin/plugins && cd /opt/pumpkin \
     && base="https://github.com/Lord3n20/pumpkin-fork/releases/download/${PUMPKIN_RELEASE}" \
