@@ -15,8 +15,9 @@ verbinden sich direkt.
    selbst aus, damit laufen Föderation und Client-Anmeldung über Port 443.
 3. In der Konfiguration `server_name` setzen (genau der Name aus Schritt 1) und die App starten.
    **Der Name lässt sich danach nicht mehr ändern**, er steckt in jeder Benutzer- und Raum-ID.
-4. Im **Protokoll** steht beim ersten Start ein einmaliges Registrierungs-Token. Damit im Matrix-Client
-   auf dem eigenen Server ein Konto anlegen. Das erste Konto wird Admin und landet im Raum `#admins`.
+4. Im **Protokoll** steht ein einmaliges Registrierungs-Token. Damit im Matrix-Client
+   auf dem eigenen Server ein Konto anlegen. Bis das erste Konto existiert, gibt es bei jedem Start
+   (auch nach dem automatischen Neustart für Bridges) ein neues Token, es gilt immer das letzte. Das erste Konto wird Admin und landet im Raum `#admins`.
 5. Föderation prüfen: <https://federationtester.matrix.org>
 
 ## Optionen
