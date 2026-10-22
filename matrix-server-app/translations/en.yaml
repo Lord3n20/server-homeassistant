@@ -1,0 +1,12 @@
+configuration:
+  server_name:
+    name: Server name
+    description: Domain of the server, e.g. matrix.example.org. Part of every ID and cannot change after the first start
+  foederation:
+    name: Federation
+    description: Talk to users and rooms on other Matrix servers
+  registrierungs_token:
+    name: Registration token
+    description: Leave empty so nobody can register. If set, anyone with this token can create an account
+network:
+  8008/tcp: Matrix (clients and federation), expose via the reverse proxy over HTTPS
