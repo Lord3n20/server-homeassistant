@@ -1,0 +1,12 @@
+configuration:
+  server_name:
+    name: Servername
+    description: Domain des Servers, z. B. matrix.example.org. Steckt in jeder ID und lässt sich nach dem ersten Start nicht mehr ändern
+  foederation:
+    name: Föderation
+    description: Mit Nutzern und Räumen auf anderen Matrix-Servern sprechen
+  registrierungs_token:
+    name: Registrierungs-Token
+    description: Leer lassen, damit sich niemand selbst registrieren kann. Gesetzt kann sich jeder mit diesem Token ein Konto anlegen
+network:
+  8008/tcp: Matrix (Clients und Föderation), über den Reverse Proxy per HTTPS freigeben
