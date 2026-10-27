@@ -1,0 +1,40 @@
+name: "RWaysTH routing-core"
+description: "ÖPNV-Routing (RAPTOR) für die Region Aachen, API für die RWaysTH-App"
+version: "0.1.0"
+slug: "routing_core"
+url: "https://github.com/Lord3n20/RWaysTH"
+# Fertiges Image aus dem CI von RWaysTH (D-03), nichts wird auf dem HA-Host gebaut.
+# Digest von 0.1.0 steht in der Zusammenfassung des CI-Laufs und in README.md.
+image: "ghcr.io/lord3n20/rwaysth-routing-core"
+arch:
+  - amd64
+startup: services
+boot: auto
+init: false
+map:
+  - type: addon_config
+    read_only: true
+backup_exclude:
+  - "*.zip"
+  - "*.csv"
+ports:
+  8090/tcp: 8090
+ports_description:
+  8090/tcp: "Routing-API (nur über den Reverse Proxy mit Client-Zertifikat freigeben)"
+watchdog: "tcp://[HOST]:[PORT:8090]"
+environment:
+  TZ: "Europe/Berlin"
+  GOMEMLIMIT: "200MiB"
+  GOMAXPROCS: "2"
+options:
+  gtfs: "sr_gtfs.zip,de_rv.zip,de_fv.zip:fern"
+  footpaths: "footpaths.csv"
+  walk: 400
+  access: 800
+  par: 2
+schema:
+  gtfs: match(^[A-Za-z0-9_.\-]+(:fern)?(,[A-Za-z0-9_.\-]+(:fern)?)*$)
+  footpaths: "str?"
+  walk: int(100,1000)
+  access: int(200,2000)
+  par: int(1,4)

@@ -1,0 +1,18 @@
+configuration:
+  gtfs:
+    name: GTFS feeds
+    description: Files in the app config folder, comma separated. ":fern" marks a feed as long-distance (not covered by the Deutschlandticket)
+  footpaths:
+    name: Footpaths
+    description: Precomputed Valhalla footpaths (CSV). Leave empty to use straight-line distance
+  walk:
+    name: Transfer walk (m)
+    description: Longest walk between two stops (straight line); Valhalla paths up to twice that
+  access:
+    name: Access walk (m)
+    description: Longest walk from the start to the first stop and from the last stop to the destination (straight line)
+  par:
+    name: Parallel requests
+    description: More parallel requests use more RAM
+network:
+  8090/tcp: Routing API, expose only via the reverse proxy with client certificates
