@@ -30,5 +30,9 @@ Console: the sidebar entry "Pumpkin-Konsole" (admins only, via Ingress) shows th
 commands through RCON, e.g. `list`, `say …`, `pregen status`. RCON only listens inside the container with
 a new random password on every start.
 
+Player count: every minute the console reports the number of players online to Home Assistant as
+`sensor.pumpkin_spieler` (only the count, no names). The sensor is not kept over a Home Assistant restart
+and stops updating while the app is stopped, so automations should also look at its age.
+
 All data (`pumpkin.toml`, worlds, logs, whitelist) is in the app's `/data` folder. `pumpkin.toml` is rewritten
 from the options on every start. Telemetry and Bedrock support of Pumpkin are switched off.
