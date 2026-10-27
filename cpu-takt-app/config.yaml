@@ -1,0 +1,15 @@
+name: "CPU-Mindesttakt"
+description: "Setzt beim Start den Mindesttakt der CPU (schedutil bleibt), damit kurze Anfragen nicht bei 0,8 GHz laufen; beendet sich danach"
+version: "0.1.0"
+slug: "cpu_takt"
+arch:
+  - amd64
+startup: initialize
+boot: auto
+init: false
+# Schreibzugriff auf /sys/devices/system/cpu braucht einen privilegierten Container.
+full_access: true
+options:
+  min_mhz: 2000
+schema:
+  min_mhz: int(800,3900)
