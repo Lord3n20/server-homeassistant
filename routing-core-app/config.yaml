@@ -1,6 +1,6 @@
 name: "RWaysTH routing-core"
 description: "ÖPNV-Routing (RAPTOR) für die Region Aachen, API für die RWaysTH-App"
-version: "0.1.1"
+version: "0.1.2"
 slug: "routing_core"
 url: "https://github.com/Lord3n20/RWaysTH"
 # Fertiges Image aus dem CI von RWaysTH (D-03), nichts wird auf dem HA-Host gebaut.
