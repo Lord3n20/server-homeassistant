@@ -1,6 +1,6 @@
-# RWaysTH routing-jobs
+# SchnellWeg routing-jobs
 
-Home-Assistant-App mit den Datenjobs von [RWaysTH](https://github.com/Lord3n20/RWaysTH). Sie läuft einmal durch
+Home-Assistant-App mit den Datenjobs von [SchnellWeg](https://github.com/Lord3n20/SchnellWeg). Sie läuft einmal durch
 und beendet sich; gestartet wird sie von einer HA-Automation (`hassio.addon_start`), nicht von selbst.
 
 | Job | macht | Ergebnis im Konfigurationsordner |

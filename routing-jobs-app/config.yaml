@@ -1,10 +1,10 @@
-name: "RWaysTH routing-jobs"
-description: "Datenjobs für RWaysTH: Fahrpläne, OSM-Ausschnitt der Region Aachen, Valhalla-Tiles, Fußwege, Suchliste und Karte (beendet sich selbst)"
+name: "SchnellWeg routing-jobs"
+description: "Datenjobs für SchnellWeg: Fahrpläne, OSM-Ausschnitt der Region Aachen, Valhalla-Tiles, Fußwege, Suchliste und Karte (beendet sich selbst)"
 version: "0.1.7"
 slug: "routing_jobs"
-url: "https://github.com/Lord3n20/RWaysTH"
-# Fertiges Image aus dem CI von RWaysTH (D-03). Digest je Version steht in README.md.
-image: "ghcr.io/lord3n20/rwaysth-routing-jobs"
+url: "https://github.com/Lord3n20/SchnellWeg"
+# Fertiges Image aus dem CI von SchnellWeg (D-03). Digest je Version steht in README.md.
+image: "ghcr.io/lord3n20/rwaysth-routing-jobs"  # Image-Name noch vom alten Projektnamen, ab nächstem Release schnellweg-*
 arch:
   - amd64
 # Einmal-Job: nur per HA-Automation starten (hassio.addon_start), kein Scheduler im Container.
