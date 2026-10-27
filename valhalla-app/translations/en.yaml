@@ -1,0 +1,7 @@
+configuration:
+  threads:
+    name: Threads
+    description: Parallel requests; more threads use more RAM
+  cache_mb:
+    name: Tile cache (MB)
+    description: Extra cache per thread; the tiles themselves are memory-mapped

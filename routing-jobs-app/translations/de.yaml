@@ -1,0 +1,16 @@
+configuration:
+  job:
+    name: Jobs
+    description: Durch Komma getrennt, werden nacheinander ausgeführt (osm, valhalla)
+  osm_sources:
+    name: OSM-Quellen
+    description: Geofabrik-Pfade ohne „-latest.osm.pbf“; zusammen müssen sie das Regionspolygon abdecken
+  max_mem_mb:
+    name: Speicherspitze (MB)
+    description: Der Job bricht ab, wenn er mehr belegt; zusätzlich nie mehr als der freie Speicher minus 1 GB
+  concurrency:
+    name: Threads
+    description: Threads für den Valhalla-Bau (höchstens 4, damit andere Dienste genug CPU behalten)
+  force:
+    name: Neu bauen erzwingen
+    description: Auch bei unveränderten Quellen neu bauen

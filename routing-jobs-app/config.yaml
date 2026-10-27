@@ -1,0 +1,49 @@
+name: "RWaysTH routing-jobs"
+description: "Datenjobs für RWaysTH: OSM-Ausschnitt der Region Aachen und Valhalla-Tiles (beendet sich selbst)"
+version: "0.1.0"
+slug: "routing_jobs"
+url: "https://github.com/Lord3n20/RWaysTH"
+# Fertiges Image aus dem CI von RWaysTH (D-03). Digest je Version steht in README.md.
+image: "ghcr.io/lord3n20/rwaysth-routing-jobs"
+arch:
+  - amd64
+# Einmal-Job: nur per HA-Automation starten (hassio.addon_start), kein Scheduler im Container.
+startup: once
+boot: manual
+init: false
+map:
+  - type: addon_config
+    read_only: false
+# Große, reproduzierbare Daten nicht ins Backup
+backup_exclude:
+  - "*.pbf"
+  - "*.o5m"
+  - "*.tar"
+  - "*.sqlite"
+  - "*.part"
+  - "*.log"
+# Benachrichtigung (Core-API) und Neustart des Valhalla-Add-ons nach neuem Stand (Supervisor-API)
+homeassistant_api: true
+hassio_api: true
+hassio_role: manager
+environment:
+  TZ: "Europe/Berlin"
+  GOMEMLIMIT: "100MiB"
+options:
+  job: "osm,valhalla"
+  osm_sources:
+    - "europe/germany/nordrhein-westfalen/koeln-regbez"
+    - "europe/germany/nordrhein-westfalen/duesseldorf-regbez"
+    - "europe/germany/rheinland-pfalz"
+    - "europe/netherlands/limburg"
+    - "europe/belgium"
+  max_mem_mb: 2048
+  concurrency: 4
+  force: false
+schema:
+  job: match(^(osm|valhalla)(,(osm|valhalla))*$)
+  osm_sources:
+    - match(^[a-z0-9\-]+(/[a-z0-9\-]+)*$)
+  max_mem_mb: int(1024,2048)
+  concurrency: int(1,4)
+  force: bool
