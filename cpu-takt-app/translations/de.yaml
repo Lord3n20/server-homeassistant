@@ -1,0 +1,4 @@
+configuration:
+  min_mhz:
+    name: Mindesttakt (MHz)
+    description: Untergrenze für den CPU-Takt. 800 = Standard (ganz aus), 3900 = immer voller Takt
