@@ -26,5 +26,6 @@ Messung 27.10.2026 (RWaysTH, erste/letzte Meile, 120 Anfragen von außen):
 |---|---|
 | `min_mhz` | Mindesttakt in MHz (800 = Standard, 3900 = immer voller Takt) |
 
-Die App braucht vollen Zugriff (`full_access`), weil `/sys` sonst schreibgeschützt ist. Sie läuft nur
-einmal kurz beim Start und öffnet keine Ports.
+Die App braucht die Fähigkeit `SYS_ADMIN` und läuft ohne AppArmor-Profil, weil `/sys` im Container sonst
+schreibgeschützt ist; sie hängt dafür ein eigenes sysfs ein. Sie läuft nur einmal kurz beim Start, hat keinen
+Gerätezugriff und öffnet keine Ports.
