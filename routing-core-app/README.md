@@ -37,6 +37,7 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 | Version | Image |
 |---|---|
+| 0.1.3 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.3` @sha256:d5f28df828e584ad7bff4b90c9c4c681c2df534564e219683ee1636abb202711 — Antwort enthält Dauer der Valhalla-Aufrufe (`vh_ms`) |
 | 0.1.2 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.2` @sha256:e5b692448f6f1ca812e86a7aedf9a125293810d93dcac1f0bd78f2662d5b2a66 — schnellere Halte-Suche vor der Valhalla-Matrix |
 | 0.1.1 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.1` @sha256:4be2dedcc22b1000123aeeed342af2daef1a48904304d1fc4f2891f902bf8273 — Zugangswege über Valhalla (Option `valhalla`), Rückfall Luftlinie |
 | 0.1.0 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.0` @sha256:a5e983dcdf07b36e27fe266fae0d2e41a715f2c43686f04dc9302e3d611b7937 |
