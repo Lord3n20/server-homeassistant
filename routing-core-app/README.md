@@ -49,6 +49,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 
 | Version | Image |
 |---|---|
+| 0.1.12 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.12` @sha256:c427c05d72f7fe09a105a96bdec5adc7bd158c48263382c6d4709f2de061cd6c — Wegformen der Fußwege, Halte je Fahrt, reiner Fußweg als Vergleich (D-19) |
 | 0.1.11 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.11` @sha256:ec6596380f8837ea21cda5504249579f4e8fdd1981a41f3ba3efe9c75ae5f858 — mehrere Suchlisten (`geocode` mit Komma), RWTH-Gebäude aus der Job-App (D-18), neuer Image-Name `schnellweg-*` |
 | 0.1.10 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.10` @sha256:1f4a40cbc43b7f1e4a4c8ebb17bd77859c3ee63fbce1b5d9e25ced4d56b193e7 — CA-Zertifikate (Echtzeit über HTTPS), schnellere Suche |
 | 0.1.9 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.9` @sha256:9560ee825de73e7e2e65db3834178e84986356cd01b35b6e3f7196628515db7f — Echtzeit, Abfahrten, Halteliste, Suche, Karte |
