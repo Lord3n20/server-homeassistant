@@ -1,6 +1,6 @@
 name: "RWaysTH routing-jobs"
-description: "Datenjobs für RWaysTH: Fahrpläne, OSM-Ausschnitt der Region Aachen und Valhalla-Tiles (beendet sich selbst)"
-version: "0.1.4"
+description: "Datenjobs für RWaysTH: Fahrpläne, OSM-Ausschnitt der Region Aachen, Valhalla-Tiles und Fußwege (beendet sich selbst)"
+version: "0.1.5"
 slug: "routing_jobs"
 url: "https://github.com/Lord3n20/RWaysTH"
 # Fertiges Image aus dem CI von RWaysTH (D-03). Digest je Version steht in README.md.
@@ -18,6 +18,7 @@ map:
 backup_exclude:
   - "*.pbf"
   - "*.zip"
+  - "*.csv"
   - "*.o5m"
   - "*.tar"
   - "*.sqlite"
@@ -31,7 +32,7 @@ environment:
   TZ: "Europe/Berlin"
   GOMEMLIMIT: "100MiB"
 options:
-  job: "gtfs,osm,valhalla"
+  job: "gtfs,osm,valhalla,footpaths"
   gtfs_box: "5.95,50.48,6.45,50.93"
   osm_tage: 7
   osm_sources:
@@ -44,7 +45,7 @@ options:
   concurrency: 4
   force: false
 schema:
-  job: match(^(gtfs|osm|valhalla)(,(gtfs|osm|valhalla))*$)
+  job: match(^(gtfs|osm|valhalla|footpaths)(,(gtfs|osm|valhalla|footpaths))*$)
   gtfs_box: match(^-?[0-9.]+,-?[0-9.]+,-?[0-9.]+,-?[0-9.]+$)
   osm_tage: int(0,30)
   osm_sources:

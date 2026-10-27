@@ -7,7 +7,7 @@ configuration:
     description: Folder of the GTFS feeds (wildcard allowed), by default the current data of the jobs app. Leave empty to use this app's config folder
   footpaths:
     name: Footpaths
-    description: Precomputed Valhalla footpaths (CSV). Leave empty to use straight-line distance
+    description: Precomputed Valhalla footpaths (CSV, wildcard allowed), by default from the jobs app. Empty or not found: straight-line distance
   walk:
     name: Transfer walk (m)
     description: Longest walk between two stops (straight line); Valhalla paths up to twice that
