@@ -41,6 +41,7 @@ actions:
 
 | Version | Image |
 |---|---|
+| 0.1.8 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.8` @sha256:8698aaadfe2774a7197f0b3b805b5d9885165fa128352f659f38ca34c4c16563 — Job `rwth` (RWTH-Gebäudeliste, D-18), neuer Image-Name `schnellweg-*` |
 | 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.7` @sha256:60d4661918158d49e4625c004efec104772c58af3f71730d1c5c4dfd2c5d71b6 — Jobs `geocode` und `map` |
 | 0.1.6 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.6` @sha256:5ad546f7c18320fb53775704f7f3bb750f0e9fd66bde8fb7523f374a24e90302 — `footpaths` ohne Valhalla-Protokoll (~1 MB je Lauf) |
 | 0.1.5 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.5` @sha256:d5162163a5b0c1911ac3a3009d86541865db0162dcd7738c228b0e71d72a2dc5 — Job `footpaths` |

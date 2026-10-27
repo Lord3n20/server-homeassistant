@@ -1,7 +1,7 @@
 configuration:
   job:
     name: Jobs
-    description: Durch Komma getrennt, werden nacheinander ausgeführt (gtfs, osm, valhalla, footpaths, geocode, map)
+    description: Durch Komma getrennt, werden nacheinander ausgeführt (gtfs, osm, valhalla, footpaths, geocode, map, rwth)
   gtfs_box:
     name: Nahverkehrs-Box
     description: Fahrten mit mindestens einem Halt in diesem Rechteck (minlon,minlat,maxlon,maxlat) kommen in den Fahrplan

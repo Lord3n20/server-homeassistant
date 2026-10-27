@@ -10,7 +10,7 @@ configuration:
     description: Vorab berechnete Valhalla-Fußwege (CSV, Stern erlaubt), Standard ist der Stand des Job-Add-ons. Leer oder nicht gefunden: Luftlinie
   geocode:
     name: Suchliste
-    description: Adressen und Orte für die Suche (Job geocode, Stern erlaubt). Leer oder nicht gefunden – Suche aus
+    description: Adressen, Orte und RWTH-Gebäude für die Suche (Jobs geocode und rwth, durch Komma getrennt, Stern erlaubt). Leer oder nicht gefunden – Suche aus
   map:
     name: Karte
     description: Kartenausschnitt (PMTiles, Job map) für die App. Leer oder nicht gefunden – keine Karte

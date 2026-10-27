@@ -1,7 +1,7 @@
 configuration:
   job:
     name: Jobs
-    description: Comma separated, run one after another (gtfs, osm, valhalla, footpaths, geocode, map)
+    description: Comma separated, run one after another (gtfs, osm, valhalla, footpaths, geocode, map, rwth)
   gtfs_box:
     name: Local transit box
     description: Trips with at least one stop in this rectangle (minlon,minlat,maxlon,maxlat) go into the timetable
