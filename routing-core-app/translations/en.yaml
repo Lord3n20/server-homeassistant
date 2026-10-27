@@ -10,7 +10,7 @@ configuration:
     description: Precomputed Valhalla footpaths (CSV, wildcard allowed), by default from the jobs app. Empty or not found: straight-line distance
   geocode:
     name: Search list
-    description: Addresses and places for search (geocode job, wildcard allowed). Empty or not found – search off
+    description: Addresses, places and RWTH buildings for search (geocode and rwth jobs, comma-separated, wildcard allowed). Empty or not found – search off
   map:
     name: Map
     description: Map extract (PMTiles, map job) for the app. Empty or not found – no map
