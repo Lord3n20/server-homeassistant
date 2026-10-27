@@ -39,6 +39,7 @@ actions:
 
 | Version | Image |
 |---|---|
+| 0.1.6 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.6` @sha256:5ad546f7c18320fb53775704f7f3bb750f0e9fd66bde8fb7523f374a24e90302 — `footpaths` ohne Valhalla-Protokoll (~1 MB je Lauf) |
 | 0.1.5 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.5` @sha256:d5162163a5b0c1911ac3a3009d86541865db0162dcd7738c228b0e71d72a2dc5 — Job `footpaths` |
 | 0.1.4 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.4` @sha256:b50e3e8e384b5da7dedc39ed60809bb3ead3a99a6eb7828ba2e2537211375fb9 — Job `gtfs`, OSM + Valhalla nur wöchentlich (`osm_tage`) |
 | 0.1.3 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.3` @sha256:ca041c489dfbdb13d3c68489d60f52888d24d189ef7d112d2dea868f913cfec4 — Regionssignatur über Inhalt (SHA-256) statt Änderungszeit |
