@@ -1,14 +1,17 @@
 name: "CPU-Mindesttakt"
 description: "Setzt beim Start den Mindesttakt der CPU (schedutil bleibt), damit kurze Anfragen nicht bei 0,8 GHz laufen; beendet sich danach"
-version: "0.1.0"
+version: "0.1.1"
 slug: "cpu_takt"
 arch:
   - amd64
 startup: initialize
 boot: auto
 init: false
-# Schreibzugriff auf /sys/devices/system/cpu braucht einen privilegierten Container.
-full_access: true
+# /sys ist im Container schreibgeschützt; mit SYS_ADMIN (ohne AppArmor-Sperre) hängt run.sh ein eigenes,
+# beschreibbares sysfs ein. Kein voller Zugriff, keine Geräte, keine Ports.
+privileged:
+  - SYS_ADMIN
+apparmor: false
 options:
   min_mhz: 2000
 schema:
