@@ -49,6 +49,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 
 | Version | Image |
 |---|---|
+| 0.1.10 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.10` @sha256:1f4a40cbc43b7f1e4a4c8ebb17bd77859c3ee63fbce1b5d9e25ced4d56b193e7 — CA-Zertifikate (Echtzeit über HTTPS), schnellere Suche |
 | 0.1.9 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.9` @sha256:9560ee825de73e7e2e65db3834178e84986356cd01b35b6e3f7196628515db7f — Echtzeit, Abfahrten, Halteliste, Suche, Karte |
 | 0.1.8 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.8` @sha256:5e5b0f50ed89e39c307ff2b4086e7cb6431138c5f224ae943020f5392e8eab83 — Gehtempo je Anfrage (`kmh`) |
 | 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.7` @sha256:4d6daebc08d27f0ffc6aa788d4b3e78c98e361bb7f961874353a9d6141fbda89 — Fußwege aus der Job-App (Glob, ohne Treffer Luftlinie) |
