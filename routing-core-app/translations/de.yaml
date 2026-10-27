@@ -7,7 +7,7 @@ configuration:
     description: Ordner der GTFS-Feeds (Stern erlaubt), Standard ist der aktuelle Stand des Job-Add-ons. Leer lassen, dann der eigene Konfigurationsordner
   footpaths:
     name: Fußwege
-    description: Vorab berechnete Valhalla-Fußwege (CSV). Leer lassen, dann gilt die Luftlinie
+    description: Vorab berechnete Valhalla-Fußwege (CSV, Stern erlaubt), Standard ist der Stand des Job-Add-ons. Leer oder nicht gefunden: Luftlinie
   walk:
     name: Umstiegsweg (m)
     description: Längster Fußweg zwischen zwei Halten (Luftlinie); Valhalla-Wege bis zum Doppelten

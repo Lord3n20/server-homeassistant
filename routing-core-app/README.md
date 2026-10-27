@@ -9,9 +9,9 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 ## Einrichtung
 
-1. GTFS-Dateien und optional `footpaths.csv` in den Konfigurationsordner der App legen
-   (`/addon_configs/<id>_routing_core/`, z. B. über das Samba- oder Terminal-Add-on). Später übernimmt das
-   ein eigenes Job-Add-on.
+1. Die App „RWaysTH routing-jobs“ einmal mit `gtfs,osm,valhalla,footpaths` laufen lassen: Sie legt Fahrpläne und
+   Fußwege ab, die diese App standardmäßig liest (`gtfs_dir`, `footpaths`). Ohne Job-App: Dateien in den eigenen
+   Konfigurationsordner legen (`/addon_configs/<id>_routing_core/`) und `gtfs_dir` leeren.
 2. Optionen prüfen (Dateinamen, „:fern“ beim Fernverkehrs-Feed) und starten. Im Protokoll steht die Ladezeit.
 3. **Nicht direkt ins Internet freigeben:** Reverse Proxy (z. B. Nginx Proxy Manager) mit Client-Zertifikat
    (`ssl_verify_client on`) und `access_log off` davorsetzen.
@@ -28,7 +28,7 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 |---|---|
 | `gtfs_dir` | Ordner der Feeds; Standard `/addon_configs/*_routing_jobs/gtfs/current` (Stand der Job-App, ab 0.1.6). Leer = eigener Konfigurationsordner |
 | `gtfs` | Feeds im Ordner `gtfs_dir`, durch Komma getrennt; `:fern` markiert einen Feed als Fernverkehr |
-| `footpaths` | Valhalla-Fußwege (CSV), leer = Luftlinie |
+| `footpaths` | Valhalla-Fußwege (CSV); Standard aus der Job-App (Glob, ab 0.1.7), leer oder nicht gefunden = Luftlinie |
 | `walk` | längster Umstiegsweg in m |
 | `access` | Suchradius für Zugangshalte in m (Luftlinie); echte Wege bis zum Doppelten |
 | `valhalla` | Valhalla-App für echte Zugangswege (`http://91c9b2fc-valhalla:8002`), leer = Luftlinie |
@@ -38,6 +38,7 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 | Version | Image |
 |---|---|
+| 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.7` @sha256:4d6daebc08d27f0ffc6aa788d4b3e78c98e361bb7f961874353a9d6141fbda89 — Fußwege aus der Job-App (Glob, ohne Treffer Luftlinie) |
 | 0.1.6 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.6` @sha256:b1a22207097efcbb2fe0e9f64d3527f607cd056b4ac07f0ae48aa54ab01bd420 — Fahrpläne aus der Job-App (`gtfs_dir`) |
 | 0.1.5 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.5` @sha256:1ed54c28abc323bf67f845b6b60e0fa762b45674e9530791f75db2b1981b1580 — `"debug": true` schlüsselt Valhalla-Zeiten auf |
 | 0.1.4 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.4` @sha256:3affd6647d2daede9607db873fa95cf66b8851e86d5258620ce24ab892594bc5 — Valhalla-Aufrufe ohne Keep-Alive (schneller) |
