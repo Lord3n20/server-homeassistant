@@ -20,7 +20,8 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 - `GET /v1/status` – geladener Tag, Zahl der Halte/Muster
 - `POST /v1/route` – `{"from":{"lat":…,"lon":…},"to":{…},"time":"2026-10-28T08:00:00+01:00","fern":false}`;
-  `fern: true` lässt Fernverkehr zu, der nicht im Deutschlandticket ist
+  `fern: true` lässt Fernverkehr zu, der nicht im Deutschlandticket ist; `"kmh": 5.5` (2–8, ab 0.1.8) rechnet
+  Zugangswege und Umstiege mit diesem Gehtempo statt 4,3 km/h (Mindestumstieg 60 s bleibt)
 
 ## Optionen
 
@@ -38,6 +39,7 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 | Version | Image |
 |---|---|
+| 0.1.8 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.8` @sha256:5e5b0f50ed89e39c307ff2b4086e7cb6431138c5f224ae943020f5392e8eab83 — Gehtempo je Anfrage (`kmh`) |
 | 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.7` @sha256:4d6daebc08d27f0ffc6aa788d4b3e78c98e361bb7f961874353a9d6141fbda89 — Fußwege aus der Job-App (Glob, ohne Treffer Luftlinie) |
 | 0.1.6 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.6` @sha256:b1a22207097efcbb2fe0e9f64d3527f607cd056b4ac07f0ae48aa54ab01bd420 — Fahrpläne aus der Job-App (`gtfs_dir`) |
 | 0.1.5 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.5` @sha256:1ed54c28abc323bf67f845b6b60e0fa762b45674e9530791f75db2b1981b1580 — `"debug": true` schlüsselt Valhalla-Zeiten auf |
