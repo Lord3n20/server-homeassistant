@@ -1,13 +1,19 @@
 configuration:
   job:
     name: Jobs
-    description: Durch Komma getrennt, werden nacheinander ausgeführt (gtfs, osm, valhalla, footpaths)
+    description: Durch Komma getrennt, werden nacheinander ausgeführt (gtfs, osm, valhalla, footpaths, geocode, map)
   gtfs_box:
     name: Nahverkehrs-Box
     description: Fahrten mit mindestens einem Halt in diesem Rechteck (minlon,minlat,maxlon,maxlat) kommen in den Fahrplan
   osm_tage:
     name: OSM-Abstand (Tage)
     description: OSM und Valhalla erst neu bauen, wenn der Stand so alt ist (0 = bei jedem Lauf prüfen)
+  map_box:
+    name: Kartenausschnitt
+    description: Rechteck der Karte für die App (minlon,minlat,maxlon,maxlat)
+  map_zoom:
+    name: Karten-Zoom
+    description: Höchste Zoomstufe; jede Stufe mehr vervierfacht etwa die Größe
   osm_sources:
     name: OSM-Quellen
     description: Geofabrik-Pfade ohne „-latest.osm.pbf“; zusammen müssen sie das Regionspolygon abdecken
