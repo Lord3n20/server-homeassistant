@@ -1,0 +1,7 @@
+configuration:
+  threads:
+    name: Threads
+    description: Gleichzeitige Anfragen; mehr Threads brauchen mehr RAM
+  cache_mb:
+    name: Tile-Cache (MB)
+    description: Zusätzlicher Cache je Thread; die Tiles selbst liegen per mmap im Seitencache

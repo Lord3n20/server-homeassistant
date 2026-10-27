@@ -1,0 +1,25 @@
+name: "RWaysTH Valhalla"
+description: "Valhalla-Dienst (Fußwege, erste/letzte Meile) auf den Tiles der App routing-jobs"
+version: "0.1.0"
+slug: "valhalla"
+url: "https://github.com/Lord3n20/RWaysTH"
+# Fertiges Image aus dem CI von RWaysTH (D-03). Digest je Version steht in README.md.
+image: "ghcr.io/lord3n20/rwaysth-valhalla"
+arch:
+  - amd64
+startup: services
+boot: auto
+init: false
+# Tiles aus dem Konfigurationsordner von routing-jobs (D-04), nur lesend
+map:
+  - type: all_addon_configs
+    read_only: true
+# Kein Host-Port: routing-core erreicht den Dienst im internen Netz über den Hostnamen der App.
+environment:
+  TZ: "Europe/Berlin"
+options:
+  threads: 2
+  cache_mb: 32
+schema:
+  threads: int(1,4)
+  cache_mb: int(8,512)
