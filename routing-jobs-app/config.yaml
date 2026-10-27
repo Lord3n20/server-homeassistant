@@ -1,6 +1,6 @@
 name: "RWaysTH routing-jobs"
 description: "Datenjobs für RWaysTH: OSM-Ausschnitt der Region Aachen und Valhalla-Tiles (beendet sich selbst)"
-version: "0.1.0"
+version: "0.1.1"
 slug: "routing_jobs"
 url: "https://github.com/Lord3n20/RWaysTH"
 # Fertiges Image aus dem CI von RWaysTH (D-03). Digest je Version steht in README.md.
