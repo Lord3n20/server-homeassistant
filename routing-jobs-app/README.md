@@ -5,7 +5,8 @@ und beendet sich; gestartet wird sie von einer HA-Automation (`hassio.addon_star
 
 | Job | macht | Ergebnis im Konfigurationsordner |
 |---|---|---|
-| `osm` | Geofabrik-Ausschnitte laden (ETag + md5), mit `osmconvert` auf das Regionspolygon schneiden, zusammenführen | `osm/current/region.osm.pbf` |
+| `gtfs` | Fahrpläne von gtfs.de laden (ETag), Nahverkehr auf `gtfs_box` schneiden, mit dem RAPTOR-Lader für heute und in 6 Tagen prüfen, routing-core neu starten | `gtfs/current/{sr_gtfs,de_rv,de_fv}.zip` |
+| `osm` | nur wenn der Stand älter als `osm_tage` ist: Geofabrik-Ausschnitte laden (ETag + md5), mit `osmconvert` auf das Regionspolygon schneiden, zusammenführen | `osm/current/region.osm.pbf` |
 | `valhalla` | Valhalla-Tiles bauen, mit Testrouten (Fuß/Auto/Rad) prüfen, Valhalla-App neu starten | `valhalla/current/tiles.tar` |
 
 - Unveränderte Quellen → Job übersprungen. Neuer Stand wird erst nach der Prüfung per Symlink umgeschaltet,
@@ -18,20 +19,25 @@ und beendet sich; gestartet wird sie von einer HA-Automation (`hassio.addon_star
 
 ## Automation (Beispiel)
 
+Täglich, mit allen drei Jobs: `gtfs` baut nur bei neuen Fahrplänen, `osm` + `valhalla` nur etwa wöchentlich
+(`osm_tage`). In der Praxis zusätzlich: nur starten, wenn auf dem Spieleserver niemand online ist, sonst alle
+30 min erneut prüfen bis 07:00.
+
 ```yaml
 triggers:
   - trigger: time
     at: "04:00:00"
 actions:
-  - action: hassio.addon_start
+  - action: hassio.app_start
     data:
-      addon: <id>_routing_jobs
+      app: <id>_routing_jobs
 ```
 
 ## Versionen
 
 | Version | Image |
 |---|---|
+| 0.1.4 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.4` @sha256:b50e3e8e384b5da7dedc39ed60809bb3ead3a99a6eb7828ba2e2537211375fb9 — Job `gtfs`, OSM + Valhalla nur wöchentlich (`osm_tage`) |
 | 0.1.3 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.3` @sha256:ca041c489dfbdb13d3c68489d60f52888d24d189ef7d112d2dea868f913cfec4 — Regionssignatur über Inhalt (SHA-256) statt Änderungszeit |
 | 0.1.2 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.2` @sha256:e3159633e55133daa6eccd957537b003f214dc8eb38d87736caef45466f5155f — Job hängt nicht mehr nach der Valhalla-Prüfung |
 | 0.1.1 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.1` @sha256:eb8d8e6384dedc23f5d0d30308b277a7f7563ea9ec454aafaf5317f9e6cbf27d — OSM-IDs neu nummeriert (Valhalla-Bau 2,9 → 1,2 GB) |

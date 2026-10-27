@@ -1,7 +1,13 @@
 configuration:
   job:
     name: Jobs
-    description: Comma separated, run one after another (osm, valhalla)
+    description: Comma separated, run one after another (gtfs, osm, valhalla)
+  gtfs_box:
+    name: Local transit box
+    description: Trips with at least one stop in this rectangle (minlon,minlat,maxlon,maxlat) go into the timetable
+  osm_tage:
+    name: OSM interval (days)
+    description: Rebuild OSM and Valhalla only when the data is this old (0 = check on every run)
   osm_sources:
     name: OSM sources
     description: Geofabrik paths without "-latest.osm.pbf"; together they must cover the region polygon

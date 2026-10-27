@@ -1,6 +1,6 @@
 name: "RWaysTH routing-core"
 description: "ÖPNV-Routing (RAPTOR) für die Region Aachen, API für die RWaysTH-App"
-version: "0.1.5"
+version: "0.1.6"
 slug: "routing_core"
 url: "https://github.com/Lord3n20/RWaysTH"
 # Fertiges Image aus dem CI von RWaysTH (D-03), nichts wird auf dem HA-Host gebaut.
@@ -13,6 +13,9 @@ boot: auto
 init: false
 map:
   - type: addon_config
+    read_only: true
+  # Fahrpläne aus dem Job-Add-on (gtfs/current)
+  - type: all_addon_configs
     read_only: true
 backup_exclude:
   - "*.zip"
@@ -28,6 +31,7 @@ environment:
   GOMAXPROCS: "2"
 options:
   gtfs: "sr_gtfs.zip,de_rv.zip,de_fv.zip:fern"
+  gtfs_dir: "/addon_configs/*_routing_jobs/gtfs/current"
   footpaths: "footpaths.csv"
   walk: 400
   access: 800
@@ -35,6 +39,7 @@ options:
   par: 2
 schema:
   gtfs: match(^[A-Za-z0-9_.\-]+(:fern)?(,[A-Za-z0-9_.\-]+(:fern)?)*$)
+  gtfs_dir: "str?"
   footpaths: "str?"
   walk: int(100,1000)
   access: int(200,2000)

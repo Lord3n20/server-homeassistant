@@ -2,6 +2,9 @@ configuration:
   gtfs:
     name: GTFS feeds
     description: Files in the app config folder, comma separated. ":fern" marks a feed as long-distance (not covered by the Deutschlandticket)
+  gtfs_dir:
+    name: Timetable folder
+    description: Folder of the GTFS feeds (wildcard allowed), by default the current data of the jobs app. Leave empty to use this app's config folder
   footpaths:
     name: Footpaths
     description: Precomputed Valhalla footpaths (CSV). Leave empty to use straight-line distance

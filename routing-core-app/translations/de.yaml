@@ -2,6 +2,9 @@ configuration:
   gtfs:
     name: GTFS-Feeds
     description: Dateien im App-Konfigurationsordner, durch Komma getrennt. „:fern“ markiert einen Feed als Fernverkehr (nicht im Deutschlandticket)
+  gtfs_dir:
+    name: Fahrplan-Ordner
+    description: Ordner der GTFS-Feeds (Stern erlaubt), Standard ist der aktuelle Stand des Job-Add-ons. Leer lassen, dann der eigene Konfigurationsordner
   footpaths:
     name: Fußwege
     description: Vorab berechnete Valhalla-Fußwege (CSV). Leer lassen, dann gilt die Luftlinie
