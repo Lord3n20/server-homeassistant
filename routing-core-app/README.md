@@ -36,4 +36,4 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 | Version | Image |
 |---|---|
-| 0.1.0 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.0` (Digest nach dem ersten CI-Lauf eintragen) |
+| 0.1.0 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.0` @sha256:a5e983dcdf07b36e27fe266fae0d2e41a715f2c43686f04dc9302e3d611b7937 |
