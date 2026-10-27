@@ -10,7 +10,10 @@ configuration:
     description: Längster Fußweg zwischen zwei Halten (Luftlinie); Valhalla-Wege bis zum Doppelten
   access:
     name: Zugangsweg (m)
-    description: Längster Weg vom Start zum ersten bzw. vom letzten Halt zum Ziel (Luftlinie)
+    description: Suchradius für Halte um Start und Ziel (Luftlinie); mit Valhalla echte Wege bis zum Doppelten
+  valhalla:
+    name: Valhalla
+    description: Adresse der Valhalla-App für echte Zugangswege. Leer lassen, dann gilt die Luftlinie
   par:
     name: Gleichzeitige Anfragen
     description: Mehr Anfragen gleichzeitig kosten mehr RAM

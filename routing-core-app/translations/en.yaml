@@ -10,7 +10,10 @@ configuration:
     description: Longest walk between two stops (straight line); Valhalla paths up to twice that
   access:
     name: Access walk (m)
-    description: Longest walk from the start to the first stop and from the last stop to the destination (straight line)
+    description: Search radius for stops around start and destination (straight line); with Valhalla, real paths up to twice that
+  valhalla:
+    name: Valhalla
+    description: Address of the Valhalla app for real access paths. Leave empty to use straight-line distance
   par:
     name: Parallel requests
     description: More parallel requests use more RAM

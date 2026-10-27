@@ -29,11 +29,13 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 | `gtfs` | Feeds im Konfigurationsordner, durch Komma getrennt; `:fern` markiert einen Feed als Fernverkehr |
 | `footpaths` | Valhalla-Fußwege (CSV), leer = Luftlinie |
 | `walk` | längster Umstiegsweg in m |
-| `access` | längster Zugangsweg in m |
+| `access` | Suchradius für Zugangshalte in m (Luftlinie); echte Wege bis zum Doppelten |
+| `valhalla` | Valhalla-App für echte Zugangswege (`http://91c9b2fc-valhalla:8002`), leer = Luftlinie |
 | `par` | gleichzeitige Anfragen |
 
 ## Versionen
 
 | Version | Image |
 |---|---|
+| 0.1.1 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.1` @sha256:4be2dedcc22b1000123aeeed342af2daef1a48904304d1fc4f2891f902bf8273 — Zugangswege über Valhalla (Option `valhalla`), Rückfall Luftlinie |
 | 0.1.0 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.0` @sha256:a5e983dcdf07b36e27fe266fae0d2e41a715f2c43686f04dc9302e3d611b7937 |
