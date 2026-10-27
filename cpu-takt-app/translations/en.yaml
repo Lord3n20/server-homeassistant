@@ -1,4 +1,0 @@
-configuration:
-  min_mhz:
-    name: Minimum clock (MHz)
-    description: Lower bound for the CPU clock. 800 = default (off), 3900 = always full clock
