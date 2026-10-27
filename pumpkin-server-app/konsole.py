@@ -7,6 +7,8 @@ Home Assistant itself (admins only, see panel_admin).
 
 In the background it makes whitelist and ops match the add-on options and
 pre-generates the Overworld, Nether and End one after another (PumpkinPregen).
+Every minute it reports the number of players online to Home Assistant as sensor.pumpkin_spieler
+(only the count, no names), e.g. so data jobs on the same machine wait for an empty server.
 """
 import json
 import os
@@ -15,6 +17,7 @@ import socket
 import struct
 import threading
 import time
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = 8099
@@ -25,6 +28,8 @@ FIRST_BYTES = 96 * 1024
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]|§[0-9a-fk-or]")
 RCON = ("127.0.0.1", 25575)
 RCON_LOCK = threading.Lock()
+SENSOR_URL = "http://supervisor/core/api/states/sensor.pumpkin_spieler"
+SENSOR_EVERY = 60
 
 
 def read_log(pos):
@@ -164,6 +169,24 @@ def helper():
         pregen()
     except OSError as e:
         say(f"Hintergrundaufgabe abgebrochen: {e}")
+
+
+def players_sensor():
+    """Sends the player count to Home Assistant every minute; skips while RCON is not reachable."""
+    while True:
+        try:
+            m = re.match(r"There are (\d+) of a max of (\d+)", rcon("list"))
+            if m:
+                body = json.dumps({"state": int(m.group(1)), "attributes": {
+                    "friendly_name": "Pumpkin – Spieler online", "unit_of_measurement": "Spieler",
+                    "state_class": "measurement", "icon": "mdi:minecraft", "max_players": int(m.group(2))}})
+                req = urllib.request.Request(SENSOR_URL, body.encode(), method="POST", headers={
+                    "Authorization": "Bearer " + os.environ["SUPERVISOR_TOKEN"],
+                    "Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=10).close()
+        except (OSError, KeyError) as e:
+            say(f"Spielerzahl nicht gemeldet: {e}")
+        time.sleep(SENSOR_EVERY)
 
 
 PAGE = """<!doctype html>
@@ -314,4 +337,5 @@ if __name__ == "__main__":
     with open(DATA + "/options.json") as f:
         OPTIONS = json.load(f)
     threading.Thread(target=helper, daemon=True).start()
+    threading.Thread(target=players_sensor, daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
