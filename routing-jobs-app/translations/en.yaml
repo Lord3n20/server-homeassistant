@@ -1,13 +1,19 @@
 configuration:
   job:
     name: Jobs
-    description: Comma separated, run one after another (gtfs, osm, valhalla, footpaths)
+    description: Comma separated, run one after another (gtfs, osm, valhalla, footpaths, geocode, map)
   gtfs_box:
     name: Local transit box
     description: Trips with at least one stop in this rectangle (minlon,minlat,maxlon,maxlat) go into the timetable
   osm_tage:
     name: OSM interval (days)
     description: Rebuild OSM and Valhalla only when the data is this old (0 = check on every run)
+  map_box:
+    name: Map extract
+    description: Rectangle of the map for the app (minlon,minlat,maxlon,maxlat)
+  map_zoom:
+    name: Map zoom
+    description: Highest zoom level; each extra level roughly quadruples the size
   osm_sources:
     name: OSM sources
     description: Geofabrik paths without "-latest.osm.pbf"; together they must cover the region polygon

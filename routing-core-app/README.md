@@ -18,10 +18,17 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 ## API
 
-- `GET /v1/status` – geladener Tag, Zahl der Halte/Muster
+- `GET /v1/status` – geladener Tag, Zahl der Halte/Muster, Echtzeitstand
 - `POST /v1/route` – `{"from":{"lat":…,"lon":…},"to":{…},"time":"2026-10-28T08:00:00+01:00","fern":false}`;
   `fern: true` lässt Fernverkehr zu, der nicht im Deutschlandticket ist; `"kmh": 5.5` (2–8, ab 0.1.8) rechnet
-  Zugangswege und Umstiege mit diesem Gehtempo statt 4,3 km/h (Mindestumstieg 60 s bleibt)
+  Zugangswege und Umstiege mit diesem Gehtempo statt 4,3 km/h (Mindestumstieg 60 s bleibt). Ab 0.1.9 mit
+  Echtzeit: `dep_rt`/`arr_rt`, `canceled`, `skipped` je Fahrt, `risk` (`anschluss` | `ausfall`) je Weg
+- `POST /v1/departures` – `{"stops":["0:233718",…],"n":3}` → nächste Abfahrten je Halt (Plan + Echtzeit)
+- `GET /v1/stops` – alle Halte als `[id, name, lat, lon]` für die App (ETag)
+- `POST /v1/search` – `{"q":"pontstr 5"}` → Adressen, Straßen, Orte, Einrichtungen
+- `GET /v1/map` – Kartenausschnitt (PMTiles, Range-Anfragen); © OpenStreetMap-Mitwirkende, Protomaps
+
+Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höchstens alle 30 s.
 
 ## Optionen
 
@@ -30,6 +37,9 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 | `gtfs_dir` | Ordner der Feeds; Standard `/addon_configs/*_routing_jobs/gtfs/current` (Stand der Job-App, ab 0.1.6). Leer = eigener Konfigurationsordner |
 | `gtfs` | Feeds im Ordner `gtfs_dir`, durch Komma getrennt; `:fern` markiert einen Feed als Fernverkehr |
 | `footpaths` | Valhalla-Fußwege (CSV); Standard aus der Job-App (Glob, ab 0.1.7), leer oder nicht gefunden = Luftlinie |
+| `geocode` | Suchliste aus der Job-App (ab 0.1.9), leer oder nicht gefunden = Suche aus |
+| `map` | Kartenausschnitt aus der Job-App (ab 0.1.9), leer oder nicht gefunden = keine Karte |
+| `rt` | GTFS-RT-Feed, leer = nur Fahrplan |
 | `walk` | längster Umstiegsweg in m |
 | `access` | Suchradius für Zugangshalte in m (Luftlinie); echte Wege bis zum Doppelten |
 | `valhalla` | Valhalla-App für echte Zugangswege (`http://91c9b2fc-valhalla:8002`), leer = Luftlinie |
@@ -39,6 +49,7 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 | Version | Image |
 |---|---|
+| 0.1.9 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.9` @sha256:9560ee825de73e7e2e65db3834178e84986356cd01b35b6e3f7196628515db7f — Echtzeit, Abfahrten, Halteliste, Suche, Karte |
 | 0.1.8 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.8` @sha256:5e5b0f50ed89e39c307ff2b4086e7cb6431138c5f224ae943020f5392e8eab83 — Gehtempo je Anfrage (`kmh`) |
 | 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.7` @sha256:4d6daebc08d27f0ffc6aa788d4b3e78c98e361bb7f961874353a9d6141fbda89 — Fußwege aus der Job-App (Glob, ohne Treffer Luftlinie) |
 | 0.1.6 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.6` @sha256:b1a22207097efcbb2fe0e9f64d3527f607cd056b4ac07f0ae48aa54ab01bd420 — Fahrpläne aus der Job-App (`gtfs_dir`) |

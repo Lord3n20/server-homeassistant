@@ -1,6 +1,6 @@
 name: "RWaysTH routing-core"
 description: "ÖPNV-Routing (RAPTOR) für die Region Aachen, API für die RWaysTH-App"
-version: "0.1.8"
+version: "0.1.9"
 slug: "routing_core"
 url: "https://github.com/Lord3n20/RWaysTH"
 # Fertiges Image aus dem CI von RWaysTH (D-03), nichts wird auf dem HA-Host gebaut.
@@ -33,6 +33,9 @@ options:
   gtfs: "sr_gtfs.zip,de_rv.zip,de_fv.zip:fern"
   gtfs_dir: "/addon_configs/*_routing_jobs/gtfs/current"
   footpaths: "/addon_configs/*_routing_jobs/footpaths/current/footpaths.csv"
+  geocode: "/addon_configs/*_routing_jobs/geocode/current/geocode.tsv"
+  map: "/addon_configs/*_routing_jobs/map/current/region.pmtiles"
+  rt: "https://realtime.gtfs.de/realtime-free.pb"
   walk: 400
   access: 800
   valhalla: "http://91c9b2fc-valhalla:8002"
@@ -41,6 +44,9 @@ schema:
   gtfs: match(^[A-Za-z0-9_.\-]+(:fern)?(,[A-Za-z0-9_.\-]+(:fern)?)*$)
   gtfs_dir: "str?"
   footpaths: "str?"
+  geocode: "str?"
+  map: "str?"
+  rt: "str?"
   walk: int(100,1000)
   access: int(200,2000)
   valhalla: "url?"
