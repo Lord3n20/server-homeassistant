@@ -1,15 +1,15 @@
-# RWaysTH routing-core
+# SchnellWeg routing-core
 
-Home-Assistant-App mit dem ÖPNV-Router von [RWaysTH](https://github.com/Lord3n20/RWaysTH): eigener RAPTOR auf
+Home-Assistant-App mit dem ÖPNV-Router von [SchnellWeg](https://github.com/Lord3n20/SchnellWeg): eigener RAPTOR auf
 den GTFS-Fahrplänen der Region Aachen plus Regional- und Fernzügen. Die App lädt den Fahrplan des heutigen Tages
 (~25–40 MB RAM) und wechselt um Mitternacht ohne Ausfall auf den nächsten Tag.
 
-Das Image wird im CI von RWaysTH gebaut (`ghcr.io/lord3n20/rwaysth-routing-core`), auf dem HA-Host wird nichts
+Das Image wird im CI von SchnellWeg gebaut (`ghcr.io/lord3n20/rwaysth-routing-core`, ab dem nächsten Release `schnellweg-routing-core`), auf dem HA-Host wird nichts
 kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten kommen nur im Request-Body.
 
 ## Einrichtung
 
-1. Die App „RWaysTH routing-jobs“ einmal mit `gtfs,osm,valhalla,footpaths` laufen lassen: Sie legt Fahrpläne und
+1. Die App „SchnellWeg routing-jobs“ einmal mit `gtfs,osm,valhalla,footpaths` laufen lassen: Sie legt Fahrpläne und
    Fußwege ab, die diese App standardmäßig liest (`gtfs_dir`, `footpaths`). Ohne Job-App: Dateien in den eigenen
    Konfigurationsordner legen (`/addon_configs/<id>_routing_core/`) und `gtfs_dir` leeren.
 2. Optionen prüfen (Dateinamen, „:fern“ beim Fernverkehrs-Feed) und starten. Im Protokoll steht die Ladezeit.

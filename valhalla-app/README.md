@@ -1,7 +1,7 @@
-# RWaysTH Valhalla
+# SchnellWeg Valhalla
 
 Home-Assistant-App mit [Valhalla](https://github.com/valhalla/valhalla) 3.9.1 für
-[RWaysTH](https://github.com/Lord3n20/RWaysTH): Fußwege und erste/letzte Meile. Die Tiles baut die App
+[SchnellWeg](https://github.com/Lord3n20/SchnellWeg): Fußwege und erste/letzte Meile. Die Tiles baut die App
 routing-jobs (Job `valhalla`); diese App liest `valhalla/current/tiles.tar` aus deren Konfigurationsordner und wird
 nach einem neuen Stand von dort neu gestartet.
 

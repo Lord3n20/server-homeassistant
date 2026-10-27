@@ -5,7 +5,7 @@ It has a simple minecraft java server (Paper), a Rust minecraft server (`pumpkin
 (`nokia-bridge-app` for the Home Assistant dashboard, `nokia-signal-app` for Signal) `bibliothek-app`,
 a book catalogue (ISBN lookup, admin panel) that publishes a page into the nginx website folder, and `matrix-server-app`,
 a federating Matrix homeserver (Continuwuity) that registers bridges dropped into `/share/matrix/appservices` by itself, and `routing-core-app`,
-the public-transport router of [RWaysTH](https://github.com/Lord3n20/RWaysTH), with `routing-jobs-app` (its data jobs: OSM extract
+the public-transport router of [SchnellWeg](https://github.com/Lord3n20/SchnellWeg), with `routing-jobs-app` (its data jobs: OSM extract
 and Valhalla tiles, started by an automation) and `valhalla-app` (Valhalla service on those tiles); all three use prebuilt images from GHCR.
 The matching phone apps (J2ME) are in [`nokia-s40-apps/`](nokia-s40-apps); they are not Home Assistant apps.
 

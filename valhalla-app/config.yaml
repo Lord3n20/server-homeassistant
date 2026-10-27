@@ -1,10 +1,10 @@
-name: "RWaysTH Valhalla"
+name: "SchnellWeg Valhalla"
 description: "Valhalla-Dienst (Fußwege, erste/letzte Meile) auf den Tiles der App routing-jobs"
 version: "0.1.0"
 slug: "valhalla"
-url: "https://github.com/Lord3n20/RWaysTH"
-# Fertiges Image aus dem CI von RWaysTH (D-03). Digest je Version steht in README.md.
-image: "ghcr.io/lord3n20/rwaysth-valhalla"
+url: "https://github.com/Lord3n20/SchnellWeg"
+# Fertiges Image aus dem CI von SchnellWeg (D-03). Digest je Version steht in README.md.
+image: "ghcr.io/lord3n20/rwaysth-valhalla"  # Image-Name noch vom alten Projektnamen, ab nächstem Release schnellweg-*
 arch:
   - amd64
 startup: services
