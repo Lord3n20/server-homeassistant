@@ -32,4 +32,4 @@ actions:
 
 | Version | Image |
 |---|---|
-| 0.1.0 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.0` (Digest folgt nach dem CI-Lauf) |
+| 0.1.0 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.0` @sha256:194f022511d58f23d6857bf57de3c86d5ece3d7240c30817b533306cc55c71da |

@@ -13,4 +13,4 @@ nach einem neuen Stand von dort neu gestartet.
 
 | Version | Image |
 |---|---|
-| 0.1.0 | `ghcr.io/lord3n20/rwaysth-valhalla:0.1.0` (Digest folgt nach dem CI-Lauf) |
+| 0.1.0 | `ghcr.io/lord3n20/rwaysth-valhalla:0.1.0` @sha256:3f376574e68df7c5bb6512b0dd4d20505394b25b9bc17dec236c42208351a59e |
