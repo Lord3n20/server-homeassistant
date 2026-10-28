@@ -1,6 +1,6 @@
 name: "SchnellWeg routing-jobs"
 description: "Datenjobs für SchnellWeg: Fahrpläne, OSM-Ausschnitt der Region Aachen, Valhalla-Tiles, Fußwege, Suchliste, Karte und RWTH-Gebäude (beendet sich selbst)"
-version: "0.1.9"
+version: "0.1.10"
 slug: "routing_jobs"
 url: "https://github.com/Lord3n20/SchnellWeg"
 # Fertiges Image aus dem CI von SchnellWeg (D-03). Digest je Version steht in README.md.
