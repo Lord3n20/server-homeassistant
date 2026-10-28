@@ -39,7 +39,7 @@ options:
   map_zoom: 15
   map_uebersicht_zoom: 9
   map_tage: 30
-  gtfs_box: "5.95,50.48,6.45,50.93"
+  gtfs_box: "5.85,50.3,9.5,52.55"
   osm_tage: 7
   osm_sources:
     - "europe/germany/nordrhein-westfalen/koeln-regbez"
