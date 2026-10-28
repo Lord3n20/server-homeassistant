@@ -1,6 +1,6 @@
 name: "SchnellWeg routing-jobs"
 description: "Datenjobs für SchnellWeg: Fahrpläne, OSM-Ausschnitt der Region Aachen, Valhalla-Tiles, Fußwege, Suchliste, Karte und RWTH-Gebäude (beendet sich selbst)"
-version: "0.1.8"
+version: "0.1.9"
 slug: "routing_jobs"
 url: "https://github.com/Lord3n20/SchnellWeg"
 # Fertiges Image aus dem CI von SchnellWeg (D-03). Digest je Version steht in README.md.
@@ -35,8 +35,10 @@ environment:
   GOMEMLIMIT: "100MiB"
 options:
   job: "gtfs,osm,valhalla,footpaths,geocode,map,rwth"
-  map_box: "5.95,50.48,6.45,50.93"
+  map_box: "5.8,47.2,15.1,55.1"
   map_zoom: 15
+  map_uebersicht_zoom: 9
+  map_tage: 30
   gtfs_box: "5.95,50.48,6.45,50.93"
   osm_tage: 7
   osm_sources:
@@ -52,6 +54,8 @@ schema:
   job: match(^(gtfs|osm|valhalla|footpaths|geocode|map|rwth)(,(gtfs|osm|valhalla|footpaths|geocode|map|rwth))*$)
   map_box: match(^-?[0-9.]+,-?[0-9.]+,-?[0-9.]+,-?[0-9.]+$)
   map_zoom: int(10,16)
+  map_uebersicht_zoom: int(6,12)
+  map_tage: int(0,90)
   gtfs_box: match(^-?[0-9.]+,-?[0-9.]+,-?[0-9.]+,-?[0-9.]+$)
   osm_tage: int(0,30)
   osm_sources:

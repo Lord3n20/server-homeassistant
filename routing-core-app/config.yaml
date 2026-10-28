@@ -1,6 +1,6 @@
 name: "SchnellWeg routing-core"
 description: "ÖPNV-Routing (RAPTOR) für die Region Aachen, API für die SchnellWeg-App"
-version: "0.1.12"
+version: "0.1.13"
 slug: "routing_core"
 url: "https://github.com/Lord3n20/SchnellWeg"
 # Fertiges Image aus dem CI von SchnellWeg (D-03), nichts wird auf dem HA-Host gebaut.
@@ -34,7 +34,7 @@ options:
   gtfs_dir: "/addon_configs/*_routing_jobs/gtfs/current"
   footpaths: "/addon_configs/*_routing_jobs/footpaths/current/footpaths.csv"
   geocode: "/addon_configs/*_routing_jobs/geocode/current/geocode.tsv,/addon_configs/*_routing_jobs/rwth/current/gebaeude.tsv"
-  map: "/addon_configs/*_routing_jobs/map/current/region.pmtiles"
+  map: "/addon_configs/*_routing_jobs/map/current"
   rt: "https://realtime.gtfs.de/realtime-free.pb"
   walk: 400
   access: 800

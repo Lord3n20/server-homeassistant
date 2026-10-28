@@ -10,7 +10,7 @@ configuration:
     description: Rebuild OSM and Valhalla only when the data is this old (0 = check on every run)
   map_box:
     name: Map extract
-    description: Rectangle of the map for the app (minlon,minlat,maxlon,maxlat)
+    description: Whole map extent, all regions lie inside (minlon,minlat,maxlon,maxlat)
   map_zoom:
     name: Map zoom
     description: Highest zoom level; each extra level roughly quadruples the size
@@ -26,3 +26,9 @@ configuration:
   force:
     name: Force rebuild
     description: Rebuild even if the sources did not change
+  map_uebersicht_zoom:
+    name: Overview zoom
+    description: Overview: highest zoom level (whole map extent, coarse)
+  map_tage:
+    name: Map: days until refresh
+    description: Refresh the map only when it is this old (0 = always check)

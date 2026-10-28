@@ -13,7 +13,7 @@ configuration:
     description: Adressen, Orte und RWTH-Gebäude für die Suche (Jobs geocode und rwth, durch Komma getrennt, Stern erlaubt). Leer oder nicht gefunden – Suche aus
   map:
     name: Karte
-    description: Kartenausschnitt (PMTiles, Job map) für die App. Leer oder nicht gefunden – keine Karte
+    description: Kartenordner (map/current der Job-App) für die App. Leer oder nicht gefunden – keine Karte
   rt:
     name: Echtzeit-Feed
     description: GTFS-RT-Adresse; wird nur bei Anfragen abgerufen, höchstens alle 30 s. Leer – nur Fahrplan

@@ -13,7 +13,7 @@ configuration:
     description: Addresses, places and RWTH buildings for search (geocode and rwth jobs, comma-separated, wildcard allowed). Empty or not found – search off
   map:
     name: Map
-    description: Map extract (PMTiles, map job) for the app. Empty or not found – no map
+    description: Map folder (map/current of the jobs app) for the app. Empty or not found – no map
   rt:
     name: Realtime feed
     description: GTFS-RT URL; fetched only on requests, at most every 30 s. Empty – timetable only

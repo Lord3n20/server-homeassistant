@@ -9,7 +9,7 @@ und beendet sich; gestartet wird sie von einer HA-Automation (`hassio.addon_star
 | `osm` | nur wenn der Stand älter als `osm_tage` ist: Geofabrik-Ausschnitte laden (ETag + md5), mit `osmconvert` auf das Regionspolygon schneiden, zusammenführen | `osm/current/region.osm.pbf` |
 | `valhalla` | Valhalla-Tiles bauen, mit Testrouten (Fuß/Auto/Rad) prüfen, Valhalla-App neu starten | `valhalla/current/tiles.tar` |
 | `geocode` | Adressen, Straßen, Orte und benannte Einrichtungen aus dem OSM-Stand für die Suche, nur bei neuem OSM-Stand | `geocode/current/geocode.tsv` |
-| `map` | Kartenausschnitt aus der Protomaps-Basiskarte (`pmtiles extract`, nur nötige Byte-Bereiche) bis `map_zoom`, höchstens alle `osm_tage` | `map/current/region.pmtiles` |
+| `map` | Deutschland aus der Protomaps-Basiskarte (`pmtiles extract`, nur nötige Byte-Bereiche, ~8 GB) bis `map_zoom`, lokal geschnitten in Übersicht (bis `map_uebersicht_zoom`) und 13 Bundesländer; höchstens alle `map_tage`, braucht 40 GB frei | `map/current/{uebersicht,nw,…}.pmtiles` + `regionen.json` |
 | `footpaths` | Umstiegswege zwischen nahen Halten (≤ 400 m) mit einem kurz gestarteten Valhalla auf den aktuellen Tiles rechnen, nur bei neuem GTFS- oder Tile-Stand | `footpaths/current/footpaths.csv` |
 
 - Unveränderte Quellen → Job übersprungen. Neuer Stand wird erst nach der Prüfung per Symlink umgeschaltet,
@@ -41,6 +41,7 @@ actions:
 
 | Version | Image |
 |---|---|
+| 0.1.9 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.9` @sha256:a33ee73c8b211795113af2e52b488ee24b82d884a4400c09b3639cc429a09dc1 — Karte für Deutschland: Übersicht + Bundesländer (D-20), Optionen `map_uebersicht_zoom`, `map_tage` |
 | 0.1.8 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.8` @sha256:8698aaadfe2774a7197f0b3b805b5d9885165fa128352f659f38ca34c4c16563 — Job `rwth` (RWTH-Gebäudeliste, D-18), neuer Image-Name `schnellweg-*` |
 | 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.7` @sha256:60d4661918158d49e4625c004efec104772c58af3f71730d1c5c4dfd2c5d71b6 — Jobs `geocode` und `map` |
 | 0.1.6 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.6` @sha256:5ad546f7c18320fb53775704f7f3bb750f0e9fd66bde8fb7523f374a24e90302 — `footpaths` ohne Valhalla-Protokoll (~1 MB je Lauf) |

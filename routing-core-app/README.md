@@ -26,7 +26,7 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 - `POST /v1/departures` – `{"stops":["0:233718",…],"n":3}` → nächste Abfahrten je Halt (Plan + Echtzeit)
 - `GET /v1/stops` – alle Halte als `[id, name, lat, lon]` für die App (ETag)
 - `POST /v1/search` – `{"q":"pontstr 5"}` → Adressen, Straßen, Orte, Einrichtungen
-- `GET /v1/map` – Kartenausschnitt (PMTiles, Range-Anfragen); © OpenStreetMap-Mitwirkende, Protomaps
+- `GET /v1/map` – Liste der Kartendateien (Übersicht + Bundesländer, Größe, Stand); `GET /v1/map/{id}` – Datei (PMTiles, Range, Last-Modified); © OpenStreetMap-Mitwirkende, Protomaps
 
 Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höchstens alle 30 s.
 
@@ -38,7 +38,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | `gtfs` | Feeds im Ordner `gtfs_dir`, durch Komma getrennt; `:fern` markiert einen Feed als Fernverkehr |
 | `footpaths` | Valhalla-Fußwege (CSV); Standard aus der Job-App (Glob, ab 0.1.7), leer oder nicht gefunden = Luftlinie |
 | `geocode` | Suchlisten aus der Job-App (ab 0.1.9; ab 0.1.11 mehrere, durch Komma getrennt: OSM + RWTH-Gebäude), leer oder nicht gefunden = Suche aus |
-| `map` | Kartenausschnitt aus der Job-App (ab 0.1.9), leer oder nicht gefunden = keine Karte |
+| `map` | Kartenordner der Job-App (`map/current`, ab 0.1.13; vorher eine Datei), leer oder nicht gefunden = keine Karte |
 | `rt` | GTFS-RT-Feed, leer = nur Fahrplan |
 | `walk` | längster Umstiegsweg in m |
 | `access` | Suchradius für Zugangshalte in m (Luftlinie); echte Wege bis zum Doppelten |
@@ -49,6 +49,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 
 | Version | Image |
 |---|---|
+| 0.1.13 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.13` @sha256:1203ebec836d5193d7d7d4a373f162c2513fbef708eb81e38ff1eecf5b03cb68 — `/v1/map` listet Regionen, `/v1/map/{id}` (D-20) |
 | 0.1.12 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.12` @sha256:c427c05d72f7fe09a105a96bdec5adc7bd158c48263382c6d4709f2de061cd6c — Wegformen der Fußwege, Halte je Fahrt, reiner Fußweg als Vergleich (D-19) |
 | 0.1.11 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.11` @sha256:ec6596380f8837ea21cda5504249579f4e8fdd1981a41f3ba3efe9c75ae5f858 — mehrere Suchlisten (`geocode` mit Komma), RWTH-Gebäude aus der Job-App (D-18), neuer Image-Name `schnellweg-*` |
 | 0.1.10 | `ghcr.io/lord3n20/rwaysth-routing-core:0.1.10` @sha256:1f4a40cbc43b7f1e4a4c8ebb17bd77859c3ee63fbce1b5d9e25ced4d56b193e7 — CA-Zertifikate (Echtzeit über HTTPS), schnellere Suche |
