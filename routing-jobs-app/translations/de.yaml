@@ -10,7 +10,7 @@ configuration:
     description: OSM und Valhalla erst neu bauen, wenn der Stand so alt ist (0 = bei jedem Lauf prüfen)
   map_box:
     name: Kartenausschnitt
-    description: Rechteck der Karte für die App (minlon,minlat,maxlon,maxlat)
+    description: Gesamtausschnitt, alle Regionen liegen darin (minlon,minlat,maxlon,maxlat)
   map_zoom:
     name: Karten-Zoom
     description: Höchste Zoomstufe; jede Stufe mehr vervierfacht etwa die Größe
@@ -26,3 +26,9 @@ configuration:
   force:
     name: Neu bauen erzwingen
     description: Auch bei unveränderten Quellen neu bauen
+  map_uebersicht_zoom:
+    name: Höchste Zoomstufe der Übersicht
+    description: Übersicht: höchste Zoomstufe (ganzer Kartenausschnitt, grob)
+  map_tage:
+    name: Karte: Tage bis zum Neuschneiden
+    description: Karte erst neu holen, wenn der Stand so alt ist (0 = immer prüfen)
