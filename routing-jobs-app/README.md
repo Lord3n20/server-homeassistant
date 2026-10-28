@@ -42,6 +42,7 @@ actions:
 | Version | Image |
 |---|---|
 | 0.1.10 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.10` @sha256:3b538f24330394d2992b1f8e92628abedf85ba4172d1d8c57741bf396e26c0e9 — Karte trotz `map_tage` neu schneiden, wenn sich die Karten-Optionen geändert haben |
+| 0.1.11 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.11` @sha256:b5c09c95e46b0860a21c1efa51c6e6ddab3736f97a367874d4e0bd61d51c1649 — Fußweg-Prüfung zählt nur Halte innerhalb der Valhalla-Tiles (Fahrplan NRW, D-24) |
 | 0.1.9 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.9` @sha256:a33ee73c8b211795113af2e52b488ee24b82d884a4400c09b3639cc429a09dc1 — Karte für Deutschland: Übersicht + Bundesländer (D-20), Optionen `map_uebersicht_zoom`, `map_tage` |
 | 0.1.8 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.8` @sha256:8698aaadfe2774a7197f0b3b805b5d9885165fa128352f659f38ca34c4c16563 — Job `rwth` (RWTH-Gebäudeliste, D-18), neuer Image-Name `schnellweg-*` |
 | 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.7` @sha256:60d4661918158d49e4625c004efec104772c58af3f71730d1c5c4dfd2c5d71b6 — Jobs `geocode` und `map` |
