@@ -55,6 +55,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.18 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.18` @sha256:a145f5f114db7cb7e2671084cbd5b6de04e1f2bc778eb2cb018b762b9156a2b5 — Klapprad-Bus-Malus 5 min; GOMEMLIMIT 400 MiB für den NRW-Fahrplan (~200 000 Halte, D-24) |
 | 0.1.19 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.19` @sha256:d225058403474053ea37ea32d53d09f3f86d4d6c7f1d94aad7e710af65a88d88 — `/v1/stops` mit gzip (NRW ~6 MB JSON) |
 | 0.1.20 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.20` @sha256:b22a0aa28bf193bab97dfa84df265d34fb11000d33c2b4be4d17ace9c61a3581 — GOGC 50 + GOMEMLIMIT 280 MiB (NRW lebend ~225 MB, vorher 444 MB RSS, D-24) |
+| 0.1.21 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.21` @sha256:adb959679059dcfb0687ca5af723a55aacb2c34e5c709c2d05bc7b4979237031 — `/v1/status` meldet den eigenen Speicher (`mem`) |
 | 0.1.13 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.13` @sha256:1203ebec836d5193d7d7d4a373f162c2513fbef708eb81e38ff1eecf5b03cb68 — `/v1/map` listet Regionen, `/v1/map/{id}` (D-20) |
 | 0.1.12 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.12` @sha256:c427c05d72f7fe09a105a96bdec5adc7bd158c48263382c6d4709f2de061cd6c — Wegformen der Fußwege, Halte je Fahrt, reiner Fußweg als Vergleich (D-19) |
 | 0.1.11 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.11` @sha256:ec6596380f8837ea21cda5504249579f4e8fdd1981a41f3ba3efe9c75ae5f858 — mehrere Suchlisten (`geocode` mit Komma), RWTH-Gebäude aus der Job-App (D-18), neuer Image-Name `schnellweg-*` |
