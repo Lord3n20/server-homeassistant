@@ -17,6 +17,9 @@ configuration:
   osm_sources:
     name: OSM-Quellen
     description: Geofabrik-Pfade ohne „-latest.osm.pbf“; zusammen müssen sie das Regionspolygon abdecken
+  geocode_sources:
+    name: Quellen der Adresssuche
+    description: Ganze Geofabrik-Gebiete ohne „-latest.osm.pbf“ (z. B. europe/germany); unabhängig vom Regionspolygon
   max_mem_mb:
     name: Speicherspitze (MB)
     description: Der Job bricht ab, wenn er mehr belegt; zusätzlich nie mehr als der freie Speicher minus 1 GB
