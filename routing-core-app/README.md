@@ -20,7 +20,7 @@ kompiliert. Anfragen, Start und Ziel werden nie protokolliert; Koordinaten komme
 
 - `GET /v1/status` – geladener Tag, Zahl der Halte/Muster, Echtzeitstand
 - `POST /v1/route` – `{"from":{"lat":…,"lon":…},"to":{…},"time":"2026-10-28T08:00:00+01:00","fern":false}`;
-  `fern: true` lässt Fernverkehr zu, der nicht im Deutschlandticket ist; `"kmh": 5.5` (2–8, ab 0.1.8; mit `"art": "einrad"` 4–20, `"rad"` 6–35, ab 0.1.14) rechnet
+  `fern: true` lässt Fernverkehr zu, der nicht im Deutschlandticket ist; `"kmh": 5.5` (2–8, ab 0.1.8; mit `"art": "einrad"` 4–20, `"rad"` 6–35, ab 0.1.14; `"klapprad"` 6–30, `"fixie"` 6–40, `"rennrad"` 10–45, `"mtb"` 6–35, ab 0.1.15) rechnet
   Zugangswege und Umstiege mit diesem Gehtempo statt 4,3 km/h (Mindestumstieg 60 s bleibt). Ab 0.1.9 mit
   Echtzeit: `dep_rt`/`arr_rt`, `canceled`, `skipped` je Fahrt, `risk` (`anschluss` | `ausfall`) je Weg
 - `POST /v1/departures` – `{"stops":["0:233718",…],"n":3}` → nächste Abfahrten je Halt (Plan + Echtzeit)
@@ -50,6 +50,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | Version | Image |
 |---|---|
 | 0.1.14 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.14` @sha256:bd1c492db5468779d135032925c6ec9a0054d226486144b8adb98911c4397776 — Fortbewegungsart `art` (fuss/einrad/rad), Rad nur Schiene mit Fahrradticket-Hinweis (D-21) |
+| 0.1.15 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.15` @sha256:b4777e95db7288ea76ab969170efac4f83aba813f6a91b1ae2d00c40c3a3e80d — Fahrradtypen klapprad/fixie/rennrad/mtb: Klapprad im Bus ohne Ticket, Rennrad mit Valhalla-Fahrradkosten, MTB meidet Treppen (D-22) |
 | 0.1.13 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.13` @sha256:1203ebec836d5193d7d7d4a373f162c2513fbef708eb81e38ff1eecf5b03cb68 — `/v1/map` listet Regionen, `/v1/map/{id}` (D-20) |
 | 0.1.12 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.12` @sha256:c427c05d72f7fe09a105a96bdec5adc7bd158c48263382c6d4709f2de061cd6c — Wegformen der Fußwege, Halte je Fahrt, reiner Fußweg als Vergleich (D-19) |
 | 0.1.11 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.11` @sha256:ec6596380f8837ea21cda5504249579f4e8fdd1981a41f3ba3efe9c75ae5f858 — mehrere Suchlisten (`geocode` mit Komma), RWTH-Gebäude aus der Job-App (D-18), neuer Image-Name `schnellweg-*` |
