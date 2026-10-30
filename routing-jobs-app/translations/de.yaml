@@ -31,7 +31,7 @@ configuration:
     description: Auch bei unveränderten Quellen neu bauen
   map_uebersicht_zoom:
     name: Höchste Zoomstufe der Übersicht
-    description: Übersicht: höchste Zoomstufe (ganzer Kartenausschnitt, grob)
+    description: "Übersicht: höchste Zoomstufe (ganzer Kartenausschnitt, grob)"
   map_tage:
-    name: Karte: Tage bis zum Neuschneiden
+    name: "Karte: Tage bis zum Neuschneiden"
     description: Karte erst neu holen, wenn der Stand so alt ist (0 = immer prüfen)
