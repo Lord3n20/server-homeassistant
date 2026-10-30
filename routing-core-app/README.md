@@ -62,6 +62,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.26 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.26` @sha256:b4d9c2026a3290a171ea4829353254968636fdf12969f9d25f871f1a4f07b4d9 — Klapprad, Fixie und MTB mit Valhallas Fahrradkosten ihres Typs statt Fußwegen (D-30) |
 | 0.1.27 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.27` @sha256:da640ccc9c1dae0910f3c829862be5bfb10d8740047dcc7829db823a64d00e7b — RWTH-Gebäude nur vorn, wenn Name oder Nummer passt (D-26) |
 | 0.1.28 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.28` @sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb — Custom (`einrad`): jedes Tempo über 0 km/h erlaubt |
+| 0.1.29 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.29` @sha256:7e3fa1a2586c03f706781268332a808b1cc22d34b6b4255242528ddf0e665dc9 — mehrere Verbindungen je Anfrage, knappe Verbindungen mit nötigem Tempo (`knapp`, D-31) |
 | 0.1.13 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.13` @sha256:1203ebec836d5193d7d7d4a373f162c2513fbef708eb81e38ff1eecf5b03cb68 — `/v1/map` listet Regionen, `/v1/map/{id}` (D-20) |
 | 0.1.12 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.12` @sha256:c427c05d72f7fe09a105a96bdec5adc7bd158c48263382c6d4709f2de061cd6c — Wegformen der Fußwege, Halte je Fahrt, reiner Fußweg als Vergleich (D-19) |
 | 0.1.11 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.11` @sha256:ec6596380f8837ea21cda5504249579f4e8fdd1981a41f3ba3efe9c75ae5f858 — mehrere Suchlisten (`geocode` mit Komma), RWTH-Gebäude aus der Job-App (D-18), neuer Image-Name `schnellweg-*` |
