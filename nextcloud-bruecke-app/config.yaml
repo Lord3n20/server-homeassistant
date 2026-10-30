@@ -1,6 +1,6 @@
 name: "Nextcloud-Brücke"
 description: "Bindet Nextcloud-Ordner per WebDAV nur lesend ein (ohne Plattencache) und gibt sie im internen Netz per SMB frei, z. B. für Immich"
-version: "0.1.0"
+version: "0.1.1"
 slug: "nextcloud_bruecke"
 arch:
   - aarch64
