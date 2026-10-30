@@ -31,7 +31,7 @@ configuration:
     description: Rebuild even if the sources did not change
   map_uebersicht_zoom:
     name: Overview zoom
-    description: Overview: highest zoom level (whole map extent, coarse)
+    description: "Overview: highest zoom level (whole map extent, coarse)"
   map_tage:
-    name: Map: days until refresh
+    name: "Map: days until refresh"
     description: Refresh the map only when it is this old (0 = always check)
