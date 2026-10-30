@@ -1,8 +1,14 @@
 # Nextcloud-Brücke
 
-Mounts folders of a Nextcloud (WebDAV) read-only with rclone, **without a VFS disk cache**
-(files are only streamed through RAM), and shares them as the SMB share `fotos`
-inside the Home Assistant app network (no ports published).
+Serves folders of a Nextcloud (WebDAV) read-only as one NFSv3 export with `rclone serve nfs`,
+**without a VFS disk cache** (files are only streamed through RAM). No FUSE needed (HAOS has none).
+Port 2049 is not published; only apps in the Home Assistant app network can reach it.
 
-Meant for photo apps such as Immich that need a local path or an SMB share, e.g. in the
-Immich app: `networkdisks: //91c9b2fc-nextcloud-bruecke/fotos`.
+Each entry of `ordner` becomes a top-level directory of the export. Mount it e.g. from a
+custom start script of the Immich app (`/addon_configs/<immich>/immich.sh`):
+
+```sh
+mkdir -p /mnt/fotos
+mount -t nfs -o ro,vers=3,proto=tcp,port=2049,mountport=2049,nolock,soft,timeo=600 \
+  91c9b2fc-nextcloud-bruecke:/ /mnt/fotos
+```
