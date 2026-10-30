@@ -10,6 +10,6 @@ configuration:
   ordner:
     name: Ordner
     description: name = Unterordner in der Freigabe, pfad = Pfad in der Nextcloud
-  ram_puffer_mb:
-    name: RAM-Puffer je Datei (MB)
-    description: Lesepuffer im Arbeitsspeicher, nichts landet auf der Platte
+  ram_cache_mb:
+    name: RAM-Cache (MB)
+    description: Obergrenze für den Datei-Cache im Arbeitsspeicher (tmpfs), nichts landet auf der Platte

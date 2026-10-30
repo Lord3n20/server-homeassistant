@@ -10,6 +10,6 @@ configuration:
   ordner:
     name: Folders
     description: name = subfolder in the export, pfad = path in Nextcloud
-  ram_puffer_mb:
-    name: RAM buffer per file (MB)
-    description: Read buffer in memory, nothing is written to disk
+  ram_cache_mb:
+    name: RAM cache (MB)
+    description: Upper limit for the file cache in memory (tmpfs), nothing is written to disk

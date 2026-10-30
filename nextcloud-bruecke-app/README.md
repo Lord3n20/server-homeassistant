@@ -1,7 +1,7 @@
 # Nextcloud-Brücke
 
 Serves folders of a Nextcloud (WebDAV) read-only as one NFSv3 export with `rclone serve nfs`,
-**without a VFS disk cache** (files are only streamed through RAM). No FUSE needed (HAOS has none).
+with a **VFS cache in RAM only** (tmpfs, size limit `ram_cache_mb`, nothing written to the SSD). No FUSE needed (HAOS has none).
 Port 2049 is not published; only apps in the Home Assistant app network can reach it.
 
 Each entry of `ordner` becomes a top-level directory of the export. Mount it e.g. from a
