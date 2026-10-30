@@ -9,11 +9,7 @@ configuration:
     description: In Nextcloud unter Einstellungen → Sicherheit erzeugen
   ordner:
     name: Ordner
-    description: name = Unterordner in der SMB-Freigabe „fotos“, pfad = Pfad in der Nextcloud
-  smb_benutzer:
-    name: SMB-Benutzer
-  smb_passwort:
-    name: SMB-Passwort
+    description: name = Unterordner in der Freigabe, pfad = Pfad in der Nextcloud
   ram_puffer_mb:
     name: RAM-Puffer je Datei (MB)
     description: Lesepuffer im Arbeitsspeicher, nichts landet auf der Platte

@@ -1,6 +1,6 @@
 name: "Nextcloud-Brücke"
-description: "Bindet Nextcloud-Ordner per WebDAV nur lesend ein (ohne Plattencache) und gibt sie im internen Netz per SMB frei, z. B. für Immich"
-version: "0.1.1"
+description: "Stellt Nextcloud-Ordner per rclone nur lesend (ohne Plattencache) als NFS-v3-Freigabe im internen App-Netz bereit, z. B. für Immich"
+version: "0.2.0"
 slug: "nextcloud_bruecke"
 arch:
   - aarch64
@@ -8,12 +8,7 @@ arch:
 startup: system
 boot: auto
 init: false
-apparmor: false
-privileged:
-  - SYS_ADMIN
-devices:
-  - /dev/fuse
-watchdog: "tcp://[HOST]:445"
+watchdog: "tcp://[HOST]:2049"
 environment:
   TZ: "Europe/Berlin"
 options:
@@ -23,8 +18,6 @@ options:
   ordner:
     - name: "Bilder"
       pfad: "Bilder"
-  smb_benutzer: "immich"
-  smb_passwort: ""
   ram_puffer_mb: 32
 schema:
   webdav_url: url
@@ -33,6 +26,4 @@ schema:
   ordner:
     - name: match(^[A-Za-z0-9_\-]+$)
       pfad: str
-  smb_benutzer: match(^[a-z][a-z0-9_\-]*$)
-  smb_passwort: password
   ram_puffer_mb: int(0,512)
