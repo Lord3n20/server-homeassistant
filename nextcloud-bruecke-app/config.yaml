@@ -1,6 +1,6 @@
 name: "Nextcloud-Brücke"
-description: "Stellt Nextcloud-Ordner per rclone nur lesend (ohne Plattencache) als NFS-v3-Freigabe im internen App-Netz bereit, z. B. für Immich"
-version: "0.2.0"
+description: "Stellt Nextcloud-Ordner per rclone nur lesend (Cache nur im RAM) als NFS-v3-Freigabe im internen App-Netz bereit, z. B. für Immich"
+version: "0.3.0"
 slug: "nextcloud_bruecke"
 arch:
   - aarch64
@@ -8,6 +8,7 @@ arch:
 startup: system
 boot: auto
 init: false
+tmpfs: true
 watchdog: "tcp://[HOST]:2049"
 environment:
   TZ: "Europe/Berlin"
@@ -18,7 +19,7 @@ options:
   ordner:
     - name: "Bilder"
       pfad: "Bilder"
-  ram_puffer_mb: 32
+  ram_cache_mb: 1024
 schema:
   webdav_url: url
   benutzer: str
@@ -26,4 +27,5 @@ schema:
   ordner:
     - name: match(^[A-Za-z0-9_\-]+$)
       pfad: str
-  ram_puffer_mb: int(0,512)
+  ram_puffer_mb: int(0,512)?
+  ram_cache_mb: int(256,4096)?
