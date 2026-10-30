@@ -1,0 +1,19 @@
+configuration:
+  webdav_url:
+    name: WebDAV-Adresse
+    description: z. B. https://nx….your-storageshare.de/remote.php/dav/files/BENUTZER
+  benutzer:
+    name: Nextcloud-Benutzer
+  app_passwort:
+    name: App-Passwort
+    description: In Nextcloud unter Einstellungen → Sicherheit erzeugen
+  ordner:
+    name: Ordner
+    description: name = Unterordner in der SMB-Freigabe „fotos“, pfad = Pfad in der Nextcloud
+  smb_benutzer:
+    name: SMB-Benutzer
+  smb_passwort:
+    name: SMB-Passwort
+  ram_puffer_mb:
+    name: RAM-Puffer je Datei (MB)
+    description: Lesepuffer im Arbeitsspeicher, nichts landet auf der Platte

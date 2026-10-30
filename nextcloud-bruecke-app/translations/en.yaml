@@ -1,0 +1,19 @@
+configuration:
+  webdav_url:
+    name: WebDAV URL
+    description: e.g. https://nx….your-storageshare.de/remote.php/dav/files/BENUTZER
+  benutzer:
+    name: Nextcloud user
+  app_passwort:
+    name: App password
+    description: Create in Nextcloud under Settings → Security
+  ordner:
+    name: Folders
+    description: name = subfolder in the SMB share "fotos", pfad = path in Nextcloud
+  smb_benutzer:
+    name: SMB user
+  smb_passwort:
+    name: SMB password
+  ram_puffer_mb:
+    name: RAM buffer per file (MB)
+    description: Read buffer in memory, nothing is written to disk
