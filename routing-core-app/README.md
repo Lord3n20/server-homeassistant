@@ -65,6 +65,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.29 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.29` @sha256:7e3fa1a2586c03f706781268332a808b1cc22d34b6b4255242528ddf0e665dc9 — mehrere Verbindungen je Anfrage, knappe Verbindungen mit nötigem Tempo (`knapp`, D-31) |
 | 0.1.30 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.30` @sha256:0c317b30a27bd236ebdfc812a839ea74eb01c2ea646373f8973cb842aff4d65c — Autorouten: `art` auto, `kmh` = Höchsttempo (D-32) |
 | 0.1.31 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.31` @sha256:dd7934f9d36023c145a8b96a143517ab982d2f8c59b8a771a3e009a453eb7f1d — Profile aus der App: `meiden` statt fester Art, ältere Apps unverändert (D-34) |
+| 0.1.35 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.35` @sha256:d91e191387611a13ac8b5fe1ec1189865fc596a4a742a1cae85e1b558afd8b91 — Verkehrslage bei Autorouten aus der Autobahn-API (D-38) |
 | 0.1.34 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.34` @sha256:34c0b2959c6a7184473b425f2315d33fc17d6825130662356fbc42761d5a3e54 — /v1/departures antwortet nie mit null (D-37) |
 | 0.1.33 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.33` @sha256:d1dda8d58b4c7f1f2543ccbbbc4e4ba3f7a80b67831d386dd32915f0fa0d3d94 — Auto bis 500 km/h, Tempo zählt auf Autobahn ohne Limit (D-35) |
 | 0.1.32 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.32` @sha256:4894d82361897b2f96dd30a062e4321c3c4fbb3a8fa3e44053b126134146952b — Radtempo außerhalb 5–60 km/h, Weg ohne Fahrt nur einmal, Auto-Belag ohne Sackgasse (D-34) |
