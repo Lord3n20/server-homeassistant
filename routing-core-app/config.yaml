@@ -1,6 +1,6 @@
 name: "SchnellWeg routing-core"
 description: "ÖPNV-Routing (RAPTOR) für die Region Aachen, API für die SchnellWeg-App"
-version: "0.1.39"
+version: "0.1.40"
 slug: "routing_core"
 url: "https://github.com/Lord3n20/SchnellWeg"
 # Fertiges Image aus dem CI von SchnellWeg (D-03), nichts wird auf dem HA-Host gebaut.
@@ -28,7 +28,7 @@ watchdog: "tcp://[HOST]:[PORT:8090]"
 environment:
   TZ: "Europe/Berlin"
   GOMEMLIMIT: "350MiB"
-  GOGC: "50"
+  GOGC: "30"
   GOMAXPROCS: "2"
 options:
   gtfs: "sr_gtfs.zip,de_rv.zip,de_fv.zip:fern"
