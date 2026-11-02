@@ -67,6 +67,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.31 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.31` @sha256:dd7934f9d36023c145a8b96a143517ab982d2f8c59b8a771a3e009a453eb7f1d — Profile aus der App: `meiden` statt fester Art, ältere Apps unverändert (D-34) |
 | 0.1.39 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.39` @sha256:46bbfc3ca76549498f852dec95737ef43412851e97446c1349c5c592f2f55725 — Mehrere Verbindungen auch bei dichtem Zubringer zum selben Zug (D-31) |
 | 0.1.40 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.40` @sha256:9c571cf525c41f17907d1a7ba8f9503ed6e294302e37694a288e11ce746442ef — Spätester Bus zur schnellsten Fahrt, keine unsinnig langen Verbindungen (D-31); GOGC 30 fürs RAM-Ziel |
+| 0.1.41 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.41` @sha256:34648b8ff2dacf1a34d6543a88ce2a1908e732d3dc463061f746eaed592aba02 — RAPTOR-Labels nur noch für erreichte Halte, spart ~60 MB im Betrieb (D-41) |
 | 0.1.38 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.38` @sha256:1cf4345bb9b6d8ccea930291af3d7c4803656fd515c9e9ec8752377b025c2891 — Manövertyp und Stau-Verlauf für die Fahransicht (D-40) |
 | 0.1.37 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.37` @sha256:82fa8776a7cbc256d19d83fddd8723880afd5091111593988b3b65672f595d8b — Abbiegehinweise repariert |
 | 0.1.36 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.36` @sha256:fd9edc775519c5454a8568c9a57cf201a68a5a3768c334fa797259a702eca46c — Umfahrung als Angebot, Abbiegehinweise (D-39) |
