@@ -70,6 +70,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.41 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.41` @sha256:34648b8ff2dacf1a34d6543a88ce2a1908e732d3dc463061f746eaed592aba02 — RAPTOR-Labels nur noch für erreichte Halte, spart ~60 MB im Betrieb (D-41) |
 | 0.1.42 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.42` @sha256:bbfd72862185e478bd43088b8e237d2ee1b26830d3763a78aa742a8adfa1d83e — Fahrplan lädt reproduzierbar: feste Reihenfolge statt Map-Iteration (D-41) |
 | 0.1.43 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.43` @sha256:433aa872fbc2d2a73b56627e0852580b11be4ac917e91117ff93cab58f578cd2 — Gleiche Ankunfts- und Abfahrtszeiten teilen sich ein Feld, ~7 MB weniger Heap (D-41) |
+| 0.1.44 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.44` @sha256:3828321210153ed0789f3ec85bd9887f3ca217b0b2469f26f9436334d744b0f5 — Stand eines ausgefallenen Verkehrsdienstes gilt höchstens 30 min |
 | 0.1.38 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.38` @sha256:1cf4345bb9b6d8ccea930291af3d7c4803656fd515c9e9ec8752377b025c2891 — Manövertyp und Stau-Verlauf für die Fahransicht (D-40) |
 | 0.1.37 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.37` @sha256:82fa8776a7cbc256d19d83fddd8723880afd5091111593988b3b65672f595d8b — Abbiegehinweise repariert |
 | 0.1.36 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.36` @sha256:fd9edc775519c5454a8568c9a57cf201a68a5a3768c334fa797259a702eca46c — Umfahrung als Angebot, Abbiegehinweise (D-39) |
