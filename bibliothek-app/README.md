@@ -9,8 +9,8 @@ Nach jeder Änderung schreibt die App die öffentlichen Daten als `buecher.json`
 ausliefert. Die Seite selbst (`bibliothek/index.html`) gehört zur Website, wird dort gepflegt
 und lädt nur diese Datei – nichts von fremden Servern.
 
-`buecher.json` enthält je Buch nur Titel, Untertitel, Autor, Verlag, Jahr, Genre, Status und ob
-es geliehen ist. Cover, Notizen, Bewertung, ISBN und Namen aus der Ausleihe bleiben im Panel.
+`buecher.json` enthält je Buch nur Titel, Untertitel, Autor, Verlag, Jahr, Genre, Status,
+Bewertung und ob es geliehen ist. Cover, Notizen, ISBN und Namen aus der Ausleihe bleiben im Panel.
 
 ## Daten
 
@@ -29,7 +29,7 @@ es geliehen ist. Cover, Notizen, Bewertung, ISBN und Namen aus der Ausleihe blei
 - **Suchen**: Titel und/oder Autor; die Trefferliste zeigt Ausgaben mit Jahr, Verlag und ISBN.
 - **Von Hand**: für Bücher, die nirgends verzeichnet sind.
 - **Sterne**: in der Liste 1–5 Sterne anklicken, derselbe Stern noch einmal = keine Bewertung.
-  Die Sterne bleiben im Panel und erscheinen nicht auf der Website.
+  Die Seite zeigt die Sterne nicht an, in `buecher.json` stehen sie aber weiterhin.
 - **Ausleihe**: beim Bearbeiten „Verliehen an …“ oder „Geliehen von …“ mit Person und Datum.
   In der Liste steht dann ein Hinweis mit „zurück“-Knopf; Filter „Verliehen“/„Geliehen“.
   Auf der Website steht bei geliehenen Büchern nur „geliehen“, Namen bleiben im Panel.
