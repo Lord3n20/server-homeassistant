@@ -508,15 +508,15 @@ def website_ordner():
     return MEDIA / teil, teil
 
 
-# Nur diese Felder kommen auf die Website (keine Notizen, keine Namen aus der Ausleihe).
-OEFFENTLICH = ("titel", "untertitel", "autor", "verlag", "jahr", "genre", "status", "bewertung")
+# Nur diese Felder kommen auf die Website (keine Notizen, keine Bewertung, keine Namen aus der Ausleihe).
+OEFFENTLICH = ("titel", "untertitel", "autor", "verlag", "jahr", "genre", "status")
 
 
 def veroeffentlichen(buecher):
     ziel, _ = website_ordner()
     sichtbar = sorted((b for b in buecher if b.get("oeffentlich")), key=sortierschluessel)
     daten = {"stand": date.today().isoformat(), "buecher": [
-        {**{k: b.get(k) or ("" if k != "bewertung" else 0) for k in OEFFENTLICH},
+        {**{k: b.get(k) or "" for k in OEFFENTLICH},
          "geliehen": b.get("leihe") == "geliehen"} for b in sichtbar]}
     ziel.mkdir(parents=True, exist_ok=True)
     tmp = ziel / "buecher.json.tmp"
