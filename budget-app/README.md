@@ -4,6 +4,11 @@ Haushaltsbuch im GnuCash-Format. Alles läuft im Panel „Budget“ (Seitenleist
 Eintragen von Hand, wiederkehrende Buchungen, Sparziel und Monatsberichte. Claude trägt Kassenbons über
 Skripte in Home Assistant als Ausgaben ein und kennt nur Ausgaben.
 
+## Berichte
+
+Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und die letzten 7 Tage. Claude liefert
+nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.
+
 ## Was Claude sieht
 
 Die Schnittstelle läuft auf einem internen Port ohne Freigabe nach außen und nimmt nur Anfragen von Home Assistant

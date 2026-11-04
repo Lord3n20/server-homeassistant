@@ -8,11 +8,13 @@
   :root {
     --bg: #f4f5f7; --card: #fff; --text: #1c1f23; --muted: #69707a; --line: #dfe2e6;
     --accent: #2a78d6; --vor: #b3bdb8; --danger: #c5362a; --gut: #1d7a4c;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #111315; --card: #1c1e21; --text: #e3e5e8; --muted: #9aa1a9; --line: #2e3236;
-      --accent: #3987e5; --vor: #56625c; --danger: #ef6c5e; --gut: #52c08a; }
+      --accent: #3987e5; --vor: #56625c; --danger: #ef6c5e; --gut: #52c08a;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
@@ -60,7 +62,24 @@
   .position { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 8px; margin-top: 8px; }
   @media (max-width: 600px) { .position { grid-template-columns: 1fr 1fr; } }
   .aktionen { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  .bericht { white-space: pre-wrap; max-width: 72ch; }
+  .fazit { white-space: pre-wrap; max-width: 72ch; margin: 0; }
+  .grafik { width: 100%; height: auto; display: block; overflow: visible; }
+  .grafik text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grafik .raster-linie { stroke: var(--line); stroke-width: 1; }
+  .grafik .treffer:hover ~ .x { visibility: visible; }
+  .stapel { display: flex; gap: 2px; height: 18px; margin-bottom: 10px; }
+  .stapel div { min-width: 2px; }
+  .stapel div:first-child { border-radius: 4px 0 0 4px; }
+  .stapel div:last-child { border-radius: 0 4px 4px 0; }
+  .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .zwei .card { margin-bottom: 0; }
+  .zwei { margin-bottom: 16px; }
+  .kat:hover .b, .kat:focus .b { filter: brightness(1.15); }
+  details.tabelle { margin-top: 10px; font-size: 0.85rem; }
+  details.tabelle summary { cursor: pointer; color: var(--muted); }
+  #tip { position: fixed; pointer-events: none; background: var(--text); color: var(--bg); font-size: 0.8rem; padding: 6px 9px; border-radius: 6px; z-index: 6; max-width: 240px; }
+  #tip b { font-size: 0.9rem; }
+  #tip i { display: inline-block; width: 12px; height: 2px; margin-right: 6px; vertical-align: middle; }
   [hidden] { display: none !important; }
   #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; z-index: 5; max-width: 90vw; }
 </style>
@@ -146,7 +165,22 @@
       <section class="card"><h2>Eingestellt</h2><table id="wListe"></table></section>
     </div>
 
-    <div data-seite="berichte"><section class="card" id="berichte"></section></div>
+    <div data-seite="berichte">
+      <div class="kopf"><h2 id="bTitel"></h2><select id="bZeit" aria-label="Zeitraum"></select></div>
+      <div class="kacheln" id="bKacheln"></div>
+      <section class="card" id="bFazit" hidden><p class="fazit"></p></section>
+      <section class="card"><h2 id="bVerlaufTitel"></h2><div class="legende" id="bVerlaufLegende"></div><div id="bVerlauf"></div></section>
+      <section class="card"><h2>Wofür das Geld ging</h2><div class="legende" id="bKatLegende"></div><div id="bKategorien"></div></section>
+      <div class="zwei">
+        <section class="card"><h2>Fest, Alltag, große Posten</h2><div id="bStapel"></div></section>
+        <section class="card"><h2>Wo du am meisten ausgibst</h2><div id="bHaendler"></div><p class="gedaempft">Ohne wiederkehrende Ausgaben.</p></section>
+      </div>
+      <section class="card"><h2 id="bTrendTitel"></h2><div class="legende" id="bTrendLegende"></div><div id="bTrend"></div></section>
+      <div class="zwei">
+        <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
+        <section class="card" id="bSparenKarte" hidden><h2>Sparpotenzial pro Monat</h2><div id="bSparen"></div></section>
+      </div>
+    </div>
 
     <div data-seite="einstellungen">
       <section class="card">
@@ -176,6 +210,7 @@
   </div>
 </main>
 <div id="toast" role="status" hidden></div>
+<div id="tip" hidden></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
@@ -434,13 +469,218 @@ $("#wForm").onsubmit = sicher(async (e) => {
 });
 
 // ---------- Berichte und Einstellungen ----------
-const berichteLaden = sicher(async () => {
-  const { berichte } = await api("api/berichte");
-  const titel = (m) => m.includes("W") ? `Woche ${+m.slice(6)}, ${m.slice(0, 4)}` : mName(m);
-  const monate = Object.keys(berichte).sort((a, b) => berichte[b].erstellt.localeCompare(berichte[a].erstellt));
-  $("#berichte").innerHTML = monate.map((m) => `<h2>${titel(m)}</h2><div class="gedaempft">Erstellt am ${esc(berichte[m].erstellt)}</div><p class="bericht">${esc(berichte[m].text)}</p>`).join("")
-    || '<p class="gedaempft">Noch kein Bericht. Claude legt ihn hier ab.</p>';
+const WOTAG = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const eur0 = (c) => (c / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const SVG = "http://www.w3.org/2000/svg";
+let bAktuell = null;
+
+// Der Tooltip setzt Namen nur als Text ein, sie können aus Bons stammen.
+function tipZeigen(e, kopf, zeilen) {
+  const t = $("#tip");
+  t.replaceChildren();
+  const k = document.createElement("div");
+  k.textContent = kopf;
+  t.append(k);
+  for (const [wert, name, farbe] of zeilen) {
+    const z = document.createElement("div");
+    if (farbe) { const i = document.createElement("i"); i.style.background = farbe; z.append(i); }
+    const b = document.createElement("b");
+    b.textContent = wert;
+    z.append(b, ` ${name}`);
+    t.append(z);
+  }
+  t.hidden = false;
+  const r = (e.clientX === undefined && e.target.getBoundingClientRect) ? e.target.getBoundingClientRect() : { left: e.clientX, top: e.clientY };
+  t.style.left = `${Math.max(8, Math.min(r.left + 14, innerWidth - t.offsetWidth - 8))}px`;
+  t.style.top = `${Math.max(8, r.top - t.offsetHeight - 10)}px`;
+}
+const tipWeg = () => { $("#tip").hidden = true; };
+function hover(el, kopf, zeilen) {
+  el.onpointermove = (e) => tipZeigen(e, kopf, zeilen);
+  el.onpointerleave = tipWeg;
+  el.tabIndex = 0;
+  el.onfocus = (e) => tipZeigen(e, kopf, zeilen);
+  el.onblur = tipWeg;
+}
+function schoeneObergrenze(v) {
+  const e = Math.pow(10, Math.floor(Math.log10(Math.max(v, 1)))), f = v / e;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e;
+}
+function legende(ziel, eintraege) {
+  $(ziel).innerHTML = eintraege.map(([n, f, linie]) => `<span><i style="background:${f};${linie ? "height:2px;vertical-align:middle" : ""}"></i>${esc(n)}</span>`).join("");
+}
+function tabelle(kopf, zeilen) {
+  return `<details class="tabelle"><summary>Als Tabelle</summary><table><tr>${kopf.map((k, i) => `<th${i ? ' class="zahl"' : ""}>${esc(k)}</th>`).join("")}</tr>`
+    + zeilen.map((z) => `<tr>${z.map((w, i) => `<td${i ? ' class="zahl"' : ""}>${esc(w)}</td>`).join("")}</tr>`).join("") + "</table></details>";
+}
+function flaeche(ziel, hoehe) {
+  const box = $(ziel);
+  const breite = Math.max(280, box.clientWidth || 640);
+  box.innerHTML = `<svg class="grafik" viewBox="0 0 ${breite} ${hoehe}" role="img"></svg>`;
+  return [box.firstChild, breite];
+}
+function raster(svg, breite, hoehe, oben, L, R, T, B) {
+  const y = (v) => T + (1 - v / oben) * (hoehe - T - B);
+  let g = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = oben * i / 4;
+    g += `<line class="raster-linie" x1="${L}" x2="${breite - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${eur0(v)}</text>`;
+  }
+  svg.insertAdjacentHTML("beforeend", g);
+  return y;
+}
+function saeule(x, y0, y1, w, farbe) {
+  const h = Math.max(1, y0 - y1), r = Math.min(4, h, w / 2);
+  return `<path fill="${farbe}" d="M${x},${y0}V${y0 - h + r}Q${x},${y0 - h} ${x + r},${y0 - h}H${x + w - r}Q${x + w},${y0 - h} ${x + w},${y0 - h + r}V${y0}Z"/>`;
+}
+// Säulen je Gruppe mit einer Achse; die ganze Gruppe ist die Trefferfläche.
+function saeulen(ziel, gruppen, reihen) {
+  const hoehe = 230, L = 52, R = 8, T = 10, B = 24;
+  const [svg, breite] = flaeche(ziel, hoehe);
+  const oben = schoeneObergrenze(Math.max(100, ...gruppen.flatMap((g) => reihen.map((r) => g[r.feld] || 0))) / 4) * 4;
+  const y = raster(svg, breite, hoehe, oben, L, R, T, B);
+  const schritt = (breite - L - R) / gruppen.length;
+  const w = Math.min(28, (schritt - 8 - 2 * (reihen.length - 1)) / reihen.length);
+  gruppen.forEach((g, i) => {
+    const gesamt = reihen.length * w + 2 * (reihen.length - 1);
+    let x = L + i * schritt + (schritt - gesamt) / 2, teile = "";
+    for (const r of reihen) { if (g[r.feld] > 0) teile += saeule(x, y(0), y(g[r.feld]), w, r.farbe); x += w + 2; }
+    svg.insertAdjacentHTML("beforeend", teile + `<text x="${L + i * schritt + schritt / 2}" y="${hoehe - 6}" text-anchor="middle">${esc(g.kurz)}</text>`);
+    const treffer = document.createElementNS(SVG, "rect");
+    for (const [k, v] of Object.entries({ x: L + i * schritt, y: T, width: schritt, height: hoehe - T - B, fill: "transparent" })) treffer.setAttribute(k, v);
+    hover(treffer, g.lang, reihen.map((r) => [eur(g[r.feld] || 0), r.name, r.farbe]));
+    svg.append(treffer);
+  });
+}
+// Aufsummierter Verlauf im Monat, das Fadenkreuz rastet auf den Tag ein.
+function linien(ziel, jetzt, davor, nameJetzt, nameDavor) {
+  const summiert = (l) => { let s = 0; return l.map((v) => (s += v)); };
+  const a = summiert(jetzt), b = summiert(davor);
+  const hoehe = 240, L = 52, R = 12, T = 10, B = 24, tage = Math.max(a.length, b.length, 28);
+  const [svg, breite] = flaeche(ziel, hoehe);
+  const oben = schoeneObergrenze(Math.max(100, ...a, ...b) / 4) * 4;
+  const y = raster(svg, breite, hoehe, oben, L, R, T, B);
+  const x = (i) => L + i / (tage - 1) * (breite - L - R);
+  const pfad = (l) => l.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(Math.max(0, v)).toFixed(1)}`).join("");
+  let g = [0, 7, 14, 21, 28].filter((i) => i < tage).map((i) => `<text x="${x(i)}" y="${hoehe - 6}" text-anchor="middle">${i + 1}.</text>`).join("");
+  if (b.length) g += `<path d="${pfad(b)}" fill="none" stroke="var(--vor)" stroke-width="2"/>`;
+  if (a.length) {
+    g += `<path d="${pfad(a)}" fill="none" stroke="var(--s1)" stroke-width="2"/><circle cx="${x(a.length - 1)}" cy="${y(Math.max(0, a[a.length - 1]))}" r="4.5" fill="var(--s1)" stroke="var(--card)" stroke-width="2"/>`;
+  }
+  g += `<line id="fadenkreuz" y1="${T}" y2="${hoehe - B}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/>`;
+  svg.insertAdjacentHTML("beforeend", g);
+  const flaecheTreffer = document.createElementNS(SVG, "rect");
+  for (const [k, v] of Object.entries({ x: L, y: T, width: breite - L - R, height: hoehe - T - B, fill: "transparent" })) flaecheTreffer.setAttribute(k, v);
+  const kreuz = svg.querySelector("#fadenkreuz");
+  flaecheTreffer.onpointermove = (e) => {
+    const r = svg.getBoundingClientRect();
+    const i = Math.max(0, Math.min(tage - 1, Math.round(((e.clientX - r.left) / r.width * breite - L) / (breite - L - R) * (tage - 1))));
+    kreuz.setAttribute("x1", x(i)); kreuz.setAttribute("x2", x(i)); kreuz.setAttribute("visibility", "visible");
+    const z = [];
+    if (i < a.length) z.push([eur(a[i]), nameJetzt, "var(--s1)"]);
+    if (i < b.length) z.push([eur(b[i]), nameDavor, "var(--vor)"]);
+    tipZeigen(e, `bis zum ${i + 1}.`, z);
+  };
+  flaecheTreffer.onpointerleave = () => { kreuz.setAttribute("visibility", "hidden"); tipWeg(); };
+  svg.append(flaecheTreffer);
+}
+function waagerecht(ziel, zeilen, farbe) {
+  const max = Math.max(1, ...zeilen.map((z) => z.betrag));
+  const box = $(ziel);
+  box.replaceChildren();
+  for (const z of zeilen) {
+    const r = document.createElement("div");
+    r.className = "kat";
+    r.innerHTML = `<span></span><div class="balken"><div class="b" style="width:${Math.max(0, z.betrag) / max * 100}%;background:${farbe}"></div></div><span class="zahl">${eur(z.betrag)}</span>`;
+    r.firstChild.textContent = z.name;
+    hover(r, z.name, [[eur(z.betrag), ""]]);
+    box.append(r);
+  }
+}
+
+function berichtZeichnen(d) {
+  bAktuell = d;
+  const woche = d.kennung === "woche";
+  const name = woche ? "Letzte 7 Tage" : mName(d.kennung);
+  const vergleich = woche ? "7 Tage davor" : mName(d.vergleich_titel);
+  $("#bTitel").textContent = woche ? d.titel : name;
+  const diff = d.gesamt - d.vergleich;
+  const kacheln = [["Ausgaben", eur(d.gesamt)], [`Zu ${vergleich}`, d.vergleich ? `${diff > 0 ? "+" : ""}${eur(diff)}` : "–"], ["Alltag", eur(d.alltag)]];
+  kacheln.push(woche ? ["Fest", eur(d.fix)] : ["Sparquote", d.einnahmen > 0 ? `${Math.round((d.einnahmen - d.gesamt) / d.einnahmen * 100)} %` : "–"]);
+  $("#bKacheln").innerHTML = kacheln.map(([l, v]) => `<div class="kachel"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join("");
+  $("#bFazit").hidden = !d.text;
+  $("#bFazit p").textContent = d.text;
+
+  if (woche) {
+    $("#bVerlaufTitel").textContent = "Tag für Tag";
+    legende("#bVerlaufLegende", [[name, "var(--s1)"], [vergleich, "var(--vor)"]]);
+    const start = new Date(`${d.von}T12:00:00`);
+    const gruppen = d.verlauf.map((v, i) => {
+      const t = new Date(start.getTime() + i * 86400000);
+      return { kurz: WOTAG[t.getDay()], lang: `${WOTAG[t.getDay()]}, ${t.toLocaleDateString("de-DE")}`, jetzt: v, davor: d.vergleich_verlauf[i] };
+    });
+    saeulen("#bVerlauf", gruppen, [{ feld: "jetzt", name, farbe: "var(--s1)" }, { feld: "davor", name: vergleich, farbe: "var(--vor)" }]);
+    $("#bVerlauf").insertAdjacentHTML("beforeend", tabelle(["Tag", name, vergleich], gruppen.map((g) => [g.lang, eur(g.jetzt), eur(g.davor)])));
+    $("#bTrendTitel").textContent = "Die letzten 8 Wochen";
+    legende("#bTrendLegende", []);
+    const t = d.trend.map((x) => ({ kurz: x.titel, lang: `7 Tage bis ${x.titel}`, ausgaben: x.ausgaben }));
+    saeulen("#bTrend", t, [{ feld: "ausgaben", name: "Ausgaben", farbe: "var(--s1)" }]);
+    $("#bTrend").insertAdjacentHTML("beforeend", tabelle(["7 Tage bis", "Ausgaben"], t.map((g) => [g.kurz, eur(g.ausgaben)])));
+  } else {
+    $("#bVerlaufTitel").textContent = "So hat sich der Monat aufgebaut";
+    legende("#bVerlaufLegende", [[name, "var(--s1)", 1], [vergleich, "var(--vor)", 1]]);
+    linien("#bVerlauf", d.verlauf, d.vergleich_verlauf, name, vergleich);
+    $("#bTrendTitel").textContent = "Einnahmen und Ausgaben, 6 Monate";
+    legende("#bTrendLegende", [["Ausgaben", "var(--s1)"], ["Einnahmen", "var(--s2)"]]);
+    const t = d.trend.map((x) => ({ kurz: MONATE[+x.titel.slice(5) - 1].slice(0, 3), lang: mName(x.titel), ausgaben: x.ausgaben, einnahmen: x.einnahmen }));
+    saeulen("#bTrend", t, [{ feld: "ausgaben", name: "Ausgaben", farbe: "var(--s1)" }, { feld: "einnahmen", name: "Einnahmen", farbe: "var(--s2)" }]);
+    $("#bTrend").insertAdjacentHTML("beforeend", tabelle(["Monat", "Ausgaben", "Einnahmen"], t.map((g) => [g.lang, eur(g.ausgaben), eur(g.einnahmen)])));
+  }
+
+  legende("#bKatLegende", [[name, "var(--s1)"], [vergleich, "var(--vor)"]]);
+  const max = Math.max(1, ...d.kategorien.flatMap((k) => [k.betrag, k.vergleich]));
+  const kat = $("#bKategorien");
+  kat.replaceChildren();
+  for (const k of d.kategorien) {
+    const r = document.createElement("div");
+    r.className = "kat";
+    r.innerHTML = `<span></span><div class="balken">${k.betrag > 0 ? `<div class="b" style="width:${k.betrag / max * 100}%"></div>` : ""}${k.vergleich > 0 ? `<div class="v" style="width:${k.vergleich / max * 100}%"></div>` : ""}</div><span class="zahl">${eur(k.betrag)}</span>`;
+    r.firstChild.textContent = kurz(k.pfad);
+    hover(r, kurz(k.pfad), [[eur(k.betrag), name, "var(--s1)"], [eur(k.vergleich), vergleich, "var(--vor)"]]);
+    kat.append(r);
+  }
+  if (!d.kategorien.length) kat.innerHTML = '<p class="gedaempft">Keine Ausgaben in diesem Zeitraum.</p>';
+
+  const teile = [["Fest", d.fix, "var(--s1)"], ["Alltag", d.alltag, "var(--s2)"], ["Große Posten ab 50 €", d.gross, "var(--s3)"]];
+  const positiv = teile.filter((t) => t[1] > 0);
+  const st = $("#bStapel");
+  st.innerHTML = '<div class="stapel"></div><table></table>';
+  for (const [n, b, f] of positiv) {
+    const s = document.createElement("div");
+    s.style.cssText = `flex:${b} 1 0;background:${f}`;
+    hover(s, n, [[eur(b), `${Math.round(b / d.gesamt * 100)} %`]]);
+    st.firstChild.append(s);
+  }
+  st.lastChild.innerHTML = teile.map(([n, b, f]) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${f};margin-right:6px"></span>${esc(n)}</td><td class="zahl">${eur(b)}</td></tr>`).join("");
+
+  waagerecht("#bHaendler", d.haendler, "var(--s1)");
+  $("#bPosten").innerHTML = d.posten.map((p) => `<tr><td class="gedaempft">${dmy(p.datum).slice(0, 6)}</td><td>${esc(p.beschreibung)}</td><td class="zahl">${eur(p.betrag)}</td></tr>`).join("");
+  $("#bSparenKarte").hidden = !d.vorschlaege.length;
+  waagerecht("#bSparen", d.vorschlaege.map((v) => ({ name: v.titel, betrag: v.betrag })), "var(--s3)");
+}
+const berichtLaden = sicher(async () => {
+  berichtZeichnen(await api(`api/bericht?k=${encodeURIComponent($("#bZeit").value)}`));
 });
+const berichteLaden = sicher(async () => {
+  const { monate } = await api("api/stand");
+  const alt = $("#bZeit").value || "woche";
+  $("#bZeit").innerHTML = '<option value="woche">Letzte 7 Tage</option>' + [...monate].reverse().map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
+  $("#bZeit").value = alt;
+  await berichtLaden();
+});
+$("#bZeit").onchange = berichtLaden;
+let bUhr;
+addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="berichte"]').hidden) berichtZeichnen(bAktuell); }, 150); });
 const einstellungenLaden = sicher(async () => {
   const e = await api("api/einstellungen");
   $("#zBetrag").value = e.sparziel ? eingabe(e.sparziel) : "";

@@ -224,6 +224,8 @@ class Schnittstelle(Basis):
             self.assertTrue(self.rufe("monatsbericht_speichern", monat=kennung, text="Bericht")[0]["ok"], kennung)
         self.rufe("monatsbericht_speichern", monat="2026-W46", text="Neu")
         self.assertEqual(sorted(buch.json_laden(ausgaben.BERICHTE, {})), ["2026-10", "2026-W46"])
+        self.rufe("monatsbericht_speichern", monat="2026-10", text="B", vorschlaege='[{"titel": "Abo", "betrag": "17,00"}]')
+        self.assertEqual(buch.json_laden(ausgaben.BERICHTE, {})["2026-10"]["vorschlaege"], [{"titel": "Abo", "betrag": 1700}])
         for falsch in ("2026-13", "2026-W54", "2026-W00", "letzte Woche"):
             self.assertFalse(self.rufe("monatsbericht_speichern", monat=falsch, text="Bericht")[0]["ok"], falsch)
 
@@ -242,6 +244,35 @@ class Schnittstelle(Basis):
 
 
 class Panel(Basis):
+    def test_bericht_zahlen(self):
+        buch.json_speichern(ausgaben.WIEDERKEHREND, [
+            {"id": "y", "art": "ausgabe", "name": "Miete", "betrag": 20000, "konto": GIRO, "gegenkonto": LEB, "tag": 1, "alle_monate": 1, "naechste": "2030-01-01", "ende": "", "aktiv": True}])
+        buch.buchen("ausgabe", "2026-09-30", "Davor", GIRO, [{"konto": LEB, "betrag": 500}])
+        buch.buchen("ausgabe", "2026-10-02", "Miete", GIRO, [{"konto": LEB, "betrag": 20000}])
+        buch.buchen("ausgabe", "2026-10-03", "Uhr Kauf", GIRO, [{"konto": LEB, "betrag": 18000}])
+        buch.buchen("ausgabe", "2026-10-31", "Aldi Süd Weg (x)", GIRO, [{"konto": LEB, "betrag": 700}])
+        buch.buchen("ausgabe", "2026-10-31", "Hopfen & Malz", GIRO, [{"konto": LEB, "betrag": 100}])
+        buch.buchen("einnahme", "2026-10-30", "BAföG", GIRO, [{"konto": BAF, "betrag": 85500}])
+        buch.json_speichern(ausgaben.BERICHTE, {"2026-10": {"text": "Kurz", "vorschlaege": [{"titel": "A", "betrag": 100}], "erstellt": "x"}})
+        d = budget.bericht("2026-10")
+        self.assertEqual((d["gesamt"], d["fix"], d["gross"], d["alltag"], d["vergleich"]), (38800, 20000, 18000, 800, 500))
+        self.assertEqual(d["einnahmen"], 85500)
+        self.assertEqual(len(d["verlauf"]), 31)
+        self.assertEqual(d["verlauf"][30], 800)
+        self.assertEqual(len(d["vergleich_verlauf"]), 30)
+        self.assertEqual([h["name"] for h in d["haendler"]][-2:], ["Aldi Süd", "Hopfen & Malz"])
+        self.assertEqual(d["trend"][-1]["ausgaben"], 38800)
+        self.assertEqual(d["vorschlaege"][0]["titel"], "A")
+        w = budget.bericht("woche")
+        self.assertEqual((len(w["verlauf"]), len(w["vergleich_verlauf"]), len(w["trend"])), (7, 7, 8))
+        with self.assertRaises(buch.BuchFehler):
+            budget.bericht("quatsch")
+
+    def test_bericht_laufender_monat_endet_heute(self):
+        heute = date.today()
+        d = budget.bericht(heute.strftime("%Y-%m"))
+        self.assertEqual(len(d["verlauf"]), heute.day)
+
     def test_api_ablauf(self):
         url = starten(budget.Handler)
         code, roh = anfrage(f"{url}/api/buchungen", {"art": "ausgabe", "datum": "2026-11-03", "beschreibung": "Bäcker", "konto": GIRO,

@@ -221,15 +221,20 @@ budget_monatsbericht_speichern:
       selector:
         text: {}
     text:
-      description: "Der Bericht als Text"
+      description: "Nur zwei oder drei kurze Sätze, die Grafiken zeigt das Panel selbst"
       required: true
+      selector:
+        text: {}
+    vorschlaege:
+      description: 'Sparvorschläge als JSON-Liste, z. B. [{"titel": "Abo kündigen", "betrag": "17,00"}]; Betrag pro Monat'
+      required: false
       selector:
         text: {}
   sequence:
   - action: rest_command.budget
     data:
       werkzeug: monatsbericht_speichern
-      daten: "{{ dict(monat=monat, text=text) }}"
+      daten: "{{ dict(monat=monat, text=text, vorschlaege=vorschlaege | default('')) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
