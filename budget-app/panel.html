@@ -689,6 +689,12 @@ function kuchenZeichnen(d) {
   mitte.textContent = eur0(d.gesamt);
   svg.append(mitte);
   box.append(svg);
+  if (gesamt > d.gesamt) {
+    const hinweis = document.createElement("p");
+    hinweis.className = "gedaempft";
+    hinweis.textContent = `Die Mitte ist nach Erstattungen gerechnet. ${eur(gesamt - d.gesamt)} davon gehören zu Käufen außerhalb dieses Zeitraums und fehlen in den Stücken.`;
+    box.append(hinweis);
+  }
   for (const art of d.kuchen) {
     const kopf = document.createElement("div");
     kopf.className = "kuchenart";
