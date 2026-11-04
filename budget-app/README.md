@@ -6,8 +6,18 @@ Skripte in Home Assistant als Ausgaben ein und kennt nur Ausgaben.
 
 ## Berichte
 
-Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und die letzten 7 Tage. Claude liefert
+Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und die letzten 7 Tage. Ein Kuchendiagramm zeigt von innen nach außen
+Fest, Alltag und große Posten, dann Kategorie, dann Händler. Claude liefert
 nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.
+
+## Depot
+
+Im Reiter „Depot“ trägst du je Position ISIN, Stückzahl und durchschnittlichen Kaufkurs ein. Das Panel zeigt dann den
+aktuellen Wert und Gewinn oder Verlust zum Kaufpreis; Vermögen und Sparziel rechnen mit diesen Werten. Ins Buch wird dabei nichts
+geschrieben. Kurse kommen von Lang & Schwarz, ersatzweise Tradegate, und werden höchstens einmal pro Minute geholt, nur solange
+das Panel offen ist. Beide Schnittstellen sind inoffiziell und können sich ändern; dann bleibt der letzte Kurs mit seiner Uhrzeit
+stehen. Käufe und Verkäufe, die danach im Buch landen, werden mit dem aktuellen Kurs geschätzt nachgezogen und markiert, bis du
+die Werte neu einträgst.
 
 ## Was Claude sieht
 
@@ -15,7 +25,7 @@ Die Schnittstelle läuft auf einem internen Port ohne Freigabe nach außen und n
 an. Sie hat keinen Weg zu den Daten des Panels. Claude erreicht sie über den MCP-Server von Home Assistant.
 
 - **Sieht Claude:** gebuchte Ausgaben, Ausgabenkategorien, die Namen der Zahlkonten und wiederkehrende Ausgaben.
-- **Sieht Claude nicht:** Salden, Vermögen, Sparziel, Einnahmen, Umbuchungen, Depot und wiederkehrende Einnahmen.
+- **Sieht Claude nicht:** Salden, Vermögen, Sparziel, Einnahmen, Umbuchungen, Depot und Kurse, wiederkehrende Einnahmen.
 - Claude kann eine Ausgabe nur vorschlagen und nach dem OK buchen. Erstattungen trägst du im Panel ein
   (negativer Betrag bei einer Ausgabe); Claude sieht sie danach als negative Ausgabe.
 
