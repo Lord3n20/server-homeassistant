@@ -253,7 +253,7 @@ class Depot(Basis):
 
         def holen(isin):
             self.abrufe.append(isin)
-            return {"kurs": self.kurs, "vortag": 10.0, "quelle": "Test", "zeit": __import__("time").time()}
+            return {"kurs": self.kurs, "vortag": 10.0, "quelle": "Test", "zeit": 1.0}
         depot.kurs_holen = holen
         depot.eintragen(DEPOT, {"isin": "IE00B4L5Y983", "stueck": "10,5", "kaufkurs": "10,00"})
 
@@ -273,7 +273,7 @@ class Depot(Basis):
         depot.uebersicht()
         self.assertEqual(len(self.abrufe), 1)
         kurse = buch.json_laden(depot.KURSE, {})
-        kurse["IE00B4L5Y983"]["zeit"] = 0
+        kurse["IE00B4L5Y983"]["abgerufen"] = 0
         buch.json_speichern(depot.KURSE, kurse)
         depot.kurs_holen = lambda isin: None
         self.assertEqual(depot.uebersicht()["positionen"][0]["kurs"], 12.0)
@@ -296,6 +296,36 @@ class Depot(Basis):
         s = budget.stand()
         self.assertEqual(s["vermoegen"], 987654 + 12600)
         self.assertEqual(buch.lesen()[1][0]["splits"][1]["betrag"], 123456)
+
+    def test_geldkurs_zuerst_sonst_mittelkurs(self):
+        depot.kurs_holen = self.alt
+        echt = depot.json_holen
+        ls = [{"isin": "AT000000STR1", "instrumentId": 7}]
+        chart = {"info": {"plotlines": [{"id": "previousDay", "value": 100.0}]},
+                 "series": {"intraday": {"data": [[1793809140000, 103.2]]}}}
+
+        def tradegate_ok(url):
+            return {"bid": "1.102,80", "ask": "1.103,20", "last": "1.103,00", "close": 1101.5}
+        depot.json_holen = tradegate_ok
+        try:
+            k = depot.kurs_holen("AT000000STR1")
+            self.assertEqual((k["kurs"], k["vortag"], k["quelle"]), (1102.8, 1101.5, "Geldkurs Tradegate"))
+
+            def ohne_tradegate(url):
+                if "tradegate" in url:
+                    return {"bid": 0, "close": 1}
+                return ls if "search" in url else chart
+            depot.json_holen = ohne_tradegate
+            k = depot.kurs_holen("AT000000STR1")
+            self.assertEqual((k["kurs"], k["quelle"]), (103.2, "Mittelkurs Lang & Schwarz"))
+            self.assertEqual(k["zeit"], 1793809140 - 3600)
+
+            def alles_kaputt(url):
+                raise OSError("weg")
+            depot.json_holen = alles_kaputt
+            self.assertIsNone(depot.kurs_holen("AT000000STR1"))
+        finally:
+            depot.json_holen = echt
 
     def test_falsche_eingaben(self):
         for falsch in ({"isin": "ABC", "stueck": "1", "kaufkurs": "1"}, {"isin": "IE00B4L5Y983", "stueck": "0", "kaufkurs": "1"},

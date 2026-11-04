@@ -2,9 +2,10 @@
 
 Stückzahl und Kaufpreis trägt der Nutzer im Panel ein, sie liegen in
 /data/depot.json. Spätere Käufe und Verkäufe im Buch werden mit dem aktuellen Kurs
-geschätzt nachgezogen. Die Kurse kommen von Lang & Schwarz, ersatzweise von
-Tradegate (beide ohne Schlüssel und inoffiziell) und werden höchstens einmal pro
-Minute geholt. Nach außen geht dabei nur die ISIN. ausgaben.py kennt dieses Modul nicht.
+geschätzt nachgezogen. Bewertet wird zum Geldkurs von Tradegate, ersatzweise zum
+Mittelkurs von Lang & Schwarz (beide ohne Schlüssel und inoffiziell). Kurse werden
+höchstens einmal pro Minute geholt, nach außen geht dabei nur die ISIN. ausgaben.py
+kennt dieses Modul nicht.
 """
 import json
 import re
@@ -13,7 +14,7 @@ import time
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, datetime, timezone
 
 import buch
 from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
@@ -36,25 +37,32 @@ def json_holen(url):
         return json.loads(r.read())
 
 
+def von_tradegate(isin):
+    d = json_holen(f"{TRADEGATE}?" + urllib.parse.urlencode({"isin": isin}))
+    zahl = lambda w: float(str(w).replace(".", "").replace(",", ".")) if "," in str(w) else float(w)
+    kurs = zahl(d["bid"])
+    if kurs <= 0:
+        raise ValueError("kein Geldkurs")
+    return {"kurs": kurs, "vortag": zahl(d["close"]), "quelle": "Geldkurs Tradegate", "zeit": time.time()}
+
+
 def von_ls(isin):
     treffer = json_holen(f"{LS}/.lstc/instrument/search/main?" + urllib.parse.urlencode({"q": isin, "localeId": 2}))
     kennung = next(x["instrumentId"] for x in treffer if x.get("isin") == isin)
     daten = json_holen(f"{LS}/instrument/chart/dataForInstrument?" + urllib.parse.urlencode({"instrumentId": kennung}))
     linien = daten["info"].get("plotlines") or []
     vortag = next((p["value"] for p in linien if p.get("id") == "previousDay"), None)
-    return {"kurs": float(daten["series"]["intraday"]["data"][-1][1]), "vortag": vortag, "quelle": "Lang & Schwarz"}
-
-
-def von_tradegate(isin):
-    d = json_holen(f"{TRADEGATE}?" + urllib.parse.urlencode({"isin": isin}))
-    zahl = lambda w: float(str(w).replace(".", "").replace(",", ".")) if "," in str(w) else float(w)
-    return {"kurs": zahl(d["last"]), "vortag": zahl(d["close"]), "quelle": "Tradegate"}
+    stempel, kurs = daten["series"]["intraday"]["data"][-1]
+    # Die Zeitstempel sind Berliner Ortszeit, als wäre sie UTC.
+    tag = datetime.fromtimestamp(stempel / 1000, timezone.utc).date()
+    return {"kurs": float(kurs), "vortag": vortag, "quelle": "Mittelkurs Lang & Schwarz",
+            "zeit": stempel / 1000 - buch.berlin_stunden(tag) * 3600}
 
 
 def kurs_holen(isin):
-    for quelle in (von_ls, von_tradegate):
+    for quelle in (von_tradegate, von_ls):
         try:
-            return {**quelle(isin), "zeit": time.time()}
+            return quelle(isin)
         except (OSError, ValueError, KeyError, IndexError, StopIteration, TypeError):
             continue
     return None
@@ -64,13 +72,13 @@ def aktualisieren(isins):
     """Holt veraltete Kurse; schlägt das fehl, bleibt der letzte bekannte Kurs stehen."""
     with kurs_lock:
         kurse = json_laden(KURSE, {})
-        alt = [i for i in isins if time.time() - kurse.get(i, {}).get("zeit", 0) > MAX_ALTER]
+        alt = [i for i in isins if time.time() - kurse.get(i, {}).get("abgerufen", 0) > MAX_ALTER]
         if not alt:
             return kurse
         with ThreadPoolExecutor(max_workers=4) as pool:
             for isin, kurs in zip(alt, pool.map(kurs_holen, alt)):
                 if kurs:
-                    kurse[isin] = kurs
+                    kurse[isin] = {**kurs, "abgerufen": time.time()}
         json_speichern(KURSE, kurse)
         return kurse
 
