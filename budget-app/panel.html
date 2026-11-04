@@ -168,6 +168,7 @@
     <div data-seite="berichte">
       <div class="kopf"><h2 id="bTitel"></h2><select id="bZeit" aria-label="Zeitraum"></select></div>
       <div class="kacheln" id="bKacheln"></div>
+      <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" hidden></p></section>
       <section class="card" id="bFazit" hidden><p class="fazit"></p></section>
       <section class="card"><h2 id="bVerlaufTitel"></h2><div class="legende" id="bVerlaufLegende"></div><div id="bVerlauf"></div></section>
       <section class="card"><h2>Wofür das Geld ging</h2><div class="legende" id="bKatLegende"></div><div id="bKategorien"></div></section>
@@ -176,10 +177,7 @@
         <section class="card"><h2>Wo du am meisten ausgibst</h2><div id="bHaendler"></div><p class="gedaempft">Ohne wiederkehrende Ausgaben.</p></section>
       </div>
       <section class="card"><h2 id="bTrendTitel"></h2><div class="legende" id="bTrendLegende"></div><div id="bTrend"></div></section>
-      <div class="zwei">
-        <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
-        <section class="card" id="bSparenKarte" hidden><h2>Sparpotenzial pro Monat</h2><div id="bSparen"></div></section>
-      </div>
+      <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
     </div>
 
     <div data-seite="einstellungen">
@@ -666,6 +664,9 @@ function berichtZeichnen(d) {
   waagerecht("#bHaendler", d.haendler, "var(--s1)");
   $("#bPosten").innerHTML = d.posten.map((p) => `<tr><td class="gedaempft">${dmy(p.datum).slice(0, 6)}</td><td>${esc(p.beschreibung)}</td><td class="zahl">${eur(p.betrag)}</td></tr>`).join("");
   $("#bSparenKarte").hidden = !d.vorschlaege.length;
+  $("#bSparenTitel").textContent = `Sparpotenzial: rund ${eur0(d.vorschlaege.reduce((a, v) => a + v.betrag, 0))} pro Monat`;
+  $("#bSparenQuelle").hidden = !woche;
+  if (woche && d.vorschlaege_aus) $("#bSparenQuelle").textContent = `Aus dem Bericht für ${mName(d.vorschlaege_aus)}.`;
   waagerecht("#bSparen", d.vorschlaege.map((v) => ({ name: v.titel, betrag: v.betrag })), "var(--s3)");
 }
 const berichtLaden = sicher(async () => {

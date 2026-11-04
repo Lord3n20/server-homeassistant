@@ -224,6 +224,9 @@ def bericht(kennung):
     berichte = json_laden(ausgaben.BERICHTE, {})
     wochen = sorted(k for k in berichte if "W" in k)
     text = berichte.get(wochen[-1] if kennung == "woche" and wochen else kennung) or {}
+    # Die Wochenansicht zeigt die Sparvorschläge aus dem neuesten Monatsbericht.
+    mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and v.get("vorschlaege"))
+    quelle = kennung if kennung != "woche" else (mit_vorschlaegen[-1] if mit_vorschlaegen else "")
     return {
         "kennung": kennung, "titel": titel, "vergleich_titel": vergleich_titel, "von": von.isoformat(),
         "gesamt": summe(jetzt), "vergleich": summe(davor), "fix": summe(fix), "gross": summe(gross),
@@ -236,7 +239,8 @@ def bericht(kennung):
         "haendler": [{"name": n, "betrag": b} for n, b in sorted(haendler.items(), key=lambda x: -x[1])[:6] if b > 0],
         "posten": [{"datum": z["datum"], "beschreibung": z["beschreibung"], "betrag": z["gesamt"]}
                    for z in sorted(jetzt, key=lambda z: -z["gesamt"])[:5]],
-        "trend": trend, "text": text.get("text", ""), "vorschlaege": text.get("vorschlaege", []),
+        "trend": trend, "text": text.get("text", ""),
+        "vorschlaege": berichte.get(quelle, {}).get("vorschlaege", []), "vorschlaege_aus": quelle,
     }
 
 

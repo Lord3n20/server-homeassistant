@@ -265,6 +265,7 @@ class Panel(Basis):
         self.assertEqual(d["vorschlaege"][0]["titel"], "A")
         w = budget.bericht("woche")
         self.assertEqual((len(w["verlauf"]), len(w["vergleich_verlauf"]), len(w["trend"])), (7, 7, 8))
+        self.assertEqual((w["vorschlaege"][0]["titel"], w["vorschlaege_aus"]), ("A", "2026-10"))
         with self.assertRaises(buch.BuchFehler):
             budget.bericht("quatsch")
 
