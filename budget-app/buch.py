@@ -337,7 +337,7 @@ def einordnen(konten, b):
 
 
 def ausgabezeilen(von=None, bis=None):
-    """Nur Ausgaben, ohne Zahlkonto: das Einzige, was den Connector verlässt."""
+    """Nur Ausgaben, ohne Zahlkonto: das Einzige, was an Claude geht."""
     konten, buchungen = lesen()
     zeilen = []
     for b in buchungen:

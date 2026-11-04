@@ -1,12 +1,13 @@
 # Budget
 
 Haushaltsbuch im GnuCash-Format. Alles läuft im Panel „Budget“ (Seitenleiste): Übersicht, Buchungen,
-Eintragen von Hand, wiederkehrende Buchungen, Sparziel und Monatsberichte. Dazu kommt ein
-Claude-Connector, der Kassenbons als Ausgaben einträgt und nur Ausgaben kennt.
+Eintragen von Hand, wiederkehrende Buchungen, Sparziel und Monatsberichte. Claude trägt Kassenbons über
+Skripte in Home Assistant als Ausgaben ein und kennt nur Ausgaben.
 
 ## Was Claude sieht
 
-Der Connector läuft auf einem eigenen Port und hat keinen Weg zu den Daten des Panels.
+Die Schnittstelle läuft auf einem internen Port ohne Freigabe nach außen und nimmt nur Anfragen von Home Assistant
+an. Sie hat keinen Weg zu den Daten des Panels. Claude erreicht sie über den MCP-Server von Home Assistant.
 
 - **Sieht Claude:** gebuchte Ausgaben, Ausgabenkategorien, die Namen der Zahlkonten und wiederkehrende Ausgaben.
 - **Sieht Claude nicht:** Salden, Vermögen, Sparziel, Einnahmen, Umbuchungen, Depot und wiederkehrende Einnahmen.
@@ -18,17 +19,15 @@ Der Connector läuft auf einem eigenen Port und hat keinen Weg zu den Daten des 
 ## Einrichtung
 
 1. App installieren und starten, im Panel die GnuCash-Datei hochladen (gepackt oder unkomprimiert, XML).
-2. In den Optionen `oeffentliche_url` (z. B. `https://budget.example.org`, ohne `/` am Ende) und
-   `connector_passwort` (mindestens 12 Zeichen) setzen.
-3. Im Reverse Proxy die öffentliche Adresse auf Port 8798 zeigen lassen, nur per HTTPS.
-4. In Claude unter Connectors `https://…/mcp` hinzufügen und beim Anmelden das Passwort eingeben.
+2. `ha-beispiel.yaml` übernehmen: `rest_command` in die `configuration.yaml`, die Skripte in die `scripts.yaml`.
+3. Die Skripte für Assist freigeben (nichts sonst von dieser App), damit sie im MCP-Server auftauchen.
 
 ## Daten
 
 - Buch: `/data/haushaltsbuch.gnucash`, immer unkomprimiert und über „Buch herunterladen“ in GnuCash zu öffnen.
   Wer es dort ändert, lädt es danach wieder hoch.
 - Vor jeder Änderung liegt eine Kopie in `/data/versionen/` (die letzten 300).
-- Wiederkehrend, Vorschläge, Berichte, Einstellungen und Anmeldungen: JSON-Dateien in `/data/`, Tokens nur als Hash.
+- Wiederkehrend, Vorschläge, Berichte und Einstellungen: JSON-Dateien in `/data/`.
 - Alles gehört zu den normalen HA-Backups.
 
 ## Wiederkehrende Buchungen

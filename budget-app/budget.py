@@ -1,8 +1,8 @@
-"""Budget: Haushaltsbuch im GnuCash-Format mit Panel und Claude-Connector.
+"""Budget: Haushaltsbuch im GnuCash-Format mit Panel und Schnittstelle für Claude.
 
 Das Ingress-Panel (panel.html) spricht mit der JSON-API hier und ist der einzige
-Weg zu Salden, Einnahmen, Umbuchungen und Depot. Der Connector (mcp.py) läuft
-auf einem eigenen Port und kennt nur Ausgaben. Wiederkehrende Buchungen liegen in
+Weg zu Salden, Einnahmen, Umbuchungen und Depot. Claude kommt über Skripte in Home
+Assistant auf einen internen Port (ausgaben.py), der nur Ausgaben kennt. Wiederkehrende Buchungen liegen in
 /data/wiederkehrend.json und werden fällig automatisch ins Buch geschrieben.
 """
 import json
@@ -17,12 +17,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import buch
-import mcp
+import ausgaben
 from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
 PANEL = Path(__file__).with_name("panel.html")
 PORT = int(os.environ.get("BUDGET_PORT", "8099"))
-MCP_PORT = int(os.environ.get("BUDGET_MCP_PORT", "8098"))
+AUSGABEN_PORT = int(os.environ.get("BUDGET_AUSGABEN_PORT", "8098"))
 # Nur das Ingress-Gateway des Supervisors darf zugreifen (lokal zum Testen auch 127.0.0.1).
 ERLAUBT = {"172.30.32.2", "127.0.0.1", "::1"}
 EINSTELLUNGEN = DATA / "einstellungen.json"
@@ -59,7 +59,7 @@ def faellige_buchen(heute=None):
     with lock:
         if not buch.vorhanden():
             return 0
-        liste = json_laden(mcp.WIEDERKEHREND, [])
+        liste = json_laden(ausgaben.WIEDERKEHREND, [])
         gebucht = 0
         for w in liste:
             while w.get("aktiv", True) and w["naechste"] <= heute.isoformat() and (not w["ende"] or w["naechste"] <= w["ende"]):
@@ -70,7 +70,7 @@ def faellige_buchen(heute=None):
                                 [{"konto": w["gegenkonto"], "betrag": w["betrag"], "memo": memo}])
                     gebucht += 1
                 w["naechste"] = buch.monat_plus(date.fromisoformat(w["naechste"]), w["alle_monate"], w["tag"]).isoformat()
-                json_speichern(mcp.WIEDERKEHREND, liste)
+                json_speichern(ausgaben.WIEDERKEHREND, liste)
         return gebucht
 
 
@@ -222,11 +222,11 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "/api/monat":
             return self.antwort(200, monat(q.get("m", [""])[0]))
         if pfad == "/api/wiederkehrend":
-            return self.antwort(200, {"liste": json_laden(mcp.WIEDERKEHREND, [])})
+            return self.antwort(200, {"liste": json_laden(ausgaben.WIEDERKEHREND, [])})
         if pfad == "/api/vorschlaege":
-            return self.antwort(200, {"liste": [v for v in mcp.vorschlaege_laden() if v["status"] == "offen"]})
+            return self.antwort(200, {"liste": [v for v in ausgaben.vorschlaege_laden() if v["status"] == "offen"]})
         if pfad == "/api/berichte":
-            return self.antwort(200, {"berichte": json_laden(mcp.BERICHTE, {})})
+            return self.antwort(200, {"berichte": json_laden(ausgaben.BERICHTE, {})})
         if pfad == "/api/einstellungen":
             return self.antwort(200, json_laden(EINSTELLUNGEN, {}))
         if pfad == "/api/export":
@@ -249,16 +249,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.antwort(200, {"id": buch.konto_anlegen(daten.get("name"), daten.get("eltern"))})
         if pfad == "/api/wiederkehrend":
             with lock:
-                liste = json_laden(mcp.WIEDERKEHREND, [])
+                liste = json_laden(ausgaben.WIEDERKEHREND, [])
                 liste.append(wiederkehrend_pruefen(daten))
-                json_speichern(mcp.WIEDERKEHREND, liste)
+                json_speichern(ausgaben.WIEDERKEHREND, liste)
             return self.antwort(200, {"gebucht": faellige_buchen()})
         m = re.fullmatch(r"/api/vorschlaege/(\w+)/(buchen|verwerfen)", pfad)
         if m and m[2] == "buchen":
-            mcp.vorschlag_buchen(m[1], daten.get("trotz_duplikat") is True)
+            ausgaben.vorschlag_buchen(m[1], daten.get("trotz_duplikat") is True)
             return self.antwort(200, {"ok": True})
         if m:
-            mcp.vorschlag_verwerfen(m[1])
+            ausgaben.vorschlag_verwerfen(m[1])
             return self.antwort(200, {"ok": True})
         self.fehler(404, "Nicht gefunden")
 
@@ -273,12 +273,12 @@ class Handler(BaseHTTPRequestHandler):
         m = re.fullmatch(r"/api/wiederkehrend/(\w+)", pfad)
         if m:
             with lock:
-                liste = json_laden(mcp.WIEDERKEHREND, [])
+                liste = json_laden(ausgaben.WIEDERKEHREND, [])
                 i = next((i for i, w in enumerate(liste) if w["id"] == m[1]), None)
                 if i is None:
                     raise BuchFehler("Eintrag nicht gefunden")
                 liste[i] = wiederkehrend_pruefen(daten, liste[i])
-                json_speichern(mcp.WIEDERKEHREND, liste)
+                json_speichern(ausgaben.WIEDERKEHREND, liste)
             return self.antwort(200, {"gebucht": faellige_buchen()})
         if pfad == "/api/einstellungen":
             ziel = cent(daten["sparziel"]) if daten.get("sparziel") not in (None, "") else 0
@@ -296,8 +296,8 @@ class Handler(BaseHTTPRequestHandler):
         m = re.fullmatch(r"/api/wiederkehrend/(\w+)", pfad)
         if m:
             with lock:
-                liste = json_laden(mcp.WIEDERKEHREND, [])
-                json_speichern(mcp.WIEDERKEHREND, [w for w in liste if w["id"] != m[1]])
+                liste = json_laden(ausgaben.WIEDERKEHREND, [])
+                json_speichern(ausgaben.WIEDERKEHREND, [w for w in liste if w["id"] != m[1]])
             return self.antwort(200, {"ok": True})
         self.fehler(404, "Nicht gefunden")
 
@@ -305,8 +305,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     DATA.mkdir(parents=True, exist_ok=True)
     threading.Thread(target=faellige_schleife, daemon=True).start()
-    threading.Thread(target=ThreadingHTTPServer(("0.0.0.0", MCP_PORT), mcp.Handler).serve_forever, daemon=True).start()
-    print(f"Budget läuft: Panel auf Port {PORT}, Connector auf Port {MCP_PORT}")
+    threading.Thread(target=ThreadingHTTPServer(("0.0.0.0", AUSGABEN_PORT), ausgaben.Handler).serve_forever, daemon=True).start()
+    print(f"Budget läuft: Panel auf Port {PORT}, Ausgaben-Schnittstelle auf Port {AUSGABEN_PORT}")
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

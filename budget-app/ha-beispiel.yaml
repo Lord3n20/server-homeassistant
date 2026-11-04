@@ -1,0 +1,252 @@
+# Für configuration.yaml, Block rest_command:
+#
+#   budget:
+#     url: "http://91c9b2fc-budget:8098/werkzeug/{{ werkzeug }}"
+#     method: POST
+#     content_type: application/json
+#     payload: "{{ daten | tojson }}"
+#     timeout: 20
+#
+# Für scripts.yaml:
+
+budget_kategorien:
+  alias: "Budget: Kategorien und Zahlkonten"
+  description: "Listet die gültigen Ausgabenkategorien und die Namen der Zahlkonten, ohne Salden. Vor dem ersten Vorschlag aufrufen."
+  icon: mdi:cash-multiple
+  mode: parallel
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: kategorien_und_zahlkonten
+      daten: {}
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_ausgabe_vorschlagen:
+  alias: "Budget: Ausgabe vorschlagen"
+  description: "Legt eine Ausgabe, etwa von einem Kassenbon, als Vorschlag an und prüft Summe und Duplikate. Bucht noch nicht. Das Ergebnis dem Nutzer zeigen und erst nach seinem OK bestätigen. Einnahmen, Erstattungen und Umbuchungen trägt der Nutzer selbst ein."
+  icon: mdi:cash-multiple
+  mode: parallel
+  fields:
+    datum:
+      description: "Datum als JJJJ-MM-TT"
+      required: true
+      selector:
+        text: {}
+    beschreibung:
+      description: "Händler oder Zweck"
+      required: true
+      selector:
+        text: {}
+    zahlkonto:
+      description: "Name des Zahlkontos aus budget_kategorien"
+      required: true
+      selector:
+        text: {}
+    positionen:
+      description: "JSON-Liste, z. B. [{\"kategorie\": \"Ausgaben:Lebensmittel\", \"betrag\": \"12,34\", \"memo\": \"Äpfel\"}]"
+      required: true
+      selector:
+        text: {}
+    bonsumme:
+      description: "Summe laut Bon, wird gegen die Positionen geprüft"
+      required: false
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: ausgabe_vorschlagen
+      daten:
+        datum: "{{ datum }}"
+        beschreibung: "{{ beschreibung }}"
+        zahlkonto: "{{ zahlkonto }}"
+        positionen: "{{ positionen }}"
+        bonsumme: "{{ bonsumme | default('') }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_ausgabe_bestaetigen:
+  alias: "Budget: Ausgabe buchen"
+  description: "Bucht einen Vorschlag, nachdem der Nutzer ihn bestätigt hat. Ein zweiter Aufruf bucht nicht noch einmal."
+  icon: mdi:cash-multiple
+  mode: parallel
+  fields:
+    vorschlag_id:
+      description: "Nummer aus dem Vorschlag"
+      required: true
+      selector:
+        text: {}
+    trotz_duplikat:
+      description: "Nur true, wenn der Nutzer ein mögliches Duplikat ausdrücklich bestätigt hat"
+      required: false
+      selector:
+        boolean: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: ausgabe_bestaetigen
+      daten:
+        vorschlag_id: "{{ vorschlag_id }}"
+        trotz_duplikat: "{{ trotz_duplikat | default('') }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_vorschlag_verwerfen:
+  alias: "Budget: Vorschlag verwerfen"
+  description: "Verwirft einen offenen Vorschlag."
+  icon: mdi:cash-multiple
+  mode: parallel
+  fields:
+    vorschlag_id:
+      description: "Nummer aus dem Vorschlag"
+      required: true
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: vorschlag_verwerfen
+      daten:
+        vorschlag_id: "{{ vorschlag_id }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_ausgaben_lesen:
+  alias: "Budget: Ausgaben lesen"
+  description: "Liest gebuchte Ausgaben, optional nach Zeitraum und Suchwort. Erstattungen erscheinen als negative Beträge. Salden und Einnahmen sind bewusst nicht verfügbar."
+  icon: mdi:cash-multiple
+  mode: parallel
+  fields:
+    von:
+      description: "Ab Datum JJJJ-MM-TT"
+      required: false
+      selector:
+        text: {}
+    bis:
+      description: "Bis Datum JJJJ-MM-TT"
+      required: false
+      selector:
+        text: {}
+    suche:
+      description: "Suchwort in Beschreibung oder Notiz"
+      required: false
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: ausgaben_lesen
+      daten:
+        von: "{{ von | default('') }}"
+        bis: "{{ bis | default('') }}"
+        suche: "{{ suche | default('') }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_ausgabe_stornieren:
+  alias: "Budget: Ausgabe stornieren"
+  description: "Entfernt eine gebuchte Ausgabe, wenn der Nutzer das verlangt."
+  icon: mdi:cash-multiple
+  mode: parallel
+  fields:
+    id:
+      description: "Nummer der Ausgabe aus budget_ausgaben_lesen"
+      required: true
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: ausgabe_stornieren
+      daten:
+        id: "{{ id }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_monatsauswertung:
+  alias: "Budget: Monatsauswertung"
+  description: "Ausgaben eines Monats je Kategorie im Vergleich zum Vormonat."
+  icon: mdi:cash-multiple
+  mode: parallel
+  fields:
+    monat:
+      description: "Monat als JJJJ-MM"
+      required: true
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: monatsauswertung
+      daten:
+        monat: "{{ monat }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_wiederkehrende_ausgaben:
+  alias: "Budget: Wiederkehrende Ausgaben"
+  description: "Listet die im Panel eingestellten wiederkehrenden Ausgaben."
+  icon: mdi:cash-multiple
+  mode: parallel
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: wiederkehrende_ausgaben
+      daten: {}
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
+budget_monatsbericht_speichern:
+  alias: "Budget: Monatsbericht speichern"
+  description: "Speichert die Monatsbewertung, damit sie im Budget-Panel erscheint."
+  icon: mdi:cash-multiple
+  mode: parallel
+  fields:
+    monat:
+      description: "Monat als JJJJ-MM"
+      required: true
+      selector:
+        text: {}
+    text:
+      description: "Der Bericht als Text"
+      required: true
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: monatsbericht_speichern
+      daten:
+        monat: "{{ monat }}"
+        text: "{{ text }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+

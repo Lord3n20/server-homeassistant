@@ -1,6 +1,6 @@
 name: "Budget"
-description: "Haushaltsbuch im GnuCash-Format: Panel für alles, Claude-Connector nur für Ausgaben"
-version: "0.1.0"
+description: "Haushaltsbuch im GnuCash-Format: Panel für alles, Claude nur über HA-Skripte und nur für Ausgaben"
+version: "0.2.0"
 slug: "budget"
 arch:
   - aarch64
@@ -14,15 +14,5 @@ panel_icon: mdi:cash-multiple
 panel_title: Budget
 panel_admin: true
 watchdog: "tcp://[HOST]:[PORT:8099]"
-ports:
-  8098/tcp: 8798
-ports_description:
-  8098/tcp: "Claude-Connector (nur über den Reverse Proxy per HTTPS freigeben)"
 environment:
   TZ: "Europe/Berlin"
-options:
-  oeffentliche_url: ""
-  connector_passwort: ""
-schema:
-  oeffentliche_url: str
-  connector_passwort: password

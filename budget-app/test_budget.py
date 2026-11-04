@@ -1,10 +1,8 @@
-"""Prüft Buchhaltung, Dauerbuchungen, OAuth und dass der Connector nur Ausgaben herausgibt.
+"""Prüft Buchhaltung, Dauerbuchungen und dass die Schnittstelle für Claude nur Ausgaben herausgibt.
 
 Aufruf: python3 test_budget.py
 """
-import base64
 import gzip
-import hashlib
 import json
 import os
 import shutil
@@ -12,7 +10,6 @@ import tempfile
 import threading
 import unittest
 import urllib.error
-import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import date
@@ -24,7 +21,7 @@ os.environ["BUDGET_DATA"] = str(TMP)
 
 import buch  # noqa: E402
 import budget  # noqa: E402
-import mcp  # noqa: E402
+import ausgaben  # noqa: E402
 
 NS = ('xmlns:gnc="http://www.gnucash.org/XML/gnc" xmlns:act="http://www.gnucash.org/XML/act" '
       'xmlns:book="http://www.gnucash.org/XML/book" xmlns:cd="http://www.gnucash.org/XML/cd" '
@@ -63,21 +60,15 @@ def starten(handler):
     return f"http://127.0.0.1:{server.server_address[1]}"
 
 
-class KeinRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a, **k):
-        return None
-
-
-def anfrage(url, daten=None, kopf=None, methode=None, form=False):
-    roh = None
-    if daten is not None:
-        roh = urllib.parse.urlencode(daten).encode() if form else json.dumps(daten).encode()
-    req = urllib.request.Request(url, data=roh, headers=kopf or {}, method=methode)
+def anfrage(url, daten=None, methode=None):
+    roh = None if daten is None else json.dumps(daten).encode()
+    req = urllib.request.Request(url, data=roh, method=methode)
     try:
-        with urllib.request.build_opener(KeinRedirect).open(req) as r:
-            return r.status, r.read().decode(), dict(r.headers)
+        with urllib.request.urlopen(req) as r:
+            return r.status, r.read().decode()
     except urllib.error.HTTPError as ex:
-        return ex.code, ex.read().decode(), dict(ex.headers)
+        with ex:
+            return ex.code, ex.read().decode()
 
 
 class Basis(unittest.TestCase):
@@ -85,8 +76,6 @@ class Basis(unittest.TestCase):
         for f in TMP.iterdir():
             shutil.rmtree(f) if f.is_dir() else f.unlink()
         buch.importieren(testbuch().encode())
-        (TMP / "options.json").write_text(json.dumps({"oeffentliche_url": "https://budget.test", "connector_passwort": "ein-langes-passwort"}))
-        mcp.fehlversuche.update(anzahl=0, bis=0.0)
 
 
 class Buchhaltung(Basis):
@@ -148,138 +137,106 @@ class Wiederkehrend(Basis):
                                              "tag": 31, "alle_monate": 1, "naechste": "2026-08-31", **mehr})
 
     def test_nachholen_ohne_doppelte_und_monatsende(self):
-        buch.json_speichern(mcp.WIEDERKEHREND, [self.eintrag()])
+        buch.json_speichern(ausgaben.WIEDERKEHREND, [self.eintrag()])
         self.assertEqual(budget.faellige_buchen(date(2026, 10, 31)), 3)
         self.assertEqual(budget.faellige_buchen(date(2026, 10, 31)), 0)
         daten = [z["datum"] for z in buch.ausgabezeilen()]
         self.assertEqual(daten, ["2026-08-31", "2026-09-30", "2026-10-31"])
-        self.assertEqual(buch.json_laden(mcp.WIEDERKEHREND, [])[0]["naechste"], "2026-11-30")
+        self.assertEqual(buch.json_laden(ausgaben.WIEDERKEHREND, [])[0]["naechste"], "2026-11-30")
 
     def test_absturz_zwischen_buch_und_zaehler(self):
         w = self.eintrag(naechste="2026-10-31")
-        buch.json_speichern(mcp.WIEDERKEHREND, [w])
+        buch.json_speichern(ausgaben.WIEDERKEHREND, [w])
         budget.faellige_buchen(date(2026, 10, 31))
-        buch.json_speichern(mcp.WIEDERKEHREND, [w])
+        buch.json_speichern(ausgaben.WIEDERKEHREND, [w])
         self.assertEqual(budget.faellige_buchen(date(2026, 10, 31)), 0)
 
     def test_pause_und_ende(self):
-        buch.json_speichern(mcp.WIEDERKEHREND, [self.eintrag(aktiv=False), self.eintrag(ende="2026-08-31")])
+        buch.json_speichern(ausgaben.WIEDERKEHREND, [self.eintrag(aktiv=False), self.eintrag(ende="2026-08-31")])
         self.assertEqual(budget.faellige_buchen(date(2026, 12, 31)), 1)
 
 
-class Connector(Basis):
+class Schnittstelle(Basis):
     def setUp(self):
         super().setUp()
-        self.url = starten(mcp.Handler)
+        self.url = starten(ausgaben.Handler)
 
-    def token(self):
-        verifier = "v" * 50
-        challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-        ruecksprung = "https://claude.ai/api/mcp/auth_callback"
-        _, roh, _ = anfrage(f"{self.url}/register", {"redirect_uris": [ruecksprung]})
-        client = json.loads(roh)["client_id"]
-        p = {"client_id": client, "redirect_uri": ruecksprung, "response_type": "code", "code_challenge": challenge,
-             "code_challenge_method": "S256", "state": "s1"}
-        code, _, kopf = anfrage(f"{self.url}/authorize", {**p, "passwort": "ein-langes-passwort"}, form=True)
-        self.assertEqual(code, 302)
-        ziel = urllib.parse.urlsplit(kopf["Location"])
-        q = urllib.parse.parse_qs(ziel.query)
-        self.assertEqual(q["state"], ["s1"])
-        code, roh, _ = anfrage(f"{self.url}/token", {"grant_type": "authorization_code", "code": q["code"][0], "client_id": client,
-                                                      "redirect_uri": ruecksprung, "code_verifier": verifier}, form=True)
+    def rufe(self, name, **argumente):
+        code, roh = anfrage(f"{self.url}/werkzeug/{name}", argumente)
         self.assertEqual(code, 200)
-        self.client = client
-        return json.loads(roh)
+        return json.loads(roh), roh
 
-    def rufe(self, token, name, **argumente):
-        code, roh, _ = anfrage(f"{self.url}/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": argumente}},
-                               {"Authorization": f"Bearer {token}"})
-        self.assertEqual(code, 200)
-        return json.loads(roh)["result"], roh
-
-    def test_ohne_token_abgewiesen(self):
-        code, _, kopf = anfrage(f"{self.url}/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
-        self.assertEqual(code, 401)
-        self.assertIn("resource_metadata", kopf["WWW-Authenticate"])
-
-    def test_fremde_ruecksprungadresse_abgewiesen(self):
-        code, _, _ = anfrage(f"{self.url}/register", {"redirect_uris": ["https://boese.example/cb"]})
-        self.assertEqual(code, 400)
-
-    def test_falsches_passwort_sperrt(self):
-        _, roh, _ = anfrage(f"{self.url}/register", {"redirect_uris": ["https://claude.ai/cb"]})
-        p = {"client_id": json.loads(roh)["client_id"], "redirect_uri": "https://claude.ai/cb", "response_type": "code",
-             "code_challenge": "x", "code_challenge_method": "S256"}
-        for _ in range(mcp.MAX_FEHLVERSUCHE):
-            self.assertEqual(anfrage(f"{self.url}/authorize", {**p, "passwort": "falsch"}, form=True)[0], 401)
-        self.assertEqual(anfrage(f"{self.url}/authorize", {**p, "passwort": "ein-langes-passwort"}, form=True)[0], 429)
-
-    def test_refresh_rotiert(self):
-        t = self.token()
-        daten = {"grant_type": "refresh_token", "refresh_token": t["refresh_token"], "client_id": self.client}
-        self.assertEqual(anfrage(f"{self.url}/token", daten, form=True)[0], 200)
-        self.assertEqual(anfrage(f"{self.url}/token", daten, form=True)[0], 400)
+    def bon(self, **mehr):
+        return {"datum": "2026-11-03", "beschreibung": "Aldi", "zahlkonto": "Aktiva:Girokonto",
+                "positionen": [{"kategorie": "Ausgaben:Lebensmittel", "betrag": "3,00"}], **mehr}
 
     def test_vorschlag_erst_nach_ok_und_nicht_doppelt(self):
-        t = self.token()["access_token"]
-        r, _ = self.rufe(t, "ausgabe_vorschlagen", datum="2026-11-03", beschreibung="Aldi", zahlkonto="Aktiva:Girokonto", bonsumme="3,00",
-                         positionen=[{"kategorie": "Ausgaben:Lebensmittel", "betrag": "2,50"}, {"kategorie": "Ausgaben:Lebensmittel", "betrag": "0,50"}])
-        v = json.loads(r["content"][0]["text"])
+        v, _ = self.rufe("ausgabe_vorschlagen", **self.bon(bonsumme="3,00"))
+        self.assertTrue(v["ok"])
         self.assertEqual(buch.ausgabezeilen(), [])
-        self.rufe(t, "ausgabe_bestaetigen", vorschlag_id=v["vorschlag_id"])
-        self.rufe(t, "ausgabe_bestaetigen", vorschlag_id=v["vorschlag_id"])
+        self.rufe("ausgabe_bestaetigen", vorschlag_id=v["vorschlag_id"])
+        self.rufe("ausgabe_bestaetigen", vorschlag_id=v["vorschlag_id"])
         self.assertEqual(len(buch.ausgabezeilen()), 1)
-        r, _ = self.rufe(t, "ausgabe_vorschlagen", datum="2026-11-04", beschreibung="Aldi", zahlkonto="Aktiva:Girokonto",
-                         positionen=[{"kategorie": "Ausgaben:Lebensmittel", "betrag": "3,00"}])
-        v2 = json.loads(r["content"][0]["text"])
+        v2, _ = self.rufe("ausgabe_vorschlagen", **self.bon(datum="2026-11-04"))
         self.assertEqual(len(v2["duplikate"]), 1)
-        r, _ = self.rufe(t, "ausgabe_bestaetigen", vorschlag_id=v2["vorschlag_id"])
-        self.assertTrue(r["isError"])
+        self.assertFalse(self.rufe("ausgabe_bestaetigen", vorschlag_id=v2["vorschlag_id"])[0]["ok"])
+        self.assertTrue(self.rufe("ausgabe_bestaetigen", vorschlag_id=v2["vorschlag_id"], trotz_duplikat=True)[0]["ok"])
+        self.assertEqual(len(buch.ausgabezeilen()), 2)
 
-    def test_falsche_bonsumme_und_einnahme_abgelehnt(self):
-        t = self.token()["access_token"]
-        r, _ = self.rufe(t, "ausgabe_vorschlagen", datum="2026-11-03", beschreibung="x", zahlkonto="Aktiva:Girokonto", bonsumme="9,99",
-                         positionen=[{"kategorie": "Ausgaben:Lebensmittel", "betrag": "3,00"}])
-        self.assertTrue(r["isError"])
-        for kat, zk in (("Einnahmen:GEHEIMEINKOMMEN", "Aktiva:Girokonto"), ("Ausgaben:Lebensmittel", "Aktiva:GEHEIMDEPOT")):
-            r, _ = self.rufe(t, "ausgabe_vorschlagen", datum="2026-11-03", beschreibung="x", zahlkonto=zk,
-                             positionen=[{"kategorie": kat, "betrag": "3,00"}])
-            self.assertTrue(r["isError"])
-        r, _ = self.rufe(t, "ausgabe_vorschlagen", datum="2026-11-03", beschreibung="Erstattung", zahlkonto="Aktiva:Girokonto",
-                         positionen=[{"kategorie": "Ausgaben:Lebensmittel", "betrag": "-3,00"}])
-        self.assertTrue(r["isError"])
+    def test_positionen_als_json_text_wie_aus_dem_skript(self):
+        text = json.dumps([{"kategorie": "Ausgaben:Lebensmittel", "betrag": "2,50", "memo": "Äpfel"},
+                           {"kategorie": "Ausgaben:Lebensmittel", "betrag": "0,50"}])
+        v, _ = self.rufe("ausgabe_vorschlagen", **self.bon(positionen=text, bonsumme=3.0))
+        self.assertEqual(v["gesamt"], 3.0)
+
+    def test_falsche_eingaben_abgelehnt(self):
+        self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(bonsumme="9,99"))[0]["ok"])
+        self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(positionen="kein json"))[0]["ok"])
+        for mehr in ({"positionen": [{"kategorie": "Einnahmen:GEHEIMEINKOMMEN", "betrag": "3"}]},
+                     {"zahlkonto": "Aktiva:GEHEIMDEPOT"},
+                     {"positionen": [{"kategorie": "Ausgaben:Lebensmittel", "betrag": "-3,00"}]},
+                     {"datum": "2099-01-01"}):
+            self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(**mehr))[0]["ok"], mehr)
 
     def test_keine_saldo_oder_einnahmedaten_nach_aussen(self):
-        t = self.token()["access_token"]
         buch.buchen("einnahme", "2026-11-01", "GEHEIMEINGANG", GIRO, [{"konto": BAF, "betrag": 85577, "memo": "GEHEIMMEMO"}])
         buch.buchen("umbuchung", "2026-11-01", "GEHEIMSPARPLAN", GIRO, [{"konto": DEPOT, "betrag": 5011}])
         buch.buchen("ausgabe", "2026-11-02", "Erlaubt", GIRO, [{"konto": LEB, "betrag": 300}])
-        buch.json_speichern(mcp.WIEDERKEHREND, [
+        buch.json_speichern(ausgaben.WIEDERKEHREND, [
             {"id": "x", "art": "einnahme", "name": "GEHEIMDAUER", "betrag": 85599, "konto": GIRO, "gegenkonto": BAF, "tag": 1, "alle_monate": 1, "naechste": "2030-01-01", "ende": "", "aktiv": True},
             {"id": "y", "art": "ausgabe", "name": "Abo", "betrag": 1700, "konto": GIRO, "gegenkonto": LEB, "tag": 1, "alle_monate": 1, "naechste": "2030-01-01", "ende": "", "aktiv": True}])
-        antworten = []
+        gesamt = ""
         for name, a in (("kategorien_und_zahlkonten", {}), ("ausgaben_lesen", {}), ("monatsauswertung", {"monat": "2026-11"}),
-                        ("wiederkehrende_ausgaben", {}),
-                        ("ausgabe_vorschlagen", {"datum": "2026-11-03", "beschreibung": "B", "zahlkonto": "Aktiva:Girokonto", "positionen": [{"kategorie": "Ausgaben:Lebensmittel", "betrag": "1"}]})):
-            _, roh = self.rufe(t, name, **a)
-            antworten.append(roh)
-        gesamt = "".join(antworten)
+                        ("wiederkehrende_ausgaben", {}), ("ausgabe_vorschlagen", self.bon(beschreibung="B"))):
+            gesamt += self.rufe(name, **a)[1]
         self.assertIn("Erlaubt", gesamt)
         self.assertIn("Abo", gesamt)
         for geheim in ("GEHEIM", "9876", "1234", "1111", "855", "50.11", "saldo", "vermoegen"):
             self.assertNotIn(geheim, gesamt, geheim)
-        _, liste, _ = anfrage(f"{self.url}/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, {"Authorization": f"Bearer {t}"})
-        self.assertEqual(len(json.loads(liste)["result"]["tools"]), len(mcp.WERKZEUGE))
+        # Auch Einnahmen und Umbuchungen lassen sich nicht stornieren.
+        _, buchungen = buch.lesen()
+        for b in buchungen:
+            if b["beschreibung"].startswith("GEHEIM"):
+                self.assertFalse(self.rufe("ausgabe_stornieren", id=b["id"])[0]["ok"])
 
-    def test_panel_wege_gibt_es_am_connector_nicht(self):
-        for pfad in ("/api/stand", "/api/export", "/", "/api/monat?m=2026-11"):
-            self.assertEqual(anfrage(f"{self.url}{pfad}")[0], 404, pfad)
+    def test_panel_wege_gibt_es_hier_nicht(self):
+        for pfad in ("/werkzeug/stand", "/api/stand", "/api/export", "/"):
+            self.assertEqual(anfrage(f"{self.url}{pfad}", {})[0], 404, pfad)
+            self.assertEqual(anfrage(f"{self.url}{pfad}")[0], 501, pfad)
+
+    def test_fremde_adresse_abgewiesen(self):
+        alt = ausgaben.ERLAUBT
+        ausgaben.ERLAUBT = {"172.30.32.1"}
+        try:
+            self.assertEqual(anfrage(f"{self.url}/werkzeug/ausgaben_lesen", {})[0], 403)
+        finally:
+            ausgaben.ERLAUBT = alt
 
 
 class Panel(Basis):
     def test_api_ablauf(self):
         url = starten(budget.Handler)
-        code, roh, _ = anfrage(f"{url}/api/buchungen", {"art": "ausgabe", "datum": "2026-11-03", "beschreibung": "Bäcker", "konto": GIRO,
+        code, roh = anfrage(f"{url}/api/buchungen", {"art": "ausgabe", "datum": "2026-11-03", "beschreibung": "Bäcker", "konto": GIRO,
                                                          "positionen": [{"konto": LEB, "betrag": "2,40"}]})
         self.assertEqual(code, 200)
         kid = json.loads(roh)["id"]
@@ -288,7 +245,7 @@ class Panel(Basis):
         self.assertTrue(m["buchungen"][0]["bearbeitbar"])
         self.assertEqual(anfrage(f"{url}/api/buchungen/{kid}", methode="DELETE")[0], 200)
         self.assertEqual(anfrage(f"{url}/api/buchungen", {"art": "ausgabe", "beschreibung": "x"})[0], 400)
-        self.assertIn(b"Budget", anfrage(f"{url}/")[1].encode())
+        self.assertIn("Budget", anfrage(f"{url}/")[1])
 
 
 if __name__ == "__main__":
