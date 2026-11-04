@@ -338,7 +338,8 @@ class Panel(Basis):
         k = {a["name"]: a for a in d["kuchen"]}
         self.assertEqual({n: a["betrag"] for n, a in k.items()}, {"Fest": 20000, "Alltag": 800, "Große Posten": 18000})
         self.assertEqual([h["name"] for h in k["Alltag"]["kategorien"][0]["haendler"]], ["Aldi Süd", "Weitere"])
-        self.assertEqual(budget.kuchen_bauen({"A": {"K": {"Rest": -100, "X": 500}}}, 400)[0]["betrag"], 500)
+        self.assertEqual(budget.kuchen_bauen({"A": {"K": {"Rest": -100, "X": 500}}}, 400)[0]["betrag"], 400)
+        self.assertEqual(budget.kuchen_bauen({"A": {"K": {"Erstattung": -100, "X": 100}}}, 0), [])
         self.assertEqual(budget.stand()["vorschlaege"][0]["titel"], "A")
         self.assertEqual(d["trend"][-1]["ausgaben"], 38800)
         self.assertEqual(d["vorschlaege"][0]["titel"], "A")

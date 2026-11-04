@@ -160,14 +160,19 @@ def monat(m):
 
 
 def kuchen_bauen(baum, gesamt):
-    """Art -> Kategorie -> Händler, nur positive Summen; Kleinstes läuft je Kategorie unter „Weitere“."""
+    """Art -> Kategorie -> Händler; Kleinstes läuft je Kategorie unter „Weitere“."""
     grenze = max(gesamt, 0) * KLEINER_ANTEIL
     kuchen = []
     for art, kategorien in baum.items():
         aeste = []
         for pfad, haendler in kategorien.items():
             gross, weitere = [], 0
+            # Erstattungen unter anderem Namen mindern die größten Händler der Kategorie.
+            offen = -sum(b for b in haendler.values() if b < 0)
             for name, betrag in sorted(haendler.items(), key=lambda x: -x[1]):
+                abzug = min(offen, max(betrag, 0))
+                offen -= abzug
+                betrag -= abzug
                 if betrag <= 0:
                     continue
                 if betrag >= grenze or not gross:
