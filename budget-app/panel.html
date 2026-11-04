@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budget</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --text: #1c1f23; --muted: #69707a; --line: #dfe2e6;
+    --accent: #2a78d6; --vor: #b3bdb8; --danger: #c5362a; --gut: #1d7a4c;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111315; --card: #1c1e21; --text: #e3e5e8; --muted: #9aa1a9; --line: #2e3236;
+      --accent: #3987e5; --vor: #56625c; --danger: #ef6c5e; --gut: #52c08a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.5rem; margin: 4px 0 12px; }
+  h2 { font-size: 1.05rem; margin: 0 0 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  input, select, textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; width: 100%; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.primaer { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.gefahr { color: var(--danger); }
+  button.klein { padding: 3px 9px; font-size: 0.85rem; }
+  .reiter { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+  .reiter button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 12px; color: var(--muted); white-space: nowrap; }
+  .reiter button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .kopf h2 { margin: 0; }
+  .kopf select { width: auto; }
+  .kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+  .kachel { background: var(--card); padding: 12px 14px; }
+  .kachel span { display: block; font-size: 0.8rem; color: var(--muted); }
+  .kachel b { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .zahl { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  td.knoepfe { text-align: right; }
+  td.knoepfe button { margin: 0 0 4px 4px; }
+  .gedaempft { color: var(--muted); font-size: 0.85rem; }
+  .legende { display: flex; gap: 14px; font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; }
+  .legende i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+  .kat { display: grid; grid-template-columns: minmax(90px, 200px) 1fr 84px; gap: 2px 12px; align-items: center; padding: 5px 0; }
+  .kat .balken { display: grid; gap: 2px; }
+  .kat .b { height: 10px; border-radius: 0 4px 4px 0; background: var(--accent); min-width: 2px; }
+  .kat .v { height: 5px; border-radius: 0 4px 4px 0; background: var(--vor); min-width: 2px; }
+  @media (max-width: 600px) { .kat { grid-template-columns: 1fr 84px; } .kat > span:first-child { grid-column: 1 / -1; } }
+  .meter { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin: 8px 0; }
+  .meter div { height: 100%; background: var(--accent); }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 7px 6px; border-top: 1px solid var(--line); vertical-align: top; text-align: left; }
+  th { font-size: 0.8rem; color: var(--muted); font-weight: 500; border-top: 0; }
+  .raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+  label input, label select { color: var(--text); font-size: 0.95rem; }
+  .position { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 8px; margin-top: 8px; }
+  @media (max-width: 600px) { .position { grid-template-columns: 1fr 1fr; } }
+  .aktionen { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .bericht { white-space: pre-wrap; max-width: 72ch; }
+  [hidden] { display: none !important; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; z-index: 5; max-width: 90vw; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Budget</h1>
+
+  <section class="card" id="ersteinrichtung" hidden>
+    <h2>Haushaltsbuch importieren</h2>
+    <p>Lade deine GnuCash-Datei hoch. Sie bleibt auf diesem Server, Claude bekommt nur Ausgaben zu sehen.</p>
+    <input type="file" id="importErst" accept=".gnucash,.xml,.gz" aria-label="GnuCash-Datei">
+  </section>
+
+  <div id="app" hidden>
+    <nav class="reiter" role="tablist">
+      <button role="tab" data-t="uebersicht">Übersicht</button>
+      <button role="tab" data-t="buchungen">Buchungen</button>
+      <button role="tab" data-t="eintragen">Eintragen</button>
+      <button role="tab" data-t="wiederkehrend">Wiederkehrend</button>
+      <button role="tab" data-t="berichte">Berichte</button>
+      <button role="tab" data-t="einstellungen">Einstellungen</button>
+    </nav>
+
+    <div data-seite="uebersicht">
+      <section class="card" id="vorschlaege" hidden></section>
+      <div class="kopf"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
+      <div class="kacheln" id="kacheln"></div>
+      <section class="card">
+        <h2>Ausgaben nach Kategorie</h2>
+        <div class="legende" id="legende"></div>
+        <div id="kategorien"></div>
+      </section>
+      <section class="card" id="zielKarte" hidden></section>
+      <section class="card"><h2>Konten</h2><table id="konten"></table></section>
+    </div>
+
+    <div data-seite="buchungen">
+      <div class="kopf"><h2>Buchungen</h2><select id="monat2" aria-label="Monat"></select></div>
+      <section class="card"><table id="liste"></table></section>
+    </div>
+
+    <div data-seite="eintragen">
+      <section class="card">
+        <h2 id="formTitel">Neue Buchung</h2>
+        <form id="form">
+          <div class="raster">
+            <label>Art<select id="fArt"><option value="ausgabe">Ausgabe</option><option value="einnahme">Einnahme</option><option value="umbuchung">Umbuchung</option></select></label>
+            <label>Datum<input type="date" id="fDatum" required></label>
+            <label>Beschreibung<input id="fBeschreibung" required></label>
+            <label><span id="fKontoText">Bezahlt von</span><select id="fKonto"></select></label>
+          </div>
+          <div id="positionen"></div>
+          <div class="aktionen">
+            <button type="button" id="plus">Position hinzufügen</button>
+            <button class="primaer">Speichern</button>
+            <button type="button" id="abbrechen" hidden>Abbrechen</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div data-seite="wiederkehrend">
+      <section class="card">
+        <h2 id="wTitel">Neue wiederkehrende Buchung</h2>
+        <form id="wForm">
+          <div class="raster">
+            <label>Art<select id="wArt"><option value="ausgabe">Ausgabe</option><option value="einnahme">Einnahme</option><option value="umbuchung">Umbuchung</option></select></label>
+            <label>Name<input id="wName" required></label>
+            <label>Betrag in €<input id="wBetrag" inputmode="decimal" required></label>
+            <label><span id="wKontoText">Bezahlt von</span><select id="wKonto"></select></label>
+            <label><span id="wGegenText">Kategorie</span><select id="wGegen"></select></label>
+            <label>Rhythmus<select id="wAlle"><option value="1">monatlich</option><option value="2">alle 2 Monate</option><option value="3">vierteljährlich</option><option value="6">halbjährlich</option><option value="12">jährlich</option></select></label>
+            <label>Nächste Fälligkeit<input type="date" id="wNaechste" required></label>
+            <label>Ende (optional)<input type="date" id="wEnde"></label>
+          </div>
+          <div class="aktionen">
+            <button class="primaer">Speichern</button>
+            <button type="button" id="wAbbrechen" hidden>Abbrechen</button>
+          </div>
+        </form>
+      </section>
+      <section class="card"><h2>Eingestellt</h2><table id="wListe"></table></section>
+    </div>
+
+    <div data-seite="berichte"><section class="card" id="berichte"></section></div>
+
+    <div data-seite="einstellungen">
+      <section class="card">
+        <h2>Sparziel</h2>
+        <form id="zielForm" class="raster">
+          <label>Ziel in €<input id="zBetrag" inputmode="decimal"></label>
+          <label>Bis<input type="date" id="zDatum"></label>
+          <div style="align-self:end"><button class="primaer">Speichern</button></div>
+        </form>
+      </section>
+      <section class="card">
+        <h2>Neues Konto oder neue Kategorie</h2>
+        <form id="kontoForm" class="raster">
+          <label>Name<input id="kName" required></label>
+          <label>Unter<select id="kEltern"></select></label>
+          <div style="align-self:end"><button class="primaer">Anlegen</button></div>
+        </form>
+      </section>
+      <section class="card">
+        <h2>Datei</h2>
+        <div class="aktionen">
+          <a href="api/export" download="haushaltsbuch.gnucash"><button type="button">Buch herunterladen</button></a>
+          <label style="display:block"><span class="gedaempft">Buch ersetzen (das alte bleibt als Version erhalten)</span><input type="file" id="importNeu" accept=".gnucash,.xml,.gz"></label>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+<div id="toast" role="status" hidden></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const eur = (c) => (c / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+const eingabe = (c) => (c / 100).toFixed(2).replace(".", ",");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const kurz = (p) => p.replace(/^(Ausgaben|Einnahmen|Aktiva):/, "");
+const dmy = (s) => s ? `${s.slice(8)}.${s.slice(5, 7)}.${s.slice(0, 4)}` : "";
+const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+const mName = (m) => `${MONATE[+m.slice(5) - 1]} ${m.slice(0, 4)}`;
+const heute = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const VERMOEGEN = ["ASSET", "BANK", "CASH", "STOCK", "MUTUAL", "CREDIT", "LIABILITY", "RECEIVABLE", "PAYABLE"];
+const ZAHL = ["BANK", "CASH", "CREDIT"];
+const RHYTHMUS = { 1: "monatlich", 2: "alle 2 Monate", 3: "vierteljährlich", 6: "halbjährlich", 12: "jährlich" };
+
+let konten = [], aktMonat = null, bearbeite = null, wBearbeite = null, wListe = [];
+
+async function api(pfad, opt = {}) {
+  const r = await fetch(pfad, opt);
+  let daten = {};
+  try { daten = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(daten.fehler || `Fehler ${r.status}`);
+  return daten;
+}
+const json = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+function toast(text) {
+  const t = $("#toast");
+  t.textContent = text; t.hidden = false;
+  clearTimeout(toast.uhr); toast.uhr = setTimeout(() => t.hidden = true, 4000);
+}
+const sicher = (f) => async (...a) => { try { return await f(...a); } catch (e) { toast(e.message); } };
+
+function zeige(name) {
+  $$("[data-seite]").forEach((s) => s.hidden = s.dataset.seite !== name);
+  $$(".reiter button").forEach((b) => b.setAttribute("aria-selected", b.dataset.t === name));
+  if (name === "wiederkehrend") wLaden();
+  if (name === "berichte") berichteLaden();
+  if (name === "einstellungen") einstellungenLaden();
+}
+
+function optionen(sel, typen, wert) {
+  sel.innerHTML = konten.filter((k) => !k.platzhalter && typen.includes(k.typ))
+    .map((k) => `<option value="${k.id}">${esc(kurz(k.pfad))}</option>`).join("");
+  if (wert) sel.value = wert;
+}
+
+// ---------- Übersicht ----------
+async function ladeAlles() {
+  const s = await api("api/stand");
+  konten = (await api("api/konten")).konten;
+  const monate = [...new Set([...s.monate, heute().slice(0, 7)])].sort().reverse();
+  if (!aktMonat || !monate.includes(aktMonat)) aktMonat = monate[0];
+  for (const sel of [$("#monat"), $("#monat2")]) {
+    sel.innerHTML = monate.map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
+    sel.value = aktMonat;
+  }
+  $("#konten").innerHTML = s.konten.map((k) => `<tr><td>${esc(kurz(k.pfad))}</td><td class="zahl">${eur(k.saldo)}</td></tr>`).join("")
+    + `<tr><td><b>Gesamt</b></td><td class="zahl"><b>${eur(s.vermoegen)}</b></td></tr>`;
+  zeichneZiel(s);
+  formKonten(); wKonten();
+  optionenEltern();
+  await Promise.all([ladeMonat(), ladeVorschlaege()]);
+}
+
+function zeichneZiel(s) {
+  const k = $("#zielKarte");
+  k.hidden = !s.ziel;
+  if (!s.ziel) return;
+  const anteil = Math.min(100, s.vermoegen / s.ziel.betrag * 100);
+  k.innerHTML = `<h2>Sparziel: ${eur(s.ziel.betrag)} bis ${dmy(s.ziel.datum)}</h2>
+    <div class="meter" role="img" aria-label="${anteil.toFixed(0)} Prozent erreicht"><div style="width:${anteil}%"></div></div>
+    <div>${eur(s.vermoegen)} erreicht, ${anteil.toFixed(0)} %. ${s.ziel.fehlt ? `Es fehlen ${eur(s.ziel.fehlt)}, also rund ${eur(s.ziel.pro_monat)} pro Monat über ${s.ziel.monate} Monate.` : "Ziel erreicht."}</div>
+    <div class="gedaempft">Das Depot zählt mit dem zuletzt gebuchten Wert.</div>`;
+}
+
+async function ladeMonat() {
+  const d = await api(`api/monat?m=${aktMonat}`);
+  $("#monatTitel").textContent = mName(aktMonat);
+  const rest = d.einnahmen - d.ausgaben;
+  const quote = d.einnahmen > 0 ? `${Math.round(rest / d.einnahmen * 100)} %` : "–";
+  $("#kacheln").innerHTML = [
+    ["Einnahmen", eur(d.einnahmen)], ["Ausgaben", eur(d.ausgaben)], ["Übrig", eur(rest)], ["Sparquote", quote],
+  ].map(([l, v]) => `<div class="kachel"><span>${l}</span><b>${v}</b></div>`).join("");
+  $("#legende").innerHTML = `<span><i style="background:var(--accent)"></i>${mName(d.monat)}</span><span><i style="background:var(--vor)"></i>${mName(d.vormonat)}</span>`;
+  const max = Math.max(1, ...d.kategorien.flatMap((k) => [k.betrag, k.vormonat]));
+  $("#kategorien").innerHTML = d.kategorien.map((k) => `<div class="kat" title="${esc(kurz(k.pfad))}: ${eur(k.betrag)}, Vormonat ${eur(k.vormonat)}">
+      <span>${esc(kurz(k.pfad))}</span>
+      <div class="balken"><div class="b" style="width:${Math.max(0, k.betrag) / max * 100}%"></div><div class="v" style="width:${Math.max(0, k.vormonat) / max * 100}%"></div></div>
+      <span class="zahl">${eur(k.betrag)}</span></div>`).join("") || '<p class="gedaempft">Noch keine Ausgaben in diesem Monat.</p>';
+  zeichneBuchungen(d.buchungen);
+}
+
+function zeichneBuchungen(zeilen) {
+  const art = { ausgabe: "Ausgabe", einnahme: "Einnahme", umbuchung: "Umbuchung", eroeffnung: "Eröffnung" };
+  $("#liste").innerHTML = zeilen.map((z) => `<tr>
+      <td class="gedaempft">${dmy(z.datum).slice(0, 6)}</td>
+      <td>${esc(z.beschreibung)}<div class="gedaempft">${art[z.art]}${z.positionen.length ? " · " + z.positionen.map((p) => esc(kurz(p.konto_name))).join(", ") : ""}</div></td>
+      <td class="zahl">${z.art === "eroeffnung" ? "" : eur(z.gesamt)}</td>
+      <td class="knoepfe">${z.bearbeitbar ? `<button class="klein" data-bearbeiten="${z.id}">Ändern</button>` : ""} ${z.art !== "eroeffnung" ? `<button class="klein gefahr" data-loeschen="${z.id}">Löschen</button>` : ""}</td>
+    </tr>`).join("") || '<tr><td class="gedaempft">Keine Buchungen.</td></tr>';
+  $("#liste").onclick = sicher(async (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.bearbeiten) return formFuellen(zeilen.find((z) => z.id === b.dataset.bearbeiten));
+    if (b.dataset.sicher) {
+      await api(`api/buchungen/${b.dataset.loeschen}`, { method: "DELETE" });
+      toast("Gelöscht");
+      return ladeAlles();
+    }
+    b.dataset.sicher = "1";
+    b.textContent = "Wirklich?";
+  });
+}
+
+async function ladeVorschlaege() {
+  const { liste } = await api("api/vorschlaege");
+  const k = $("#vorschlaege");
+  k.hidden = !liste.length;
+  k.innerHTML = `<h2>Offene Vorschläge von Claude</h2><table>` + liste.map((v) => `<tr>
+      <td class="gedaempft">${dmy(v.datum).slice(0, 6)}</td>
+      <td>${esc(v.beschreibung)}<div class="gedaempft">${v.positionen.map((p) => `${esc(kurz(p.kategorie))} ${eur(p.betrag)}`).join(", ")}</div>
+      ${v.duplikate.length ? '<div class="gedaempft">Mögliches Duplikat im Buch</div>' : ""}</td>
+      <td class="zahl">${eur(v.gesamt)}</td>
+      <td class="knoepfe"><button class="klein" data-buchen="${v.id}" data-dup="${v.duplikate.length ? 1 : ""}">Buchen</button> <button class="klein gefahr" data-verwerfen="${v.id}">Verwerfen</button></td>
+    </tr>`).join("") + "</table>";
+  k.onclick = sicher(async (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.buchen) await api(`api/vorschlaege/${b.dataset.buchen}/buchen`, json("POST", { trotz_duplikat: !!b.dataset.dup }));
+    else await api(`api/vorschlaege/${b.dataset.verwerfen}/verwerfen`, json("POST", {}));
+    await ladeAlles();
+  });
+}
+
+// ---------- Eintragen ----------
+function artTypen(art) {
+  return { ausgabe: ["EXPENSE"], einnahme: ["INCOME"], umbuchung: VERMOEGEN }[art];
+}
+function formKonten(wert) {
+  const art = $("#fArt").value;
+  $("#fKontoText").textContent = { ausgabe: "Bezahlt von", einnahme: "Eingang auf", umbuchung: "Von Konto" }[art];
+  optionen($("#fKonto"), art === "ausgabe" ? ZAHL : VERMOEGEN, wert);
+  if (!$("#positionen").children.length) positionNeu();
+  $$("#positionen .pKonto").forEach((s) => optionen(s, artTypen(art), s.dataset.wert));
+  $("#plus").hidden = art === "umbuchung";
+}
+function positionNeu(p = {}) {
+  const art = $("#fArt").value;
+  const z = document.createElement("div");
+  z.className = "position";
+  z.innerHTML = `<label>${art === "umbuchung" ? "Nach Konto" : "Kategorie"}<select class="pKonto" data-wert="${p.konto || ""}"></select></label>
+    <label>Betrag in €<input class="pBetrag" inputmode="decimal" required value="${p.betrag !== undefined ? eingabe(p.betrag) : ""}"></label>
+    <label>Notiz<input class="pMemo" value="${esc(p.memo)}"></label>
+    <button type="button" class="klein gefahr" style="align-self:end" aria-label="Position entfernen">×</button>`;
+  z.querySelector("button").onclick = () => { if ($("#positionen").children.length > 1) z.remove(); };
+  $("#positionen").append(z);
+  optionen(z.querySelector(".pKonto"), artTypen(art), p.konto);
+}
+function formLeeren() {
+  bearbeite = null;
+  $("#form").reset();
+  $("#fDatum").value = heute();
+  $("#positionen").innerHTML = "";
+  $("#formTitel").textContent = "Neue Buchung";
+  $("#abbrechen").hidden = true;
+  formKonten();
+}
+function formFuellen(z) {
+  bearbeite = z.id;
+  $("#fArt").value = z.art;
+  $("#fDatum").value = z.datum;
+  $("#fBeschreibung").value = z.beschreibung;
+  $("#positionen").innerHTML = "";
+  z.positionen.forEach(positionNeu);
+  formKonten(z.konto);
+  $("#formTitel").textContent = "Buchung ändern";
+  $("#abbrechen").hidden = false;
+  zeige("eintragen");
+}
+$("#fArt").onchange = () => { $("#positionen").innerHTML = ""; formKonten(); };
+$("#plus").onclick = () => positionNeu();
+$("#abbrechen").onclick = () => { formLeeren(); zeige("buchungen"); };
+$("#form").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  const body = {
+    art: $("#fArt").value, datum: $("#fDatum").value, beschreibung: $("#fBeschreibung").value, konto: $("#fKonto").value,
+    positionen: $$("#positionen .position").map((z) => ({ konto: z.querySelector(".pKonto").value, betrag: z.querySelector(".pBetrag").value, memo: z.querySelector(".pMemo").value })),
+  };
+  await api(bearbeite ? `api/buchungen/${bearbeite}` : "api/buchungen", json(bearbeite ? "PUT" : "POST", body));
+  toast("Gespeichert");
+  aktMonat = body.datum.slice(0, 7);
+  formLeeren();
+  await ladeAlles();
+});
+
+// ---------- Wiederkehrend ----------
+function wKonten(konto, gegen) {
+  const art = $("#wArt").value;
+  $("#wKontoText").textContent = { ausgabe: "Bezahlt von", einnahme: "Eingang auf", umbuchung: "Von Konto" }[art];
+  $("#wGegenText").textContent = art === "umbuchung" ? "Nach Konto" : "Kategorie";
+  optionen($("#wKonto"), art === "ausgabe" ? ZAHL : VERMOEGEN, konto);
+  optionen($("#wGegen"), artTypen(art), gegen);
+}
+$("#wArt").onchange = () => wKonten();
+function wLeeren() {
+  wBearbeite = null;
+  $("#wForm").reset();
+  $("#wNaechste").value = heute();
+  $("#wTitel").textContent = "Neue wiederkehrende Buchung";
+  $("#wAbbrechen").hidden = true;
+  wKonten();
+}
+$("#wAbbrechen").onclick = wLeeren;
+const kontoName = (id) => kurz(konten.find((k) => k.id === id)?.pfad || "");
+const wLaden = sicher(async () => {
+  wListe = (await api("api/wiederkehrend")).liste;
+  const monatlich = wListe.filter((w) => w.art === "ausgabe" && w.aktiv).reduce((a, w) => a + w.betrag / w.alle_monate, 0);
+  $("#wListe").innerHTML = wListe.map((w) => `<tr>
+      <td>${esc(w.name)}${w.aktiv ? "" : " (pausiert)"}<div class="gedaempft">${esc(kontoName(w.gegenkonto))} · ${RHYTHMUS[w.alle_monate]} · nächste ${dmy(w.naechste)}${w.ende ? ` · bis ${dmy(w.ende)}` : ""}</div></td>
+      <td class="zahl">${eur(w.betrag)}</td>
+      <td class="knoepfe"><button class="klein" data-aendern="${w.id}">Ändern</button> <button class="klein" data-pause="${w.id}">${w.aktiv ? "Pausieren" : "Fortsetzen"}</button> <button class="klein gefahr" data-weg="${w.id}">Entfernen</button></td>
+    </tr>`).join("") + (wListe.length ? `<tr><td><b>Ausgaben pro Monat</b></td><td class="zahl"><b>${eur(Math.round(monatlich))}</b></td><td></td></tr>` : '<tr><td class="gedaempft">Noch nichts eingestellt.</td></tr>');
+});
+$("#wListe").onclick = sicher(async (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const w = wListe.find((x) => x.id === (b.dataset.aendern || b.dataset.pause || b.dataset.weg));
+  if (b.dataset.aendern) {
+    wBearbeite = w.id;
+    $("#wArt").value = w.art; $("#wName").value = w.name; $("#wBetrag").value = eingabe(w.betrag);
+    $("#wAlle").value = w.alle_monate; $("#wNaechste").value = w.naechste; $("#wEnde").value = w.ende;
+    wKonten(w.konto, w.gegenkonto);
+    $("#wTitel").textContent = "Wiederkehrende Buchung ändern";
+    $("#wAbbrechen").hidden = false;
+    return;
+  }
+  if (b.dataset.pause) {
+    await api(`api/wiederkehrend/${w.id}`, json("PUT", { ...w, betrag: eingabe(w.betrag), aktiv: !w.aktiv }));
+  } else {
+    if (!b.dataset.sicher) { b.dataset.sicher = "1"; b.textContent = "Wirklich?"; return; }
+    await api(`api/wiederkehrend/${w.id}`, { method: "DELETE" });
+  }
+  await wLaden(); await ladeAlles();
+});
+$("#wForm").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  const naechste = $("#wNaechste").value;
+  const body = { art: $("#wArt").value, name: $("#wName").value, betrag: $("#wBetrag").value, konto: $("#wKonto").value,
+    gegenkonto: $("#wGegen").value, tag: +naechste.slice(8), alle_monate: +$("#wAlle").value, naechste, ende: $("#wEnde").value,
+    aktiv: wBearbeite ? wListe.find((w) => w.id === wBearbeite).aktiv : true };
+  const r = await api(wBearbeite ? `api/wiederkehrend/${wBearbeite}` : "api/wiederkehrend", json(wBearbeite ? "PUT" : "POST", body));
+  toast(r.gebucht ? `Gespeichert, ${r.gebucht} fällige Buchung(en) eingetragen` : "Gespeichert");
+  wLeeren();
+  await wLaden(); await ladeAlles();
+});
+
+// ---------- Berichte und Einstellungen ----------
+const berichteLaden = sicher(async () => {
+  const { berichte } = await api("api/berichte");
+  const monate = Object.keys(berichte).sort().reverse();
+  $("#berichte").innerHTML = monate.map((m) => `<h2>${mName(m)}</h2><div class="gedaempft">Erstellt am ${esc(berichte[m].erstellt)}</div><p class="bericht">${esc(berichte[m].text)}</p>`).join("")
+    || '<p class="gedaempft">Noch kein Monatsbericht. Claude legt ihn hier ab.</p>';
+});
+const einstellungenLaden = sicher(async () => {
+  const e = await api("api/einstellungen");
+  $("#zBetrag").value = e.sparziel ? eingabe(e.sparziel) : "";
+  $("#zDatum").value = e.sparziel_datum || "";
+});
+function optionenEltern() {
+  $("#kEltern").innerHTML = konten.filter((k) => ["ASSET", "EXPENSE", "INCOME"].includes(k.typ))
+    .map((k) => `<option value="${k.id}">${esc(k.pfad)}</option>`).join("");
+}
+$("#zielForm").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  await api("api/einstellungen", json("PUT", { sparziel: $("#zBetrag").value, sparziel_datum: $("#zDatum").value }));
+  toast("Gespeichert");
+  await ladeAlles();
+});
+$("#kontoForm").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  await api("api/konten", json("POST", { name: $("#kName").value, eltern: $("#kEltern").value }));
+  $("#kName").value = "";
+  toast("Angelegt");
+  await ladeAlles();
+});
+
+const hochladen = sicher(async (e) => {
+  const datei = e.target.files[0];
+  if (!datei) return;
+  const r = await api("api/import", { method: "POST", body: datei });
+  toast(`Importiert: ${r.buchungen} Buchungen, ${r.konten} Konten`);
+  e.target.value = "";
+  await start();
+});
+$("#importErst").onchange = hochladen;
+$("#importNeu").onchange = hochladen;
+$("#monat").onchange = sicher(async (e) => { aktMonat = e.target.value; $("#monat2").value = aktMonat; await ladeMonat(); });
+$("#monat2").onchange = sicher(async (e) => { aktMonat = e.target.value; $("#monat").value = aktMonat; await ladeMonat(); });
+$$(".reiter button").forEach((b) => b.onclick = () => zeige(b.dataset.t));
+
+const start = sicher(async () => {
+  const { buch } = await api("api/status");
+  $("#ersteinrichtung").hidden = buch;
+  $("#app").hidden = !buch;
+  if (!buch) return;
+  await ladeAlles();
+  formLeeren(); wLeeren();
+  zeige("uebersicht");
+});
+start();
+</script>
+</body>
+</html>
