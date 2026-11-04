@@ -210,13 +210,13 @@ budget_wiederkehrende_ausgaben:
     response_variable: antwort
 
 budget_monatsbericht_speichern:
-  alias: "Budget: Monatsbericht speichern"
-  description: "Speichert die Monatsbewertung, damit sie im Budget-Panel erscheint."
+  alias: "Budget: Bericht speichern"
+  description: "Speichert einen Monats- oder Wochenbericht, damit er im Budget-Panel erscheint."
   icon: mdi:cash-multiple
   mode: parallel
   fields:
     monat:
-      description: "Monat als JJJJ-MM"
+      description: "Monat als JJJJ-MM oder Woche als JJJJ-Www, z. B. 2026-W45"
       required: true
       selector:
         text: {}

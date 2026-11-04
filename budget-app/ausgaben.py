@@ -211,8 +211,8 @@ def w_wiederkehrend(_):
 def w_bericht(a):
     monat = str(a.get("monat") or "")
     text = str(a.get("text") or "").strip()
-    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", monat) or not text:
-        raise BuchFehler("Monat (JJJJ-MM) und Text angeben")
+    if not re.fullmatch(r"\d{4}-((0[1-9]|1[0-2])|W(0[1-9]|[1-4]\d|5[0-3]))", monat) or not text:
+        raise BuchFehler("Monat (JJJJ-MM) oder Woche (JJJJ-Www) und Text angeben")
     if len(text) > 20000:
         raise BuchFehler("Der Bericht ist zu lang")
     with lock:

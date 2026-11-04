@@ -436,9 +436,10 @@ $("#wForm").onsubmit = sicher(async (e) => {
 // ---------- Berichte und Einstellungen ----------
 const berichteLaden = sicher(async () => {
   const { berichte } = await api("api/berichte");
-  const monate = Object.keys(berichte).sort().reverse();
-  $("#berichte").innerHTML = monate.map((m) => `<h2>${mName(m)}</h2><div class="gedaempft">Erstellt am ${esc(berichte[m].erstellt)}</div><p class="bericht">${esc(berichte[m].text)}</p>`).join("")
-    || '<p class="gedaempft">Noch kein Monatsbericht. Claude legt ihn hier ab.</p>';
+  const titel = (m) => m.includes("W") ? `Woche ${+m.slice(6)}, ${m.slice(0, 4)}` : mName(m);
+  const monate = Object.keys(berichte).sort((a, b) => berichte[b].erstellt.localeCompare(berichte[a].erstellt));
+  $("#berichte").innerHTML = monate.map((m) => `<h2>${titel(m)}</h2><div class="gedaempft">Erstellt am ${esc(berichte[m].erstellt)}</div><p class="bericht">${esc(berichte[m].text)}</p>`).join("")
+    || '<p class="gedaempft">Noch kein Bericht. Claude legt ihn hier ab.</p>';
 });
 const einstellungenLaden = sicher(async () => {
   const e = await api("api/einstellungen");
