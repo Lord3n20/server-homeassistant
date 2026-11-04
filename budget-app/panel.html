@@ -786,7 +786,7 @@ let dOffen = null;
 const depotLaden = sicher(async () => {
   const d = await api("api/depot");
   const mit = d.positionen.filter((p) => p.wert !== undefined);
-  $("#dStand").textContent = d.zeit ? `Kurse von ${new Date(d.zeit * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : "";
+  $("#dStand").textContent = d.zeit ? `Ältester Kurs von ${new Date(d.zeit * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : "";
   for (const id of ["#dKacheln", "#dVergleich", "#dAnteil"]) $(id).hidden = !mit.length;
   if (mit.length) {
     $("#dKacheln").innerHTML = [["Wert", eur(d.wert)], ["Kaufpreis", eur(d.einstand)], ["Gewinn/Verlust", plus(d.gewinn)], ["Zum Kaufpreis", prozent(d.prozent)]]
@@ -824,7 +824,7 @@ const depotLaden = sicher(async () => {
         </form></td></tr>`;
     }
     return `<tr>
-      <td>${esc(p.name)}<div class="gedaempft">${esc(stueckText(p.stueck))} Stück · Ø ${esc(kursText(p.einstand / 100 / p.stueck))} € · Kurs ${p.kurs ? esc(kursText(p.kurs)) + " €" : "nicht abrufbar"}${p.heute != null ? ` · heute ${esc(prozent(p.heute))}` : ""}</div>
+      <td>${esc(p.name)}<div class="gedaempft">${esc(stueckText(p.stueck))} Stück · Ø ${esc(kursText(p.einstand / 100 / p.stueck))} € · Kurs ${p.kurs ? `${esc(kursText(p.kurs))} € (${esc(p.quelle)}, ${new Date(p.zeit * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr)` : "nicht abrufbar"}${p.heute != null ? ` · heute ${esc(prozent(p.heute))}` : ""}</div>
       ${p.geschaetzt ? '<div class="gedaempft">Enthält geschätzte Käufe oder Verkäufe aus dem Buch. Prüf die Werte in deinem Depot.</div>' : ""}</td>
       <td class="zahl">${p.wert !== undefined ? `${eur(p.wert)}<div class="gedaempft">${esc(plus(p.gewinn))}</div>` : ""}</td>
       <td class="knoepfe"><button class="klein" data-aendern="${p.konto}">Ändern</button></td></tr>`;

@@ -14,8 +14,8 @@ nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mi
 
 Im Reiter „Depot“ trägst du je Position ISIN, Stückzahl und durchschnittlichen Kaufkurs ein. Das Panel zeigt dann den
 aktuellen Wert und Gewinn oder Verlust zum Kaufpreis; Vermögen und Sparziel rechnen mit diesen Werten. Ins Buch wird dabei nichts
-geschrieben. Kurse kommen von Lang & Schwarz, ersatzweise Tradegate, und werden höchstens einmal pro Minute geholt, nur solange
-das Panel offen ist. Beide Schnittstellen sind inoffiziell und können sich ändern; dann bleibt der letzte Kurs mit seiner Uhrzeit
+geschrieben. Bewertet wird zum Geldkurs von Tradegate, ersatzweise zum Mittelkurs von Lang & Schwarz, höchstens einmal pro Minute und nur,
+solange das Panel offen ist. Von der Bewertung bei deinem Broker kann das leicht abweichen, weil dort ein anderer Handelsplatz zählen kann. Beide Schnittstellen sind inoffiziell und können sich ändern; dann bleibt der letzte Kurs mit seiner Uhrzeit
 stehen. Käufe und Verkäufe, die danach im Buch landen, werden mit dem aktuellen Kurs geschätzt nachgezogen und markiert, bis du
 die Werte neu einträgst.
 
