@@ -21,6 +21,7 @@ os.environ["BUDGET_DATA"] = str(TMP)
 
 import buch  # noqa: E402
 import budget  # noqa: E402
+import depot  # noqa: E402
 import ausgaben  # noqa: E402
 
 NS = ('xmlns:gnc="http://www.gnucash.org/XML/gnc" xmlns:act="http://www.gnucash.org/XML/act" '
@@ -28,7 +29,7 @@ NS = ('xmlns:gnc="http://www.gnucash.org/XML/gnc" xmlns:act="http://www.gnucash.
       'xmlns:cmdty="http://www.gnucash.org/XML/cmdty" xmlns:slot="http://www.gnucash.org/XML/slot" '
       'xmlns:split="http://www.gnucash.org/XML/split" xmlns:trn="http://www.gnucash.org/XML/trn" '
       'xmlns:ts="http://www.gnucash.org/XML/ts"')
-ROOT, AKTIVA, GIRO, DEPOT, AUSG, LEB, EIN, BAF, EK = [f"{i:032x}" for i in range(1, 10)]
+ROOT, AKTIVA, GIRO, DEPOT, AUSG, LEB, EIN, BAF, EK, DEPOTORDNER = [f"{i:032x}" for i in range(1, 11)]
 
 
 def konto(kid, name, typ, eltern=None, platzhalter=False):
@@ -42,7 +43,7 @@ def konto(kid, name, typ, eltern=None, platzhalter=False):
 
 def testbuch():
     konten = (konto(ROOT, "Root Account", "ROOT") + konto(AKTIVA, "Aktiva", "ASSET", ROOT, True)
-              + konto(GIRO, "Girokonto", "BANK", AKTIVA) + konto(DEPOT, "GEHEIMDEPOT", "ASSET", AKTIVA)
+              + konto(GIRO, "Girokonto", "BANK", AKTIVA) + konto(DEPOTORDNER, "Depot", "ASSET", AKTIVA, True) + konto(DEPOT, "GEHEIMDEPOT", "ASSET", DEPOTORDNER)
               + konto(AUSG, "Ausgaben", "EXPENSE", ROOT, True) + konto(LEB, "Lebensmittel", "EXPENSE", AUSG)
               + konto(EIN, "Einnahmen", "INCOME", ROOT, True) + konto(BAF, "GEHEIMEINKOMMEN", "INCOME", EIN)
               + konto(EK, "Eroeffnung", "EQUITY", ROOT))
@@ -50,7 +51,7 @@ def testbuch():
                              [(GIRO, 987654, ""), (DEPOT, 123456, ""), (EK, -1111110, "")])
     return (f'<?xml version="1.0" encoding="utf-8" ?>\n<gnc-v2 {NS}>\n<gnc:count-data cd:type="book">1</gnc:count-data>\n'
             f'<gnc:book version="2.0.0">\n<book:id type="guid">{"b" * 32}</book:id>\n'
-            f'<gnc:count-data cd:type="account">9</gnc:count-data>\n<gnc:count-data cd:type="transaction">1</gnc:count-data>\n'
+            f'<gnc:count-data cd:type="account">10</gnc:count-data>\n<gnc:count-data cd:type="transaction">1</gnc:count-data>\n'
             f"{konten}{start}</gnc:book></gnc-v2>\n")
 
 
@@ -96,7 +97,7 @@ class Buchhaltung(Basis):
         self.assertEqual(m["ausgaben"], 0)
         salden = {k["pfad"]: k["saldo"] for k in budget.stand()["konten"]}
         self.assertEqual(salden["Aktiva:Girokonto"], 987654 + 85500 - 5000)
-        self.assertEqual(salden["Aktiva:GEHEIMDEPOT"], 123456 + 5000)
+        self.assertEqual(salden["Aktiva:Depot:GEHEIMDEPOT"], 123456 + 5000)
 
     def test_falsche_konten_abgelehnt(self):
         for art, k, p in (("ausgabe", GIRO, BAF), ("einnahme", GIRO, LEB), ("ausgabe", GIRO, AUSG), ("umbuchung", GIRO, GIRO)):
@@ -193,7 +194,7 @@ class Schnittstelle(Basis):
         self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(bonsumme="9,99"))[0]["ok"])
         self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(positionen="kein json"))[0]["ok"])
         for mehr in ({"positionen": [{"kategorie": "Einnahmen:GEHEIMEINKOMMEN", "betrag": "3"}]},
-                     {"zahlkonto": "Aktiva:GEHEIMDEPOT"},
+                     {"zahlkonto": "Aktiva:Depot:GEHEIMDEPOT"},
                      {"positionen": [{"kategorie": "Ausgaben:Lebensmittel", "betrag": "-3,00"}]},
                      {"datum": "2099-01-01"}):
             self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(**mehr))[0]["ok"], mehr)
@@ -243,6 +244,80 @@ class Schnittstelle(Basis):
             ausgaben.ERLAUBT = alt
 
 
+class Depot(Basis):
+    def setUp(self):
+        super().setUp()
+        self.kurs = 12.0
+        self.abrufe = []
+        self.alt = depot.kurs_holen
+
+        def holen(isin):
+            self.abrufe.append(isin)
+            return {"kurs": self.kurs, "vortag": 10.0, "quelle": "Test", "zeit": __import__("time").time()}
+        depot.kurs_holen = holen
+        depot.eintragen(DEPOT, {"isin": "IE00B4L5Y983", "stueck": "10,5", "kaufkurs": "10,00"})
+
+    def tearDown(self):
+        depot.kurs_holen = self.alt
+
+    def test_gewinn_zum_kaufpreis(self):
+        d = depot.uebersicht()
+        p = d["positionen"][0]
+        self.assertEqual((p["einstand"], p["wert"], p["gewinn"]), (10500, 12600, 2100))
+        self.assertAlmostEqual(p["prozent"], 20.0)
+        self.assertAlmostEqual(p["heute"], 20.0)
+        self.assertEqual(d["gewinn"], 2100)
+
+    def test_kurs_nur_einmal_pro_minute_und_letzter_bleibt(self):
+        depot.uebersicht()
+        depot.uebersicht()
+        self.assertEqual(len(self.abrufe), 1)
+        kurse = buch.json_laden(depot.KURSE, {})
+        kurse["IE00B4L5Y983"]["zeit"] = 0
+        buch.json_speichern(depot.KURSE, kurse)
+        depot.kurs_holen = lambda isin: None
+        self.assertEqual(depot.uebersicht()["positionen"][0]["kurs"], 12.0)
+
+    def test_buchungen_werden_einmal_nachgezogen(self):
+        morgen = date.fromordinal(date.today().toordinal() + 1)
+        buch.buchen("umbuchung", morgen, "Sparplan", GIRO, [{"konto": DEPOT, "betrag": 6000}])
+        depot.uebersicht()
+        p = depot.uebersicht()["positionen"][0]
+        self.assertEqual(p["einstand"], 16500)
+        self.assertAlmostEqual(p["stueck"], 15.5)
+        self.assertTrue(p["geschaetzt"])
+        buch.buchen("umbuchung", morgen, "Verkauf", DEPOT, [{"konto": GIRO, "betrag": 9300}])
+        p = depot.uebersicht()["positionen"][0]
+        self.assertAlmostEqual(p["stueck"], 7.75)
+        self.assertEqual(p["einstand"], 8250)
+
+    def test_vermoegen_rechnet_mit_aktuellem_wert(self):
+        depot.uebersicht()
+        s = budget.stand()
+        self.assertEqual(s["vermoegen"], 987654 + 12600)
+        self.assertEqual(buch.lesen()[1][0]["splits"][1]["betrag"], 123456)
+
+    def test_falsche_eingaben(self):
+        for falsch in ({"isin": "ABC", "stueck": "1", "kaufkurs": "1"}, {"isin": "IE00B4L5Y983", "stueck": "0", "kaufkurs": "1"},
+                       {"isin": "IE00B4L5Y983", "stueck": "x", "kaufkurs": "1"}, {"isin": "IE00B4L5Y983", "stueck": "1", "kaufkurs": "0"}):
+            with self.assertRaises(buch.BuchFehler):
+                depot.eintragen(DEPOT, falsch)
+        with self.assertRaises(buch.BuchFehler):
+            depot.eintragen(GIRO, {"isin": "IE00B4L5Y983", "stueck": "1", "kaufkurs": "1"})
+
+    def test_claude_kommt_nicht_ans_depot(self):
+        depot.uebersicht()
+        url = starten(ausgaben.Handler)
+        self.assertEqual(anfrage(f"{url}/api/depot")[0], 501)
+        gesamt = ""
+        for name in ausgaben.WERKZEUGE:
+            if name in ("kategorien_und_zahlkonten", "ausgaben_lesen", "wiederkehrende_ausgaben"):
+                gesamt += anfrage(f"{url}/werkzeug/{name}", {})[1]
+        for geheim in ("IE00B4L5Y983", "12600", "GEHEIMDEPOT"):
+            self.assertNotIn(geheim, gesamt)
+        self.assertNotIn("depot", Path(ausgaben.__file__).read_text().replace("Depot", ""))
+
+
 class Panel(Basis):
     def test_bericht_zahlen(self):
         buch.json_speichern(ausgaben.WIEDERKEHREND, [
@@ -260,7 +335,11 @@ class Panel(Basis):
         self.assertEqual(len(d["verlauf"]), 31)
         self.assertEqual(d["verlauf"][30], 800)
         self.assertEqual(len(d["vergleich_verlauf"]), 30)
-        self.assertEqual([h["name"] for h in d["haendler"]][-2:], ["Aldi Süd", "Hopfen & Malz"])
+        k = {a["name"]: a for a in d["kuchen"]}
+        self.assertEqual({n: a["betrag"] for n, a in k.items()}, {"Fest": 20000, "Alltag": 800, "Große Posten": 18000})
+        self.assertEqual([h["name"] for h in k["Alltag"]["kategorien"][0]["haendler"]], ["Aldi Süd", "Weitere"])
+        self.assertEqual(budget.kuchen_bauen({"A": {"K": {"Rest": -100, "X": 500}}}, 400)[0]["betrag"], 500)
+        self.assertEqual(budget.stand()["vorschlaege"][0]["titel"], "A")
         self.assertEqual(d["trend"][-1]["ausgaben"], 38800)
         self.assertEqual(d["vorschlaege"][0]["titel"], "A")
         w = budget.bericht("woche")

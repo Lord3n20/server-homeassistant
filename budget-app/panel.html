@@ -8,13 +8,13 @@
   :root {
     --bg: #f4f5f7; --card: #fff; --text: #1c1f23; --muted: #69707a; --line: #dfe2e6;
     --accent: #2a78d6; --vor: #b3bdb8; --danger: #c5362a; --gut: #1d7a4c;
-    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #111315; --card: #1c1e21; --text: #e3e5e8; --muted: #9aa1a9; --line: #2e3236;
       --accent: #3987e5; --vor: #56625c; --danger: #ef6c5e; --gut: #52c08a;
-      --s1: #3987e5; --s2: #d95926; --s3: #199e70; }
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
@@ -75,6 +75,17 @@
   .zwei .card { margin-bottom: 0; }
   .zwei { margin-bottom: 16px; }
   .kat:hover .b, .kat:focus .b { filter: brightness(1.15); }
+  .kuchen { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr); gap: 16px; align-items: center; }
+  @media (max-width: 720px) { .kuchen { grid-template-columns: minmax(0, 1fr); } }
+  .kuchen path { stroke: var(--card); stroke-width: 2; cursor: default; outline: none; }
+  .kuchen path:hover, .kuchen path:focus { filter: brightness(1.15); }
+  .kuchen svg text { fill: var(--text); font-size: 13px; }
+  .kuchen svg text.mitte { font-size: 19px; font-weight: 600; }
+  .kuchenart { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; padding: 8px 0 3px; border-top: 1px solid var(--line); }
+  .kuchenart:first-child { border-top: 0; }
+  .kuchenkat { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; color: var(--muted); padding: 1px 0 1px 16px; }
+  .kuchenorte { font-size: 0.75rem; color: var(--muted); padding: 0 0 4px 16px; }
+  .zwei-text { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
   details.tabelle { margin-top: 10px; font-size: 0.85rem; }
   details.tabelle summary { cursor: pointer; color: var(--muted); }
   #tip { position: fixed; pointer-events: none; background: var(--text); color: var(--bg); font-size: 0.8rem; padding: 6px 9px; border-radius: 6px; z-index: 6; max-width: 240px; }
@@ -101,11 +112,13 @@
       <button role="tab" data-t="eintragen">Eintragen</button>
       <button role="tab" data-t="wiederkehrend">Wiederkehrend</button>
       <button role="tab" data-t="berichte">Berichte</button>
+      <button role="tab" data-t="depot">Depot</button>
       <button role="tab" data-t="einstellungen">Einstellungen</button>
     </nav>
 
     <div data-seite="uebersicht">
       <section class="card" id="vorschlaege" hidden></section>
+      <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
       <div class="kopf"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
       <div class="kacheln" id="kacheln"></div>
       <section class="card">
@@ -170,14 +183,21 @@
       <div class="kacheln" id="bKacheln"></div>
       <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" hidden></p></section>
       <section class="card" id="bFazit" hidden><p class="fazit"></p></section>
+      <section class="card"><h2>Wofür und wo das Geld hinging</h2>
+        <p class="gedaempft" style="margin:0 0 8px">Von innen nach außen: Fest, Alltag, große Posten ab 50 €, dann Kategorie, dann Händler.</p>
+        <div class="kuchen"><div id="bKuchen"></div><div id="bKuchenListe"></div></div>
+      </section>
       <section class="card"><h2 id="bVerlaufTitel"></h2><div class="legende" id="bVerlaufLegende"></div><div id="bVerlauf"></div></section>
-      <section class="card"><h2>Wofür das Geld ging</h2><div class="legende" id="bKatLegende"></div><div id="bKategorien"></div></section>
-      <div class="zwei">
-        <section class="card"><h2>Fest, Alltag, große Posten</h2><div id="bStapel"></div></section>
-        <section class="card"><h2>Wo du am meisten ausgibst</h2><div id="bHaendler"></div><p class="gedaempft">Ohne wiederkehrende Ausgaben.</p></section>
-      </div>
       <section class="card"><h2 id="bTrendTitel"></h2><div class="legende" id="bTrendLegende"></div><div id="bTrend"></div></section>
       <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
+    </div>
+
+    <div data-seite="depot">
+      <div class="kopf"><h2>Depot</h2><span class="gedaempft" id="dStand"></span></div>
+      <div class="kacheln" id="dKacheln" hidden></div>
+      <section class="card" id="dVergleich" hidden><h2>Wert und Kaufpreis je Position</h2><div class="legende" id="dLegende"></div><div id="dBalken"></div></section>
+      <section class="card" id="dAnteil" hidden><h2>Verteilung</h2><div id="dStapel"></div></section>
+      <section class="card"><h2>Positionen</h2><div id="dPositionen"></div></section>
     </div>
 
     <div data-seite="einstellungen">
@@ -247,6 +267,7 @@ function zeige(name) {
   $$(".reiter button").forEach((b) => b.setAttribute("aria-selected", b.dataset.t === name));
   if (name === "wiederkehrend") wLaden();
   if (name === "berichte") berichteLaden();
+  if (name === "depot") depotLaden();
   if (name === "einstellungen") einstellungenLaden();
 }
 
@@ -269,6 +290,12 @@ async function ladeAlles() {
   $("#konten").innerHTML = s.konten.map((k) => `<tr><td>${esc(kurz(k.pfad))}</td><td class="zahl">${eur(k.saldo)}</td></tr>`).join("")
     + `<tr><td><b>Gesamt</b></td><td class="zahl"><b>${eur(s.vermoegen)}</b></td></tr>`;
   zeichneZiel(s);
+  $("#uSparenKarte").hidden = !s.vorschlaege.length;
+  if (s.vorschlaege.length) {
+    $("#uSparenTitel").textContent = `Sparpotenzial: rund ${eur0(s.vorschlaege.reduce((a, v) => a + v.betrag, 0))} pro Monat`;
+    waagerecht("#uSparen", s.vorschlaege.map((v) => ({ name: v.titel, betrag: v.betrag })), "var(--s3)");
+    $("#uSparenQuelle").textContent = `Aus dem Bericht für ${mName(s.vorschlaege_aus)}.`;
+  }
   formKonten(); wKonten();
   optionenEltern();
   await Promise.all([ladeMonat(), ladeVorschlaege()]);
@@ -282,7 +309,7 @@ function zeichneZiel(s) {
   k.innerHTML = `<h2>Sparziel: ${eur(s.ziel.betrag)} bis ${dmy(s.ziel.datum)}</h2>
     <div class="meter" role="img" aria-label="${anteil.toFixed(0)} Prozent erreicht"><div style="width:${anteil}%"></div></div>
     <div>${eur(s.vermoegen)} erreicht, ${anteil.toFixed(0)} %. ${s.ziel.fehlt ? `Es fehlen ${eur(s.ziel.fehlt)}, also rund ${eur(s.ziel.pro_monat)} pro Monat über ${s.ziel.monate} Monate.` : "Ziel erreicht."}</div>
-    <div class="gedaempft">Das Depot zählt mit dem zuletzt gebuchten Wert.</div>`;
+    <div class="gedaempft">${s.konten.some((k) => k.aktuell) ? "Das Depot zählt mit aktuellen Kursen, soweit eingetragen." : "Das Depot zählt mit dem zuletzt gebuchten Wert."}</div>`;
 }
 
 async function ladeMonat() {
@@ -484,7 +511,7 @@ function tipZeigen(e, kopf, zeilen) {
     if (farbe) { const i = document.createElement("i"); i.style.background = farbe; z.append(i); }
     const b = document.createElement("b");
     b.textContent = wert;
-    z.append(b, ` ${name}`);
+    z.append(b, wert ? ` ${name}` : name);
     t.append(z);
   }
   t.hidden = false;
@@ -596,6 +623,92 @@ function waagerecht(ziel, zeilen, farbe) {
   }
 }
 
+function kuchenZeichnen(d) {
+  const FARBEN = { Fest: "var(--s1)", Alltag: "var(--s2)", "Große Posten": "var(--s3)" };
+  const box = $("#bKuchen"), liste = $("#bKuchenListe");
+  const gesamt = d.kuchen.reduce((a, k) => a + k.betrag, 0);
+  box.replaceChildren(); liste.replaceChildren();
+  if (!gesamt) { box.innerHTML = '<p class="gedaempft">Keine Ausgaben in diesem Zeitraum.</p>'; return; }
+  const W = 620, H = 500, cx = W / 2, cy = H / 2;
+  const RINGE = [[62, 108], [108, 152], [152, 192]];
+  const punkt = (r, w) => [cx + r * Math.sin(w), cy - r * Math.cos(w)];
+  const bogen = (innen, aussen, a, b) => {
+    const e = Math.min(b, a + 2 * Math.PI - 0.0001), gr = e - a > Math.PI ? 1 : 0;
+    const [x1, y1] = punkt(aussen, a), [x2, y2] = punkt(aussen, e), [x3, y3] = punkt(innen, e), [x4, y4] = punkt(innen, a);
+    return `M${x1},${y1}A${aussen},${aussen} 0 ${gr} 1 ${x2},${y2}L${x3},${y3}A${innen},${innen} 0 ${gr} 0 ${x4},${y4}Z`;
+  };
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("class", "grafik");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Ausgaben nach Art, Kategorie und Händler");
+  const stueck = (ring, a, b, farbe, deckkraft, titel, zeilen) => {
+    const p = document.createElementNS(SVG, "path");
+    p.setAttribute("d", bogen(RINGE[ring][0], RINGE[ring][1], a, b));
+    p.setAttribute("fill", farbe);
+    p.setAttribute("fill-opacity", deckkraft);
+    hover(p, titel, zeilen);
+    svg.append(p);
+  };
+  const anteil = (b) => `${Math.round(b / gesamt * 100)} %`;
+  const beschriftungen = [];
+  let w = 0;
+  for (const art of d.kuchen) {
+    const farbe = FARBEN[art.name], artAnfang = w;
+    art.kategorien.forEach((kat, ki) => {
+      const katAnfang = w;
+      kat.haendler.forEach((h, hi) => {
+        const breite = h.betrag / gesamt * 2 * Math.PI;
+        stueck(2, w, w + breite, farbe, hi % 2 ? 0.42 : 0.56, h.name, [[eur(h.betrag), anteil(h.betrag)], ["", kurz(kat.name)], ["", art.name]]);
+        if (h.betrag / gesamt >= 0.06) beschriftungen.push({ text: h.name, w: w + breite / 2 });
+        w += breite;
+      });
+      stueck(1, katAnfang, w, farbe, ki % 2 ? 0.68 : 0.8, kurz(kat.name), [[eur(kat.betrag), anteil(kat.betrag)], ["", art.name]]);
+    });
+    stueck(0, artAnfang, w, farbe, 1, art.name, [[eur(art.betrag), anteil(art.betrag)]]);
+  }
+  // Größere Händler außen beschriften, je Seite ohne Überlappung.
+  // Auf schmalen Bildschirmen wären sie zu klein, dort stehen die Händler nur in der Liste.
+  for (const rechts of (box.clientWidth || 600) >= 480 ? [true, false] : []) {
+    let unten = -Infinity;
+    beschriftungen.filter((b) => (b.w <= Math.PI) === rechts).map((b) => ({ ...b, y: punkt(204, b.w)[1] + 4 })).sort((a, b) => a.y - b.y).forEach((b) => {
+      const t = document.createElementNS(SVG, "text");
+      const y = Math.max(b.y, unten + 15);
+      unten = y;
+      t.setAttribute("x", punkt(204, b.w)[0]);
+      t.setAttribute("y", y);
+      t.setAttribute("text-anchor", rechts ? "start" : "end");
+      t.textContent = b.text;
+      svg.append(t);
+    });
+  }
+  const mitte = document.createElementNS(SVG, "text");
+  mitte.setAttribute("x", cx); mitte.setAttribute("y", cy + 7);
+  mitte.setAttribute("text-anchor", "middle");
+  mitte.setAttribute("class", "mitte");
+  mitte.textContent = eur0(d.gesamt);
+  svg.append(mitte);
+  box.append(svg);
+  for (const art of d.kuchen) {
+    const kopf = document.createElement("div");
+    kopf.className = "kuchenart";
+    kopf.innerHTML = `<span><span class="zwei-text" style="background:${FARBEN[art.name]}"></span><span></span></span><span>${eur(art.betrag)}</span>`;
+    kopf.firstChild.lastChild.textContent = art.name;
+    liste.append(kopf);
+    for (const kat of art.kategorien) {
+      const z = document.createElement("div");
+      z.className = "kuchenkat";
+      z.innerHTML = `<span></span><span class="zahl">${eur(kat.betrag)}</span>`;
+      z.firstChild.textContent = kurz(kat.name);
+      liste.append(z);
+      const orte = document.createElement("div");
+      orte.className = "kuchenorte";
+      orte.textContent = kat.haendler.map((h) => `${h.name} ${eur0(h.betrag)}`).join(" · ");
+      liste.append(orte);
+    }
+  }
+}
+
 function berichtZeichnen(d) {
   bAktuell = d;
   const woche = d.kennung === "woche";
@@ -635,33 +748,7 @@ function berichtZeichnen(d) {
     $("#bTrend").insertAdjacentHTML("beforeend", tabelle(["Monat", "Ausgaben", "Einnahmen"], t.map((g) => [g.lang, eur(g.ausgaben), eur(g.einnahmen)])));
   }
 
-  legende("#bKatLegende", [[name, "var(--s1)"], [vergleich, "var(--vor)"]]);
-  const max = Math.max(1, ...d.kategorien.flatMap((k) => [k.betrag, k.vergleich]));
-  const kat = $("#bKategorien");
-  kat.replaceChildren();
-  for (const k of d.kategorien) {
-    const r = document.createElement("div");
-    r.className = "kat";
-    r.innerHTML = `<span></span><div class="balken">${k.betrag > 0 ? `<div class="b" style="width:${k.betrag / max * 100}%"></div>` : ""}${k.vergleich > 0 ? `<div class="v" style="width:${k.vergleich / max * 100}%"></div>` : ""}</div><span class="zahl">${eur(k.betrag)}</span>`;
-    r.firstChild.textContent = kurz(k.pfad);
-    hover(r, kurz(k.pfad), [[eur(k.betrag), name, "var(--s1)"], [eur(k.vergleich), vergleich, "var(--vor)"]]);
-    kat.append(r);
-  }
-  if (!d.kategorien.length) kat.innerHTML = '<p class="gedaempft">Keine Ausgaben in diesem Zeitraum.</p>';
-
-  const teile = [["Fest", d.fix, "var(--s1)"], ["Alltag", d.alltag, "var(--s2)"], ["Große Posten ab 50 €", d.gross, "var(--s3)"]];
-  const positiv = teile.filter((t) => t[1] > 0);
-  const st = $("#bStapel");
-  st.innerHTML = '<div class="stapel"></div><table></table>';
-  for (const [n, b, f] of positiv) {
-    const s = document.createElement("div");
-    s.style.cssText = `flex:${b} 1 0;background:${f}`;
-    hover(s, n, [[eur(b), `${Math.round(b / d.gesamt * 100)} %`]]);
-    st.firstChild.append(s);
-  }
-  st.lastChild.innerHTML = teile.map(([n, b, f]) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${f};margin-right:6px"></span>${esc(n)}</td><td class="zahl">${eur(b)}</td></tr>`).join("");
-
-  waagerecht("#bHaendler", d.haendler, "var(--s1)");
+  kuchenZeichnen(d);
   $("#bPosten").innerHTML = d.posten.map((p) => `<tr><td class="gedaempft">${dmy(p.datum).slice(0, 6)}</td><td>${esc(p.beschreibung)}</td><td class="zahl">${eur(p.betrag)}</td></tr>`).join("");
   $("#bSparenKarte").hidden = !d.vorschlaege.length;
   $("#bSparenTitel").textContent = `Sparpotenzial: rund ${eur0(d.vorschlaege.reduce((a, v) => a + v.betrag, 0))} pro Monat`;
@@ -682,6 +769,76 @@ const berichteLaden = sicher(async () => {
 $("#bZeit").onchange = berichtLaden;
 let bUhr;
 addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="berichte"]').hidden) berichtZeichnen(bAktuell); }, 150); });
+// ---------- Depot ----------
+const prozent = (p) => `${p > 0 ? "+" : ""}${p.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+const plus = (c) => `${c > 0 ? "+" : ""}${eur(c)}`;
+const kursText = (k) => k.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+const stueckText = (s) => s.toLocaleString("de-DE", { maximumFractionDigits: 4 });
+const REIHEN = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+let dOffen = null;
+
+const depotLaden = sicher(async () => {
+  const d = await api("api/depot");
+  const mit = d.positionen.filter((p) => p.wert !== undefined);
+  $("#dStand").textContent = d.zeit ? `Kurse von ${new Date(d.zeit * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : "";
+  for (const id of ["#dKacheln", "#dVergleich", "#dAnteil"]) $(id).hidden = !mit.length;
+  if (mit.length) {
+    $("#dKacheln").innerHTML = [["Wert", eur(d.wert)], ["Kaufpreis", eur(d.einstand)], ["Gewinn/Verlust", plus(d.gewinn)], ["Zum Kaufpreis", prozent(d.prozent)]]
+      .map(([l, v]) => `<div class="kachel"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join("");
+    legende("#dLegende", [["Aktueller Wert", "var(--s1)"], ["Kaufpreis", "var(--vor)"]]);
+    const max = Math.max(1, ...mit.flatMap((p) => [p.wert, p.einstand]));
+    const box = $("#dBalken");
+    box.replaceChildren();
+    for (const p of mit) {
+      const r = document.createElement("div");
+      r.className = "kat";
+      r.innerHTML = `<span></span><div class="balken"><div class="b" style="width:${p.wert / max * 100}%"></div><div class="v" style="width:${p.einstand / max * 100}%"></div></div><span class="zahl" style="color:${p.gewinn >= 0 ? "var(--gut)" : "var(--danger)"}">${p.gewinn >= 0 ? "▲" : "▼"} ${esc(prozent(p.prozent))}</span>`;
+      r.firstChild.textContent = p.name;
+      hover(r, p.name, [[eur(p.wert), "aktueller Wert", "var(--s1)"], [eur(p.einstand), "Kaufpreis", "var(--vor)"], [plus(p.gewinn), "Gewinn/Verlust"]]);
+      box.append(r);
+    }
+    const st = $("#dStapel");
+    st.innerHTML = '<div class="stapel"></div><table></table>';
+    mit.forEach((p, i) => {
+      const s = document.createElement("div");
+      s.style.cssText = `flex:${p.wert} 1 0;background:${REIHEN[i % 4]}`;
+      hover(s, p.name, [[`${Math.round(p.wert / d.wert * 100)} %`, eur(p.wert)]]);
+      st.firstChild.append(s);
+    });
+    st.lastChild.innerHTML = mit.map((p, i) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${REIHEN[i % 4]};margin-right:6px"></span>${esc(p.name)}</td><td class="zahl">${Math.round(p.wert / d.wert * 100)} %</td></tr>`).join("");
+  }
+  $("#dPositionen").innerHTML = '<table>' + d.positionen.map((p) => {
+    if (dOffen === p.konto || !p.eingerichtet) {
+      return `<tr><td colspan="3"><b>${esc(p.name)}</b>
+        <form class="raster" data-form="${p.konto}" style="margin-top:6px">
+          <label>ISIN<input name="isin" required value="${esc(p.isin || "")}" autocapitalize="characters"></label>
+          <label>Stückzahl<input name="stueck" inputmode="decimal" required value="${p.stueck ? String(p.stueck).replace(".", ",") : ""}"></label>
+          <label>Ø Kaufkurs in €<input name="kaufkurs" inputmode="decimal" required value="${p.stueck ? kursText(p.einstand / 100 / p.stueck).replace(/\./g, "") : ""}"></label>
+          <div style="align-self:end"><button class="primaer">Speichern</button></div>
+        </form></td></tr>`;
+    }
+    return `<tr>
+      <td>${esc(p.name)}<div class="gedaempft">${esc(stueckText(p.stueck))} Stück · Ø ${esc(kursText(p.einstand / 100 / p.stueck))} € · Kurs ${p.kurs ? esc(kursText(p.kurs)) + " €" : "nicht abrufbar"}${p.heute != null ? ` · heute ${esc(prozent(p.heute))}` : ""}</div>
+      ${p.geschaetzt ? '<div class="gedaempft">Enthält geschätzte Käufe oder Verkäufe aus dem Buch. Prüf die Werte in deinem Depot.</div>' : ""}</td>
+      <td class="zahl">${p.wert !== undefined ? `${eur(p.wert)}<div class="gedaempft">${esc(plus(p.gewinn))}</div>` : ""}</td>
+      <td class="knoepfe"><button class="klein" data-aendern="${p.konto}">Ändern</button></td></tr>`;
+  }).join("") + "</table>";
+});
+$("#dPositionen").onclick = (e) => {
+  const b = e.target.closest("[data-aendern]");
+  if (b) { dOffen = b.dataset.aendern; depotLaden(); }
+};
+$("#dPositionen").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  await api(`api/depot/${f.dataset.form}`, json("PUT", { isin: f.isin.value, stueck: f.stueck.value, kaufkurs: f.kaufkurs.value }));
+  dOffen = null;
+  toast("Gespeichert");
+  await depotLaden();
+  await ladeAlles();
+});
+setInterval(() => { if (!$('[data-seite="depot"]').hidden && !dOffen && !$("#dPositionen form")) depotLaden(); }, 60000);
+
 const einstellungenLaden = sicher(async () => {
   const e = await api("api/einstellungen");
   $("#zBetrag").value = e.sparziel ? eingabe(e.sparziel) : "";

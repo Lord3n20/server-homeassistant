@@ -282,8 +282,8 @@ def konto_anlegen(name, eltern_id):
             raise BuchFehler("Oberkonto nicht gefunden")
         if any(k["eltern"] == eltern_id and k["name"] == name for k in konten.values()):
             raise BuchFehler("Dieses Konto gibt es dort schon")
-        # Unter einem Vermögens-Sammelkonto entsteht ein Bankkonto, sonst derselbe Typ.
-        typ = "BANK" if eltern["typ"] == "ASSET" else eltern["typ"]
+        # Unter einem Vermögens-Sammelkonto entsteht ein Bankkonto (außer im Depot), sonst derselbe Typ.
+        typ = "BANK" if eltern["typ"] == "ASSET" and eltern["name"] != "Depot" else eltern["typ"]
         neu = uuid.uuid4().hex
         xml = (f'<gnc:account version="2.0.0"><act:name>{escape(name)}</act:name>'
                f'<act:id type="guid">{neu}</act:id><act:type>{typ}</act:type>'

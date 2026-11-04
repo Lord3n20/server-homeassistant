@@ -18,6 +18,7 @@ from pathlib import Path
 
 import buch
 import ausgaben
+import depot
 from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
 PANEL = Path(__file__).with_name("panel.html")
@@ -29,6 +30,7 @@ EINSTELLUNGEN = DATA / "einstellungen.json"
 MAX_IMPORT = 20 * 1024 * 1024
 MAX_JSON = 1024 * 1024
 GROSSER_POSTEN = 5000  # Cent; ab hier zählt eine Ausgabe nicht mehr als Alltag
+KLEINER_ANTEIL = 0.015  # Händler unter diesem Anteil am Monat laufen im Kuchen unter „Weitere“
 
 
 # ---------- Wiederkehrend ----------
@@ -93,7 +95,8 @@ def stand():
         for s in b["splits"]:
             salden[s["konto"]] = salden.get(s["konto"], 0) + s["betrag"]
     aktiv = [k for k in konten.values() if k["typ"] in buch.VERMOEGEN_TYPEN and k["waehrung"] == "EUR"]
-    liste = [{"pfad": k["pfad"], "saldo": salden.get(k["id"], 0), "typ": k["typ"]}
+    aktuell = depot.aktuelle_werte()
+    liste = [{"pfad": k["pfad"], "saldo": aktuell.get(k["id"], salden.get(k["id"], 0)), "typ": k["typ"], "aktuell": k["id"] in aktuell}
              for k in sorted(aktiv, key=lambda k: k["pfad"]) if not k["platzhalter"]]
     vermoegen = sum(x["saldo"] for x in liste)
     e = json_laden(EINSTELLUNGEN, {})
@@ -105,7 +108,11 @@ def stand():
         ziel = {"betrag": e["sparziel"], "datum": e["sparziel_datum"], "monate": monate,
                 "fehlt": max(0, e["sparziel"] - vermoegen), "pro_monat": max(0, e["sparziel"] - vermoegen) // monate}
     monate = sorted({b["datum"][:7] for b in buchungen if any(konten[s["konto"]]["typ"] in ("EXPENSE", "INCOME") for s in b["splits"])})
-    return {"konten": liste, "vermoegen": vermoegen, "ziel": ziel, "monate": monate}
+    berichte = json_laden(ausgaben.BERICHTE, {})
+    mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and v.get("vorschlaege"))
+    quelle = mit_vorschlaegen[-1] if mit_vorschlaegen else ""
+    return {"konten": liste, "vermoegen": vermoegen, "ziel": ziel, "monate": monate,
+            "vorschlaege": berichte.get(quelle, {}).get("vorschlaege", []), "vorschlaege_aus": quelle}
 
 
 def kontenliste():
@@ -150,6 +157,31 @@ def monat(m):
                 for p in sorted(set(ausgaben) | set(davor), key=lambda p: -ausgaben.get(p, 0))],
             "einnahmequellen": [{"pfad": p, "betrag": b} for p, b in sorted(einnahmen.items(), key=lambda x: -x[1])],
             "buchungen": zeilen}
+
+
+def kuchen_bauen(baum, gesamt):
+    """Art -> Kategorie -> Händler, nur positive Summen; Kleinstes läuft je Kategorie unter „Weitere“."""
+    grenze = max(gesamt, 0) * KLEINER_ANTEIL
+    kuchen = []
+    for art, kategorien in baum.items():
+        aeste = []
+        for pfad, haendler in kategorien.items():
+            gross, weitere = [], 0
+            for name, betrag in sorted(haendler.items(), key=lambda x: -x[1]):
+                if betrag <= 0:
+                    continue
+                if betrag >= grenze or not gross:
+                    gross.append({"name": name, "betrag": betrag})
+                else:
+                    weitere += betrag
+            if weitere:
+                gross.append({"name": "Weitere", "betrag": weitere})
+            if gross:
+                aeste.append({"name": pfad, "betrag": sum(h["betrag"] for h in gross), "haendler": gross})
+        aeste.sort(key=lambda a: -a["betrag"])
+        if aeste:
+            kuchen.append({"name": art, "betrag": sum(a["betrag"] for a in aeste), "kategorien": aeste})
+    return kuchen
 
 
 def bericht(kennung):
@@ -209,17 +241,15 @@ def bericht(kennung):
     jetzt, davor = im(von, bis), im(vor_von, vor_bis)
     fix = [z for z in jetzt if ist_fix(z)]
     gross = [z for z in jetzt if not ist_fix(z) and z["gesamt"] >= GROSSER_POSTEN]
-    kategorien, vor_kategorien, haendler = {}, {}, {}
+    baum = {"Fest": {}, "Alltag": {}, "Große Posten": {}}
     for z in jetzt:
+        art = "Fest" if ist_fix(z) else "Große Posten" if z["gesamt"] >= GROSSER_POSTEN else "Alltag"
+        woerter = z["beschreibung"].split("(")[0].split()
+        name = " ".join(woerter[:3] if woerter[1:2] == ["&"] else woerter[:2]) or z["beschreibung"]
         for p in z["positionen"]:
-            kategorien[p["kategorie"]] = kategorien.get(p["kategorie"], 0) + p["betrag"]
-        if not ist_fix(z):
-            woerter = z["beschreibung"].split("(")[0].split()
-            name = " ".join(woerter[:3] if woerter[1:2] == ["&"] else woerter[:2]) or z["beschreibung"]
-            haendler[name] = haendler.get(name, 0) + z["gesamt"]
-    for z in davor:
-        for p in z["positionen"]:
-            vor_kategorien[p["kategorie"]] = vor_kategorien.get(p["kategorie"], 0) + p["betrag"]
+            ast = baum[art].setdefault(p["kategorie"], {})
+            ast[name] = ast.get(name, 0) + p["betrag"]
+    kuchen = kuchen_bauen(baum, summe(jetzt))
 
     berichte = json_laden(ausgaben.BERICHTE, {})
     wochen = sorted(k for k in berichte if "W" in k)
@@ -234,9 +264,7 @@ def bericht(kennung):
         "einnahmen": trend[-1].get("einnahmen"),
         "verlauf": je_tag(jetzt, von, (bis - von).days + 1)[:tage],
         "vergleich_verlauf": je_tag(davor, vor_von, vor_tage),
-        "kategorien": [{"pfad": k, "betrag": kategorien.get(k, 0), "vergleich": vor_kategorien.get(k, 0)}
-                       for k in sorted(set(kategorien) | set(vor_kategorien), key=lambda k: -kategorien.get(k, 0))],
-        "haendler": [{"name": n, "betrag": b} for n, b in sorted(haendler.items(), key=lambda x: -x[1])[:6] if b > 0],
+        "kuchen": kuchen,
         "posten": [{"datum": z["datum"], "beschreibung": z["beschreibung"], "betrag": z["gesamt"]}
                    for z in sorted(jetzt, key=lambda z: -z["gesamt"])[:5]],
         "trend": trend, "text": text.get("text", ""),
@@ -318,6 +346,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.antwort(200, {"liste": json_laden(ausgaben.WIEDERKEHREND, [])})
         if pfad == "/api/vorschlaege":
             return self.antwort(200, {"liste": [v for v in ausgaben.vorschlaege_laden() if v["status"] == "offen"]})
+        if pfad == "/api/depot":
+            return self.antwort(200, depot.uebersicht())
         if pfad == "/api/bericht":
             return self.antwort(200, bericht(q.get("k", ["woche"])[0]))
         if pfad == "/api/einstellungen":
@@ -363,6 +393,10 @@ class Handler(BaseHTTPRequestHandler):
             kennung = buch.buchen(daten.get("art"), daten.get("datum"), daten.get("beschreibung"),
                                   daten.get("konto"), positionen_lesen(daten), ersetzt=m[1])
             return self.antwort(200, {"id": kennung})
+        m = re.fullmatch(r"/api/depot/(\w+)", pfad)
+        if m:
+            depot.eintragen(m[1], daten)
+            return self.antwort(200, {"ok": True})
         m = re.fullmatch(r"/api/wiederkehrend/(\w+)", pfad)
         if m:
             with lock:
@@ -385,6 +419,10 @@ class Handler(BaseHTTPRequestHandler):
         m = re.fullmatch(r"/api/buchungen/(\w+)", pfad)
         if m:
             buch.loeschen(m[1])
+            return self.antwort(200, {"ok": True})
+        m = re.fullmatch(r"/api/depot/(\w+)", pfad)
+        if m:
+            depot.entfernen(m[1])
             return self.antwort(200, {"ok": True})
         m = re.fullmatch(r"/api/wiederkehrend/(\w+)", pfad)
         if m:
