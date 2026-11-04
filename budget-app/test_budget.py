@@ -219,6 +219,12 @@ class Schnittstelle(Basis):
             if b["beschreibung"].startswith("GEHEIM"):
                 self.assertFalse(self.rufe("ausgabe_stornieren", id=b["id"])[0]["ok"])
 
+    def test_monats_und_wochenbericht(self):
+        for kennung in ("2026-10", "2026-W45"):
+            self.assertTrue(self.rufe("monatsbericht_speichern", monat=kennung, text="Bericht")[0]["ok"], kennung)
+        for falsch in ("2026-13", "2026-W54", "2026-W00", "letzte Woche"):
+            self.assertFalse(self.rufe("monatsbericht_speichern", monat=falsch, text="Bericht")[0]["ok"], falsch)
+
     def test_panel_wege_gibt_es_hier_nicht(self):
         for pfad in ("/werkzeug/stand", "/api/stand", "/api/export", "/"):
             self.assertEqual(anfrage(f"{self.url}{pfad}", {})[0], 404, pfad)
