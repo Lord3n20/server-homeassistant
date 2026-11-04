@@ -215,12 +215,15 @@ def w_bericht(a):
         raise BuchFehler("Monat (JJJJ-MM) oder Woche (JJJJ-Www) und Text angeben")
     if len(text) > 20000:
         raise BuchFehler("Der Bericht ist zu lang")
+    roh = a.get("vorschlaege") or []
+    vorschlaege = [{"titel": str(v["titel"]).strip(), "betrag": cent(v["betrag"])}
+                   for v in (json.loads(roh) if isinstance(roh, str) else roh)]
     with lock:
         berichte = json_laden(BERICHTE, {})
         # Von den Wochenübersichten bleibt nur die neueste, Monatsberichte bleiben alle.
         if "W" in monat:
             berichte = {k: v for k, v in berichte.items() if "W" not in k}
-        berichte[monat] = {"text": text, "erstellt": time.strftime("%Y-%m-%d %H:%M")}
+        berichte[monat] = {"text": text, "vorschlaege": vorschlaege, "erstellt": time.strftime("%Y-%m-%d %H:%M")}
         json_speichern(BERICHTE, berichte)
     return {"ok": True}
 

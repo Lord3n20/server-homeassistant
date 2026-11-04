@@ -12,7 +12,7 @@ import secrets
 import threading
 import time
 import urllib.parse
-from datetime import date
+from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -28,6 +28,7 @@ ERLAUBT = {"172.30.32.2", "127.0.0.1", "::1"}
 EINSTELLUNGEN = DATA / "einstellungen.json"
 MAX_IMPORT = 20 * 1024 * 1024
 MAX_JSON = 1024 * 1024
+GROSSER_POSTEN = 5000  # Cent; ab hier zählt eine Ausgabe nicht mehr als Alltag
 
 
 # ---------- Wiederkehrend ----------
@@ -151,6 +152,94 @@ def monat(m):
             "buchungen": zeilen}
 
 
+def bericht(kennung):
+    """Alle Zahlen für die Grafiken eines Monats (JJJJ-MM) oder der letzten 7 Tage ("woche")."""
+    heute = date.today()
+    zeilen = buch.ausgabezeilen()
+    konten, buchungen = buch.lesen()
+    dauer = {(konten[w["gegenkonto"]]["pfad"], w["betrag"]) for w in json_laden(ausgaben.WIEDERKEHREND, [])
+             if w["art"] == "ausgabe" and w["gegenkonto"] in konten}
+
+    def ist_fix(z):
+        return any(p["memo"].startswith("Wiederkehrend ") or (p["kategorie"], p["betrag"]) in dauer for p in z["positionen"])
+
+    def im(von, bis):
+        return [z for z in zeilen if von.isoformat() <= z["datum"] <= bis.isoformat()]
+
+    def summe(liste):
+        return sum(z["gesamt"] for z in liste)
+
+    def je_tag(liste, von, tage):
+        werte = [0] * tage
+        for z in liste:
+            werte[(date.fromisoformat(z["datum"]) - von).days] += z["gesamt"]
+        return werte
+
+    if kennung == "woche":
+        von, bis = heute - timedelta(days=6), heute
+        vor_von, vor_bis = von - timedelta(days=7), von - timedelta(days=1)
+        titel, vergleich_titel = f"{von.strftime('%d.%m.')} bis {bis.strftime('%d.%m.')}", "7 Tage davor"
+        tage, vor_tage = 7, 7
+        trend = []
+        for i in range(7, -1, -1):
+            ende = heute - timedelta(days=7 * i)
+            trend.append({"titel": ende.strftime("%d.%m."), "ausgaben": summe(im(ende - timedelta(days=6), ende))})
+    else:
+        if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", kennung or ""):
+            raise BuchFehler("Zeitraum nicht lesbar")
+        von = date.fromisoformat(f"{kennung}-01")
+        bis = buch.monat_plus(von, 0, 31)
+        vor_von = buch.monat_plus(von, -1, 1)
+        vor_bis = von - timedelta(days=1)
+        titel, vergleich_titel = kennung, vor_von.strftime("%Y-%m")
+        tage, vor_tage = (min(bis, max(heute, von)) - von).days + 1, (vor_bis - vor_von).days + 1
+        einnahmen = {}
+        for b in buchungen:
+            for s in b["splits"]:
+                k = konten[s["konto"]]
+                if k["typ"] == "INCOME" and "Kursgewinn" not in k["name"]:
+                    einnahmen[b["datum"][:7]] = einnahmen.get(b["datum"][:7], 0) - s["betrag"]
+        trend = []
+        for i in range(5, -1, -1):
+            start = buch.monat_plus(von, -i, 1)
+            schluessel = start.strftime("%Y-%m")
+            trend.append({"titel": schluessel, "ausgaben": summe(im(start, buch.monat_plus(start, 0, 31))),
+                          "einnahmen": einnahmen.get(schluessel, 0)})
+
+    jetzt, davor = im(von, bis), im(vor_von, vor_bis)
+    fix = [z for z in jetzt if ist_fix(z)]
+    gross = [z for z in jetzt if not ist_fix(z) and z["gesamt"] >= GROSSER_POSTEN]
+    kategorien, vor_kategorien, haendler = {}, {}, {}
+    for z in jetzt:
+        for p in z["positionen"]:
+            kategorien[p["kategorie"]] = kategorien.get(p["kategorie"], 0) + p["betrag"]
+        if not ist_fix(z):
+            woerter = z["beschreibung"].split("(")[0].split()
+            name = " ".join(woerter[:3] if woerter[1:2] == ["&"] else woerter[:2]) or z["beschreibung"]
+            haendler[name] = haendler.get(name, 0) + z["gesamt"]
+    for z in davor:
+        for p in z["positionen"]:
+            vor_kategorien[p["kategorie"]] = vor_kategorien.get(p["kategorie"], 0) + p["betrag"]
+
+    berichte = json_laden(ausgaben.BERICHTE, {})
+    wochen = sorted(k for k in berichte if "W" in k)
+    text = berichte.get(wochen[-1] if kennung == "woche" and wochen else kennung) or {}
+    return {
+        "kennung": kennung, "titel": titel, "vergleich_titel": vergleich_titel, "von": von.isoformat(),
+        "gesamt": summe(jetzt), "vergleich": summe(davor), "fix": summe(fix), "gross": summe(gross),
+        "alltag": summe(jetzt) - summe(fix) - summe(gross),
+        "einnahmen": trend[-1].get("einnahmen"),
+        "verlauf": je_tag(jetzt, von, (bis - von).days + 1)[:tage],
+        "vergleich_verlauf": je_tag(davor, vor_von, vor_tage),
+        "kategorien": [{"pfad": k, "betrag": kategorien.get(k, 0), "vergleich": vor_kategorien.get(k, 0)}
+                       for k in sorted(set(kategorien) | set(vor_kategorien), key=lambda k: -kategorien.get(k, 0))],
+        "haendler": [{"name": n, "betrag": b} for n, b in sorted(haendler.items(), key=lambda x: -x[1])[:6] if b > 0],
+        "posten": [{"datum": z["datum"], "beschreibung": z["beschreibung"], "betrag": z["gesamt"]}
+                   for z in sorted(jetzt, key=lambda z: -z["gesamt"])[:5]],
+        "trend": trend, "text": text.get("text", ""), "vorschlaege": text.get("vorschlaege", []),
+    }
+
+
 def positionen_lesen(daten):
     return [{"konto": p.get("konto"), "betrag": cent(p.get("betrag")), "memo": str(p.get("memo") or "").strip()}
             for p in daten.get("positionen") or []]
@@ -225,8 +314,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.antwort(200, {"liste": json_laden(ausgaben.WIEDERKEHREND, [])})
         if pfad == "/api/vorschlaege":
             return self.antwort(200, {"liste": [v for v in ausgaben.vorschlaege_laden() if v["status"] == "offen"]})
-        if pfad == "/api/berichte":
-            return self.antwort(200, {"berichte": json_laden(ausgaben.BERICHTE, {})})
+        if pfad == "/api/bericht":
+            return self.antwort(200, bericht(q.get("k", ["woche"])[0]))
         if pfad == "/api/einstellungen":
             return self.antwort(200, json_laden(EINSTELLUNGEN, {}))
         if pfad == "/api/export":
