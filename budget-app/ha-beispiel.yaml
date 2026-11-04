@@ -7,7 +7,8 @@
 #     payload: "{{ daten | tojson }}"
 #     timeout: 20
 #
-# Für scripts.yaml:
+# Für scripts.yaml. Die Felder gehen gesammelt als dict in die Daten: einzeln würde
+# Home Assistant aus Text wie "12,34" beim Auswerten die Liste [12, 34] machen.
 
 budget_kategorien:
   alias: "Budget: Kategorien und Zahlkonten"
@@ -60,12 +61,7 @@ budget_ausgabe_vorschlagen:
   - action: rest_command.budget
     data:
       werkzeug: ausgabe_vorschlagen
-      daten:
-        datum: "{{ datum }}"
-        beschreibung: "{{ beschreibung }}"
-        zahlkonto: "{{ zahlkonto }}"
-        positionen: "{{ positionen }}"
-        bonsumme: "{{ bonsumme | default('') }}"
+      daten: "{{ dict(datum=datum, beschreibung=beschreibung, zahlkonto=zahlkonto, positionen=positionen, bonsumme=bonsumme | default('')) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
@@ -92,9 +88,7 @@ budget_ausgabe_bestaetigen:
   - action: rest_command.budget
     data:
       werkzeug: ausgabe_bestaetigen
-      daten:
-        vorschlag_id: "{{ vorschlag_id }}"
-        trotz_duplikat: "{{ trotz_duplikat | default('') }}"
+      daten: "{{ dict(vorschlag_id=vorschlag_id, trotz_duplikat=trotz_duplikat | default('')) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
@@ -116,8 +110,7 @@ budget_vorschlag_verwerfen:
   - action: rest_command.budget
     data:
       werkzeug: vorschlag_verwerfen
-      daten:
-        vorschlag_id: "{{ vorschlag_id }}"
+      daten: "{{ dict(vorschlag_id=vorschlag_id) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
@@ -149,10 +142,7 @@ budget_ausgaben_lesen:
   - action: rest_command.budget
     data:
       werkzeug: ausgaben_lesen
-      daten:
-        von: "{{ von | default('') }}"
-        bis: "{{ bis | default('') }}"
-        suche: "{{ suche | default('') }}"
+      daten: "{{ dict(von=von | default(''), bis=bis | default(''), suche=suche | default('')) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
@@ -174,8 +164,7 @@ budget_ausgabe_stornieren:
   - action: rest_command.budget
     data:
       werkzeug: ausgabe_stornieren
-      daten:
-        id: "{{ id }}"
+      daten: "{{ dict(id=id) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
@@ -197,8 +186,7 @@ budget_monatsauswertung:
   - action: rest_command.budget
     data:
       werkzeug: monatsauswertung
-      daten:
-        monat: "{{ monat }}"
+      daten: "{{ dict(monat=monat) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
@@ -241,9 +229,7 @@ budget_monatsbericht_speichern:
   - action: rest_command.budget
     data:
       werkzeug: monatsbericht_speichern
-      daten:
-        monat: "{{ monat }}"
-        text: "{{ text }}"
+      daten: "{{ dict(monat=monat, text=text) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
