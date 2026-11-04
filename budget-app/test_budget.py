@@ -222,6 +222,8 @@ class Schnittstelle(Basis):
     def test_monats_und_wochenbericht(self):
         for kennung in ("2026-10", "2026-W45"):
             self.assertTrue(self.rufe("monatsbericht_speichern", monat=kennung, text="Bericht")[0]["ok"], kennung)
+        self.rufe("monatsbericht_speichern", monat="2026-W46", text="Neu")
+        self.assertEqual(sorted(buch.json_laden(ausgaben.BERICHTE, {})), ["2026-10", "2026-W46"])
         for falsch in ("2026-13", "2026-W54", "2026-W00", "letzte Woche"):
             self.assertFalse(self.rufe("monatsbericht_speichern", monat=falsch, text="Bericht")[0]["ok"], falsch)
 

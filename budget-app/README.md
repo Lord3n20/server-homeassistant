@@ -28,6 +28,7 @@ an. Sie hat keinen Weg zu den Daten des Panels. Claude erreicht sie über den MC
   Wer es dort ändert, lädt es danach wieder hoch.
 - Vor jeder Änderung liegt eine Kopie in `/data/versionen/` (die letzten 300).
 - Wiederkehrend, Vorschläge, Berichte und Einstellungen: JSON-Dateien in `/data/`.
+- Monatsberichte bleiben alle erhalten, von den Wochenübersichten nur die neueste.
 - Alles gehört zu den normalen HA-Backups.
 
 ## Wiederkehrende Buchungen
