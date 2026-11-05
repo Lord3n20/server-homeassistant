@@ -1,0 +1,27 @@
+name: "Backup-Upload"
+description: "Lädt das neueste automatische HA-Backup in Stücken per rclone in die Nextcloud (für Backups über der Größengrenze des Servers)"
+version: "0.1.0"
+slug: "backup_upload"
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+homeassistant_api: true
+map:
+  - backup:ro
+environment:
+  TZ: "Europe/Berlin"
+options:
+  webdav_url: ""
+  benutzer: ""
+  app_passwort: ""
+  ordner: "homeassistant"
+  behalten: 3
+schema:
+  webdav_url: url
+  benutzer: str
+  app_passwort: password
+  ordner: str
+  behalten: int(1,30)

@@ -1,0 +1,15 @@
+configuration:
+  webdav_url:
+    name: WebDAV address
+    description: e.g. https://nx….your-storageshare.de/remote.php/dav/files/USER
+  benutzer:
+    name: Nextcloud user
+  app_passwort:
+    name: App password
+    description: Create it in Nextcloud under Settings → Security
+  ordner:
+    name: Folder
+    description: Target folder in Nextcloud, the same as in the WebDAV integration
+  behalten:
+    name: Backups to keep
+    description: How many complete backups stay in Nextcloud
