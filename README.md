@@ -9,6 +9,7 @@ the public-transport router of [SchnellWeg](https://github.com/Lord3n20/SchnellW
 and Valhalla tiles, started by an automation) and `valhalla-app` (Valhalla service on those tiles); all three use prebuilt images from GHCR.
 `budget-app` is a household ledger in GnuCash format with an admin panel; Claude reaches it through Home Assistant scripts and only ever sees expenses.
 There is also `nextcloud-bruecke-app`, which serves Nextcloud folders read-only (rclone, no disk cache) over NFSv3 inside the app network, e.g. for Immich.
+`backup-upload-app` uploads the newest automatic HA backup to Nextcloud in chunks, for backups too large for one upload.
 The matching phone apps (J2ME) are in [`nokia-s40-apps/`](nokia-s40-apps); they are not Home Assistant apps.
 
 For installation add this repository to your Home Assistant App repositories.
