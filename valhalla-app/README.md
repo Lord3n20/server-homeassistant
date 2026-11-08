@@ -13,4 +13,5 @@ nach einem neuen Stand von dort neu gestartet.
 
 | Version | Image |
 |---|---|
+| 0.1.1 | `ghcr.io/lord3n20/schnellweg-valhalla:0.1.1` @sha256:d503eb5a37ff2f95d6bbb46fcb824310a77cbec62090ac737c0590ed2002d6d7 — Image heißt jetzt schnellweg-valhalla, Dienst unverändert |
 | 0.1.0 | `ghcr.io/lord3n20/rwaysth-valhalla:0.1.0` @sha256:3f376574e68df7c5bb6512b0dd4d20505394b25b9bc17dec236c42208351a59e |
