@@ -75,6 +75,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.47 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.47` @sha256:b4a5605d2084f3d8081c278f1370f4b186d8e312ea8b6a165f139c8c63f4e867 — Profil-Schalter `pflaster` (Kopfsteinpflaster umgehen), `kmh_auf`/`kmh_ab` (Tempo je Steigung), D-44 |
 | 0.1.48 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.48` @sha256:9c61e61b1dbacb798793d1e7a523c850cd3a4f9d7db0cde117313657fc6e7740 — Höhenkacheln für den Messgang (`/v1/hoehe`), `hang_voll`, D-44 |
 | 0.1.50 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.50` @sha256:1e96c9e8e290e1e1c9f46fe2c443b6a3061bc74d11993e1834d19f1f0d594eda — Regler `belag` mit Stufen je Belag, `belag_umweg`, D-44 |
+| 0.1.51 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.51` @sha256:23debe726192aecd7ea0855aedb90a64b567bee2d42c8ba58b0e26503099362d — bei knappem Umweg die schlimmsten Beläge umgehen, D-44 |
 | 0.1.45 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.45` @sha256:0920ad46579cf9c3fdf861b1c8c2602bc7f0fcb81a729652b1d45a522a898066 — Selbstupdate der App: `/v1/app`, `/v1/app/apk` (Option `app`, Ablage im Add-on-Ordner) |
 | 0.1.38 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.38` @sha256:1cf4345bb9b6d8ccea930291af3d7c4803656fd515c9e9ec8752377b025c2891 — Manövertyp und Stau-Verlauf für die Fahransicht (D-40) |
 | 0.1.37 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.37` @sha256:82fa8776a7cbc256d19d83fddd8723880afd5091111593988b3b65672f595d8b — Abbiegehinweise repariert |
