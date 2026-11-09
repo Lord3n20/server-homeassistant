@@ -47,6 +47,7 @@ actions:
 | 0.1.13 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.13` @sha256:fb506daa458877ec35ebc75269a0def62f2a330e1be079a15c90f193bf91196e — Prüfsumme vom Spiegel, wenn Geofabrik umleitet (germany) |
 | 0.1.14 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.14` @sha256:baa844639b1cbedfca7e634ba9853506bac7f722aaa1cc71183a945b155cc053 — Adresssuche mit weniger Speicher: Index direkt in die Datei, Go-Grenze ≤ 800 MiB (D-26) |
 | 0.1.15 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.15` @sha256:ea97bafcd76d1406ea2f2cfab2fad4a94e7cd863780d60b7820d84e1c5b49542 — Valhalla-Tiles mit Höhendaten, Liste der Pflaster-Wege (`pflaster.ids`), D-44 |
+| 0.1.16 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.16` @sha256:bd87cf618c735f4d1f7492a9913bb94b57679d59b71cc49a5ca78b706f78cbc0 — Belagklassen je Weg (`belag.ids`), D-44 |
 | 0.1.9 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.9` @sha256:a33ee73c8b211795113af2e52b488ee24b82d884a4400c09b3639cc429a09dc1 — Karte für Deutschland: Übersicht + Bundesländer (D-20), Optionen `map_uebersicht_zoom`, `map_tage` |
 | 0.1.8 | `ghcr.io/lord3n20/schnellweg-routing-jobs:0.1.8` @sha256:8698aaadfe2774a7197f0b3b805b5d9885165fa128352f659f38ca34c4c16563 — Job `rwth` (RWTH-Gebäudeliste, D-18), neuer Image-Name `schnellweg-*` |
 | 0.1.7 | `ghcr.io/lord3n20/rwaysth-routing-jobs:0.1.7` @sha256:60d4661918158d49e4625c004efec104772c58af3f71730d1c5c4dfd2c5d71b6 — Jobs `geocode` und `map` |
