@@ -72,6 +72,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.43 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.43` @sha256:433aa872fbc2d2a73b56627e0852580b11be4ac917e91117ff93cab58f578cd2 — Gleiche Ankunfts- und Abfahrtszeiten teilen sich ein Feld, ~7 MB weniger Heap (D-41) |
 | 0.1.44 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.44` @sha256:3828321210153ed0789f3ec85bd9887f3ca217b0b2469f26f9436334d744b0f5 — Stand eines ausgefallenen Verkehrsdienstes gilt höchstens 30 min |
 | 0.1.46 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.46` @sha256:e73a98fa65e6b2caba98386081a81c8269fde45a2c2e9a906e2e4a7d3af28074 — Profil-Schalter `anlieger`: zu Fuß auch durch Zufahrten nur für Anlieger |
+| 0.1.47 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.47` @sha256:b4a5605d2084f3d8081c278f1370f4b186d8e312ea8b6a165f139c8c63f4e867 — Profil-Schalter `pflaster` (Kopfsteinpflaster umgehen), `kmh_auf`/`kmh_ab` (Tempo je Steigung), D-44 |
 | 0.1.45 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.45` @sha256:0920ad46579cf9c3fdf861b1c8c2602bc7f0fcb81a729652b1d45a522a898066 — Selbstupdate der App: `/v1/app`, `/v1/app/apk` (Option `app`, Ablage im Add-on-Ordner) |
 | 0.1.38 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.38` @sha256:1cf4345bb9b6d8ccea930291af3d7c4803656fd515c9e9ec8752377b025c2891 — Manövertyp und Stau-Verlauf für die Fahransicht (D-40) |
 | 0.1.37 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.37` @sha256:82fa8776a7cbc256d19d83fddd8723880afd5091111593988b3b65672f595d8b — Abbiegehinweise repariert |
