@@ -1,6 +1,6 @@
 name: "SchnellWeg Valhalla"
 description: "Valhalla-Dienst (Fußwege, erste/letzte Meile) auf den Tiles der App routing-jobs"
-version: "0.1.1"
+version: "0.1.2"
 slug: "valhalla"
 url: "https://github.com/Lord3n20/SchnellWeg"
 # Fertiges Image aus dem CI von SchnellWeg (D-03). Digest je Version steht in README.md.
