@@ -27,9 +27,10 @@ die Werte neu einträgst.
 Die Schnittstelle läuft auf einem internen Port ohne Freigabe nach außen und nimmt nur Anfragen von Home Assistant
 an. Sie hat keinen Weg zu den Daten des Panels. Claude erreicht sie über den MCP-Server von Home Assistant.
 
-- **Sieht Claude:** gebuchte Ausgaben, Ausgabenkategorien, die Namen der Zahlkonten und wiederkehrende Ausgaben.
-- **Sieht Claude nicht:** Salden, Vermögen, Sparziel, Einnahmen, Umbuchungen, Depot und Kurse, wiederkehrende Einnahmen.
-- Claude kann eine Ausgabe nur vorschlagen und nach dem OK buchen. Erstattungen trägst du im Panel ein
+- **Sieht Claude:** gebuchte Ausgaben, Ausgabenkategorien, die Namen der Zahl- und Einnahmekonten und wiederkehrende Ausgaben.
+- **Darf Claude buchen:** Ausgaben und Einnahmen, jeweils erst als Vorschlag und nach deinem OK. Gebuchte Einnahmen sieht Claude danach nicht.
+- **Sieht Claude nicht:** Salden, Vermögen, Sparziel, gebuchte Einnahmen, Umbuchungen, Depot und Kurse, wiederkehrende Einnahmen.
+- Erstattungen trägst du im Panel ein
   (negativer Betrag bei einer Ausgabe); Claude sieht sie danach als negative Ausgabe.
 
 `test_budget.py` prüft das mit Testdaten. Das Panel ist nur über das Ingress-Gateway von Home Assistant erreichbar.

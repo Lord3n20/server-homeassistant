@@ -12,7 +12,7 @@
 
 budget_kategorien:
   alias: "Budget: Kategorien und Zahlkonten"
-  description: "Listet die gültigen Ausgabenkategorien und die Namen der Zahlkonten, ohne Salden. Vor dem ersten Vorschlag aufrufen."
+  description: "Listet die gültigen Ausgaben- und Einnahmekategorien und die Namen der Zahlkonten, ohne Salden und Beträge. Vor dem ersten Vorschlag aufrufen."
   icon: mdi:cash-multiple
   mode: parallel
   sequence:
@@ -28,7 +28,7 @@ budget_kategorien:
 
 budget_ausgabe_vorschlagen:
   alias: "Budget: Ausgabe vorschlagen"
-  description: "Legt eine Ausgabe, etwa von einem Kassenbon, als Vorschlag an und prüft Summe und Duplikate. Bucht noch nicht. Das Ergebnis dem Nutzer zeigen und erst nach seinem OK bestätigen. Einnahmen, Erstattungen und Umbuchungen trägt der Nutzer selbst ein."
+  description: "Legt eine Ausgabe, etwa von einem Kassenbon, als Vorschlag an und prüft Summe und Duplikate. Bucht noch nicht. Das Ergebnis dem Nutzer zeigen und erst nach seinem OK bestätigen. Einnahmen gehen über budget_einnahme_vorschlagen, Erstattungen und Umbuchungen trägt der Nutzer selbst ein."
   icon: mdi:cash-multiple
   mode: parallel
   fields:
@@ -68,9 +68,56 @@ budget_ausgabe_vorschlagen:
   - stop: Fertig
     response_variable: antwort
 
+budget_einnahme_vorschlagen:
+  alias: "Budget: Einnahme vorschlagen"
+  description: "Legt eine Einnahme (Lohn, BAföG, Erstattung von außen o. Ä.) als Vorschlag an und prüft Duplikate. Bucht noch nicht. Dem Nutzer zeigen und nach seinem OK mit budget_ausgabe_bestaetigen buchen. Gebuchte Einnahmen und Salden lassen sich nicht lesen."
+  icon: mdi:cash-plus
+  mode: parallel
+  fields:
+    datum:
+      description: "Datum als JJJJ-MM-TT"
+      required: true
+      selector:
+        text: {}
+    beschreibung:
+      description: "Absender oder Zweck"
+      required: true
+      selector:
+        text: {}
+    zahlkonto:
+      description: "Konto, auf dem das Geld eingeht (Name aus budget_kategorien, zahlkonten)"
+      required: true
+      selector:
+        text: {}
+    kategorie:
+      description: "Einnahmekategorie aus budget_kategorien, einnahmekategorien"
+      required: true
+      selector:
+        text: {}
+    betrag:
+      description: "Betrag in Euro, z. B. 520,00"
+      required: true
+      selector:
+        text: {}
+    memo:
+      description: "Notiz"
+      required: false
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: einnahme_vorschlagen
+      daten: "{{ dict(datum=datum, beschreibung=beschreibung, zahlkonto=zahlkonto, kategorie=kategorie, betrag=betrag, memo=memo | default('')) }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
 budget_ausgabe_bestaetigen:
   alias: "Budget: Ausgabe buchen"
-  description: "Bucht einen Vorschlag, nachdem der Nutzer ihn bestätigt hat. Ein zweiter Aufruf bucht nicht noch einmal."
+  description: "Bucht einen Vorschlag (Ausgabe oder Einnahme), nachdem der Nutzer ihn bestätigt hat. Ein zweiter Aufruf bucht nicht noch einmal."
   icon: mdi:cash-multiple
   mode: parallel
   fields:

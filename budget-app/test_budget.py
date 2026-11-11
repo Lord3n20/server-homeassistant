@@ -184,6 +184,23 @@ class Schnittstelle(Basis):
         self.assertTrue(self.rufe("ausgabe_bestaetigen", vorschlag_id=v2["vorschlag_id"], trotz_duplikat=True)[0]["ok"])
         self.assertEqual(len(buch.ausgabezeilen()), 2)
 
+    def test_einnahme_buchen_nach_ok(self):
+        e = {"datum": "2026-11-03", "beschreibung": "Lohn", "zahlkonto": "Aktiva:Girokonto",
+             "kategorie": "Einnahmen:GEHEIMEINKOMMEN", "betrag": "300,00"}
+        v, _ = self.rufe("einnahme_vorschlagen", **e)
+        self.assertEqual((v["art"], v["gesamt"], v["duplikate"]), ("einnahme", 300.0, []))
+        self.assertEqual(budget.monat("2026-11")["einnahmen"], 0)
+        self.rufe("ausgabe_bestaetigen", vorschlag_id=v["vorschlag_id"])
+        self.assertEqual(budget.monat("2026-11")["einnahmen"], 30000)
+        self.assertEqual(buch.ausgabezeilen(), [])
+        v2, _ = self.rufe("einnahme_vorschlagen", **e)
+        self.assertEqual(len(v2["duplikate"]), 1)
+        self.assertFalse(self.rufe("ausgabe_bestaetigen", vorschlag_id=v2["vorschlag_id"])[0]["ok"])
+        for mehr in ({"kategorie": "Ausgaben:Lebensmittel"}, {"betrag": "-5"}, {"zahlkonto": "Aktiva:Depot:GEHEIMDEPOT"}):
+            self.assertFalse(self.rufe("einnahme_vorschlagen", **{**e, **mehr})[0]["ok"], mehr)
+        # Gebuchte Einnahmen bleiben unsichtbar.
+        self.assertNotIn("Lohn", self.rufe("ausgaben_lesen")[1] + self.rufe("monatsauswertung", monat="2026-11")[1])
+
     def test_positionen_als_json_text_wie_aus_dem_skript(self):
         text = json.dumps([{"kategorie": "Ausgaben:Lebensmittel", "betrag": "2,50", "memo": "Äpfel"},
                            {"kategorie": "Ausgaben:Lebensmittel", "betrag": "0,50"}])
@@ -206,8 +223,12 @@ class Schnittstelle(Basis):
         buch.json_speichern(ausgaben.WIEDERKEHREND, [
             {"id": "x", "art": "einnahme", "name": "GEHEIMDAUER", "betrag": 85599, "konto": GIRO, "gegenkonto": BAF, "tag": 1, "alle_monate": 1, "naechste": "2030-01-01", "ende": "", "aktiv": True},
             {"id": "y", "art": "ausgabe", "name": "Abo", "betrag": 1700, "konto": GIRO, "gegenkonto": LEB, "tag": 1, "alle_monate": 1, "naechste": "2030-01-01", "ende": "", "aktiv": True}])
+        k = self.rufe("kategorien_und_zahlkonten")[0]
+        self.assertEqual(k["einnahmekategorien"], ["Einnahmen:GEHEIMEINKOMMEN"])
+        for geheim in ("9876", "1234", "1111", "855", "50.11", "saldo", "vermoegen", "GEHEIMDEPOT"):
+            self.assertNotIn(geheim, json.dumps(k), geheim)
         gesamt = ""
-        for name, a in (("kategorien_und_zahlkonten", {}), ("ausgaben_lesen", {}), ("monatsauswertung", {"monat": "2026-11"}),
+        for name, a in (("ausgaben_lesen", {}), ("monatsauswertung", {"monat": "2026-11"}),
                         ("wiederkehrende_ausgaben", {}), ("ausgabe_vorschlagen", self.bon(beschreibung="B"))):
             gesamt += self.rufe(name, **a)[1]
         self.assertIn("Erlaubt", gesamt)
