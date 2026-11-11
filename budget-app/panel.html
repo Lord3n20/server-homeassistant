@@ -81,6 +81,11 @@
   .kuchen path:hover, .kuchen path:focus { filter: brightness(1.15); }
   .kuchen svg text { fill: var(--text); font-size: 13px; }
   .kuchen svg text.mitte { font-size: 19px; font-weight: 600; }
+  .fluss path.band { cursor: default; outline: none; }
+  .fluss path.band:hover, .fluss path.band:focus { fill-opacity: 0.6; }
+  .fluss rect { outline: none; }
+  .fluss text { fill: var(--text); font-size: 12px; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+  .fluss text tspan.betrag { fill: var(--muted); }
   .kuchenart { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; padding: 8px 0 3px; border-top: 1px solid var(--line); }
   .kuchenart:first-child { border-top: 0; }
   .kuchenkat { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; color: var(--muted); padding: 1px 0 1px 16px; }
@@ -183,6 +188,10 @@
       <div class="kacheln" id="bKacheln"></div>
       <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" hidden></p></section>
       <section class="card" id="bFazit" hidden><p class="fazit"></p></section>
+      <section class="card fluss"><h2>Geldfluss</h2>
+        <p class="gedaempft" style="margin:0 0 8px" id="bFlussHinweis"></p>
+        <div id="bFluss"></div>
+      </section>
       <section class="card"><h2>Wofür und wo das Geld hinging</h2>
         <p class="gedaempft" style="margin:0 0 8px">Von innen nach außen: Fest, Alltag, große Posten ab 50 €, dann Kategorie, dann Händler.</p>
         <div class="kuchen"><div id="bKuchen"></div><div id="bKuchenListe"></div></div>
@@ -715,6 +724,114 @@ function kuchenZeichnen(d) {
   }
 }
 
+// Sankey: Einnahmen -> Topf -> Fest/Alltag/große Posten/Übrig -> Kategorie.
+// In der Wochenansicht gibt es keine Einnahmen, dort beginnt der Fluss bei den Ausgaben.
+function flussZeichnen(d) {
+  const FARBEN = { Fest: "var(--s1)", Alltag: "var(--s2)", "Große Posten": "var(--s3)" };
+  const box = $("#bFluss");
+  box.replaceChildren();
+  const woche = d.kennung === "woche";
+  const aus = d.kuchen.reduce((a, k) => a + k.betrag, 0);
+  const quellen = woche ? [] : (d.einnahmequellen || []);
+  const ein = quellen.reduce((a, q) => a + q.betrag, 0);
+  $("#bFlussHinweis").textContent = woche
+    ? "Ausgaben der letzten 7 Tage nach Art und Kategorie."
+    : "Von den Einnahmen über Fest, Alltag und große Posten bis zur Kategorie.";
+  if (!aus && !ein) { box.innerHTML = '<p class="gedaempft">Keine Buchungen in diesem Zeitraum.</p>'; return; }
+
+  // Knoten je Spalte, Kanten in Zeichenreihenfolge (so kreuzen sich die Bänder nicht).
+  const spalten = [], kanten = [];
+  const knoten = (spalte, name, wert, farbe, zeilen = []) => {
+    const k = { name, wert, farbe, zeilen, raus: 0, rein: 0 };
+    (spalten[spalte] ||= []).push(k);
+    return k;
+  };
+  const kante = (von, nach, wert, farbe) => { if (wert > 0) kanten.push({ von, nach, wert, farbe }); };
+  const topfWert = Math.max(ein, aus);
+  let s = 0;
+  if (!woche) {
+    for (const q of quellen) kante(knoten(0, kurz(q.name), q.betrag, "var(--s4)"), null, q.betrag, "var(--s4)");
+    if (aus > ein) kante(knoten(0, ein ? "Aus Erspartem" : "Ohne Einnahmen", aus - ein, "var(--vor)"), null, aus - ein, "var(--vor)");
+    s = 1;
+  }
+  const topf = knoten(s, woche ? "Ausgaben" : "Einnahmen", woche ? aus : topfWert, woche ? "var(--muted)" : "var(--s4)");
+  for (const k of kanten) k.nach = topf;
+  const anteil = (b) => `${Math.round(b / (topf.wert || 1) * 100)} %`;
+  for (const art of d.kuchen) {
+    const farbe = FARBEN[art.name];
+    const a = knoten(s + 1, art.name, art.betrag, farbe, [[eur(art.betrag), anteil(art.betrag)]]);
+    kante(topf, a, art.betrag, farbe);
+    for (const kat of art.kategorien) {
+      const orte = kat.haendler.slice(0, 4).map((h) => ["", `${h.name} ${eur0(h.betrag)}`]);
+      const k = knoten(s + 2, kurz(kat.name), kat.betrag, farbe, [[eur(kat.betrag), anteil(kat.betrag)], ["", art.name], ...orte]);
+      kante(a, k, kat.betrag, farbe);
+    }
+  }
+  if (ein > aus) kante(topf, knoten(s + 1, d.kennung === new Date().toISOString().slice(0, 7) ? "Bisher übrig" : "Übrig", ein - aus, "var(--gut)", [[eur(ein - aus), anteil(ein - aus)]]), ein - aus, "var(--gut)");
+
+  // Höhen: ein Maßstab für alle Spalten, kleine Knoten bekommen Platz für ihre Beschriftung.
+  const W = Math.max(300, box.clientWidth || 640), schmal = W < 560;
+  const NB = 10, LUECKE = 6, MIN = schmal ? 15 : 18, BASIS = schmal ? 300 : 380;
+  const voll = Math.max(...spalten.map((sp) => sp.reduce((a, k) => a + k.wert, 0)));
+  const nMax = Math.max(...spalten.map((sp) => sp.length));
+  const m = Math.max(0.0001, (BASIS - LUECKE * (nMax - 1)) / voll);
+  const platz = (k) => Math.max(k.wert * m, MIN);
+  const hoehen = spalten.map((sp) => sp.reduce((a, k) => a + platz(k) + LUECKE, -LUECKE));
+  const H = Math.ceil(Math.max(...hoehen)) + 4;
+  const letzte = spalten.length - 1;
+  const xVon = (i) => 2 + i * (W - 4 - NB) / letzte;
+  spalten.forEach((sp, i) => {
+    let y = (H - hoehen[i]) / 2;
+    for (const k of sp) {
+      k.x = xVon(i); k.h = Math.max(1, k.wert * m);
+      k.y = y + (platz(k) - k.h) / 2;
+      y += platz(k) + LUECKE;
+    }
+  });
+
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("class", "grafik");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Geldfluss von den Einnahmen zu den Ausgabenkategorien");
+  for (const k of kanten) {
+    const dicke = k.wert * m;
+    const y0 = k.von.y + k.von.raus, y1 = k.nach.y + k.nach.rein;
+    k.von.raus += dicke; k.nach.rein += dicke;
+    const x0 = k.von.x + NB, x1 = k.nach.x, xm = (x0 + x1) / 2;
+    const p = document.createElementNS(SVG, "path");
+    p.setAttribute("class", "band");
+    p.setAttribute("d", `M${x0},${y0}C${xm},${y0} ${xm},${y1} ${x1},${y1}V${y1 + dicke}C${xm},${y1 + dicke} ${xm},${y0 + dicke} ${x0},${y0 + dicke}Z`);
+    p.setAttribute("fill", k.farbe);
+    p.setAttribute("fill-opacity", "0.32");
+    hover(p, `${k.von.name} → ${k.nach.name}`, [[eur(k.wert), anteil(k.wert)]]);
+    svg.append(p);
+  }
+  spalten.forEach((sp, i) => {
+    for (const k of sp) {
+      const r = document.createElementNS(SVG, "rect");
+      for (const [a, v] of Object.entries({ x: k.x, y: k.y, width: NB, height: k.h, rx: 2, fill: k.farbe })) r.setAttribute(a, v);
+      hover(r, k.name, k.zeilen.length ? k.zeilen : [[eur(k.wert), anteil(k.wert)]]);
+      svg.append(r);
+      const t = document.createElementNS(SVG, "text");
+      const rechts = i < letzte;
+      t.setAttribute("x", rechts ? k.x + NB + 5 : k.x - 5);
+      t.setAttribute("y", k.y + k.h / 2 + 4);
+      t.setAttribute("text-anchor", rechts ? "start" : "end");
+      t.textContent = k.name;
+      if (!schmal || i === letzte) {
+        const b = document.createElementNS(SVG, "tspan");
+        b.setAttribute("class", "betrag");
+        b.textContent = ` ${eur0(k.wert)}`;
+        t.append(b);
+      }
+      svg.append(t);
+    }
+  });
+  box.append(svg);
+  box.insertAdjacentHTML("beforeend", tabelle(["Von", "Nach", "Betrag"], kanten.map((k) => [k.von.name, k.nach.name, eur(k.wert)])));
+}
+
 function berichtZeichnen(d) {
   bAktuell = d;
   const woche = d.kennung === "woche";
@@ -754,6 +871,7 @@ function berichtZeichnen(d) {
     $("#bTrend").insertAdjacentHTML("beforeend", tabelle(["Monat", "Ausgaben", "Einnahmen"], t.map((g) => [g.lang, eur(g.ausgaben), eur(g.einnahmen)])));
   }
 
+  flussZeichnen(d);
   kuchenZeichnen(d);
   $("#bPosten").innerHTML = d.posten.map((p) => `<tr><td class="gedaempft">${dmy(p.datum).slice(0, 6)}</td><td>${esc(p.beschreibung)}</td><td class="zahl">${eur(p.betrag)}</td></tr>`).join("");
   $("#bSparenKarte").hidden = !d.vorschlaege.length;

@@ -212,6 +212,7 @@ def bericht(kennung):
             werte[(date.fromisoformat(z["datum"]) - von).days] += z["gesamt"]
         return werte
 
+    quellen = {}  # Einnahmen je Konto, nur im Monatsbericht (für den Geldfluss im Panel)
     if kennung == "woche":
         von, bis = heute - timedelta(days=6), heute
         vor_von, vor_bis = von - timedelta(days=7), von - timedelta(days=1)
@@ -236,6 +237,8 @@ def bericht(kennung):
                 k = konten[s["konto"]]
                 if k["typ"] == "INCOME" and "Kursgewinn" not in k["name"]:
                     einnahmen[b["datum"][:7]] = einnahmen.get(b["datum"][:7], 0) - s["betrag"]
+                    if b["datum"][:7] == kennung:
+                        quellen[k["pfad"]] = quellen.get(k["pfad"], 0) - s["betrag"]
         trend = []
         for i in range(5, -1, -1):
             start = buch.monat_plus(von, -i, 1)
@@ -270,6 +273,7 @@ def bericht(kennung):
         "verlauf": je_tag(jetzt, von, (bis - von).days + 1)[:tage],
         "vergleich_verlauf": je_tag(davor, vor_von, vor_tage),
         "kuchen": kuchen,
+        "einnahmequellen": [{"name": p, "betrag": b} for p, b in sorted(quellen.items(), key=lambda x: -x[1]) if b > 0],
         "posten": [{"datum": z["datum"], "beschreibung": z["beschreibung"], "betrag": z["gesamt"]}
                    for z in sorted(jetzt, key=lambda z: -z["gesamt"])[:5]],
         "trend": trend, "text": text.get("text", ""),
