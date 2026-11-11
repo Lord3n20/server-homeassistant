@@ -371,7 +371,7 @@ async function ladeVorschlaege() {
   k.hidden = !liste.length;
   k.innerHTML = `<h2>Offene Vorschläge von Claude</h2><table>` + liste.map((v) => `<tr>
       <td class="gedaempft">${dmy(v.datum).slice(0, 6)}</td>
-      <td>${esc(v.beschreibung)}<div class="gedaempft">${v.positionen.map((p) => `${esc(kurz(p.kategorie))} ${eur(p.betrag)}`).join(", ")}</div>
+      <td>${v.art === "einnahme" ? "<b>Einnahme:</b> " : ""}${esc(v.beschreibung)}<div class="gedaempft">${v.positionen.map((p) => `${esc(kurz(p.kategorie))} ${eur(p.betrag)}`).join(", ")}</div>
       ${v.duplikate.length ? '<div class="gedaempft">Mögliches Duplikat im Buch</div>' : ""}</td>
       <td class="zahl">${eur(v.gesamt)}</td>
       <td class="knoepfe"><button class="klein" data-buchen="${v.id}" data-dup="${v.duplikate.length ? 1 : ""}">Buchen</button> <button class="klein gefahr" data-verwerfen="${v.id}">Verwerfen</button></td>
