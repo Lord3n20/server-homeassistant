@@ -19,7 +19,7 @@ bisherigen Monate (ohne gezeigten und laufenden Monat), Feldkarte (je Kategorie 
 Monatsaufbau (Ausgaben, Einnahmen, Ø-Verlauf), Trend, Sparziel und größte Posten (Festes zusammengefasst oben).
 In „Gesamt“ läuft der Geldfluss ohne Art-Spalte: Einnahmen → Ausgaben → je Kategorie ein Knoten.
 Was ins Depot geht oder dort liegt, zählt als erspart: Im Geldfluss teilt sich „Übrig“ in „Ins Depot“ und „Auf dem
-Konto“, das Sparziel misst sich am Depot, eine Lücke steht rot gestrichelt darunter. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;
+Konto“, das Sparziel misst sich am Gesamtvermögen bzw. am ganzen „Übrig“, eine Lücke steht rot gestrichelt darunter. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;
 haben Vorschläge eine Kategorie, ist der Teil dort gestreift markiert. Claude liefert
 nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.
 
