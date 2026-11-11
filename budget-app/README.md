@@ -58,3 +58,16 @@ rutscht in kürzeren Monaten auf den letzten Tag. Pausieren oder Entfernen läss
 ## Tests
 
 `python3 test_budget.py`
+
+## Bankabruf (GLS)
+
+Reiter „Bank“: holt die Umsätze des Girokontos per FinTS (PIN/TAN, python-fints) von der GLS Bank
+(BLZ 43060967, Server `https://fints1.atruvia.de/cgi-bin/hbciservlet`). Neue Umsätze erscheinen als Liste,
+die Kategorie ist nach dem letzten gleichen Empfänger vorausgefüllt, gebucht wird erst per Klick.
+Umsätze, die schon im Buch stehen (gleicher Betrag ±3 Tage), werden als „Schon drin“ angeboten.
+
+- Nötig: Login (VR-NetKey/Alias), PIN, **Produkt-ID** der Deutschen Kreditwirtschaft (kostenlos registrieren, dauert bis zu zwei Wochen) und das Buchkonto.
+- Freigabe per SecureGo plus (Push); sie reicht meist 90 Tage, der Client-Zustand wird gespeichert.
+- Optional täglich ab 7 Uhr automatisch.
+- Zugangsdaten liegen nur in `/data/bank-zugang.json` (0600) und damit auch in HA-Backups; das Panel bekommt die PIN nie zurück, Claude kommt an nichts davon heran.
+

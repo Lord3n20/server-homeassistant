@@ -1,7 +1,7 @@
 """Budget: Haushaltsbuch im GnuCash-Format mit Panel und Schnittstelle für Claude.
 
 Das Ingress-Panel (panel.html) spricht mit der JSON-API hier und ist der einzige
-Weg zu Salden, Einnahmen, Umbuchungen und Depot. Claude kommt über Skripte in Home
+Weg zu Salden, Einnahmen, Umbuchungen, Depot und Bankabruf (bank.py). Claude kommt über Skripte in Home
 Assistant auf einen internen Port (ausgaben.py), der nur Ausgaben kennt. Wiederkehrende Buchungen liegen in
 /data/wiederkehrend.json und werden fällig automatisch ins Buch geschrieben.
 """
@@ -18,6 +18,7 @@ from pathlib import Path
 
 import buch
 import ausgaben
+import bank
 import depot
 from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
@@ -357,6 +358,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.antwort(200, {"liste": [v for v in ausgaben.vorschlaege_laden() if v["status"] == "offen"]})
         if pfad == "/api/depot":
             return self.antwort(200, depot.uebersicht())
+        if pfad == "/api/bank":
+            return self.antwort(200, {**bank.einstellungen_lesen(), "umsaetze": bank.offene()})
         if pfad == "/api/bericht":
             return self.antwort(200, bericht(q.get("k", ["woche"])[0]))
         if pfad == "/api/einstellungen":
@@ -385,6 +388,15 @@ class Handler(BaseHTTPRequestHandler):
                 liste.append(wiederkehrend_pruefen(daten))
                 json_speichern(ausgaben.WIEDERKEHREND, liste)
             return self.antwort(200, {"gebucht": faellige_buchen()})
+        if pfad == "/api/bank/abruf":
+            bank.im_hintergrund()
+            return self.antwort(200, {"ok": True})
+        m = re.fullmatch(r"/api/bank/umsaetze/(\w+)/(buchen|ignorieren)", pfad)
+        if m and m[2] == "buchen":
+            return self.antwort(200, {"id": bank.umsatz_buchen(m[1], daten.get("gegenkonto"), daten.get("beschreibung"))})
+        if m:
+            bank.umsatz_ignorieren(m[1])
+            return self.antwort(200, {"ok": True})
         m = re.fullmatch(r"/api/vorschlaege/(\w+)/(buchen|verwerfen)", pfad)
         if m and m[2] == "buchen":
             ausgaben.vorschlag_buchen(m[1], daten.get("trotz_duplikat") is True)
@@ -416,6 +428,9 @@ class Handler(BaseHTTPRequestHandler):
                 liste[i] = wiederkehrend_pruefen(daten, liste[i])
                 json_speichern(ausgaben.WIEDERKEHREND, liste)
             return self.antwort(200, {"gebucht": faellige_buchen()})
+        if pfad == "/api/bank/einstellungen":
+            bank.einstellungen_speichern(daten)
+            return self.antwort(200, {"ok": True})
         if pfad == "/api/einstellungen":
             ziel = cent(daten["sparziel"]) if daten.get("sparziel") not in (None, "") else 0
             termin = buch.tag(daten["sparziel_datum"]).isoformat() if daten.get("sparziel_datum") else ""
@@ -445,6 +460,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     DATA.mkdir(parents=True, exist_ok=True)
     threading.Thread(target=faellige_schleife, daemon=True).start()
+    threading.Thread(target=bank.schleife, daemon=True).start()
     threading.Thread(target=ThreadingHTTPServer(("0.0.0.0", AUSGABEN_PORT), ausgaben.Handler).serve_forever, daemon=True).start()
     print(f"Budget läuft: Panel auf Port {PORT}, Ausgaben-Schnittstelle auf Port {AUSGABEN_PORT}")
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
