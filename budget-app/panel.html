@@ -390,7 +390,7 @@ async function ladeVorschlaege() {
   k.hidden = !liste.length;
   k.innerHTML = `<h2>Offene Vorschläge von Claude</h2><table>` + liste.map((v) => `<tr>
       <td class="gedaempft">${dmy(v.datum).slice(0, 6)}</td>
-      <td>${{ einnahme: "<b>Einnahme:</b> ", umbuchung: "<b>Umbuchung:</b> " }[v.art] || ""}${esc(v.beschreibung)}<div class="gedaempft">${v.art === "umbuchung" ? `${esc(kurz(v.zahlkonto_name))} → ` : ""}${v.positionen.map((p) => `${esc(kurz(p.kategorie))} ${eur(p.betrag)}`).join(", ")}</div>
+      <td>${{ einnahme: "<b>Einnahme:</b> ", umbuchung: "<b>Umbuchung:</b> " }[v.art] || ""}${esc(v.beschreibung)}<div class="gedaempft">${v.art === "umbuchung" ? `von ${esc(kurz(v.zahlkonto_name))} auf ` : ""}${v.positionen.map((p) => `${esc(kurz(p.kategorie))} ${eur(p.betrag)}`).join(", ")}</div>
       ${v.duplikate.length ? '<div class="gedaempft">Mögliches Duplikat im Buch</div>' : ""}</td>
       <td class="zahl">${eur(v.gesamt)}</td>
       <td class="knoepfe"><button class="klein" data-buchen="${v.id}" data-dup="${v.duplikate.length ? 1 : ""}">Buchen</button> <button class="klein gefahr" data-verwerfen="${v.id}">Verwerfen</button></td>
@@ -410,7 +410,7 @@ function artTypen(art) {
 }
 function formKonten(wert) {
   const art = $("#fArt").value;
-  $("#fKontoText").textContent = { ausgabe: "Bezahlt von", einnahme: "Eingang auf", umbuchung: "Von Konto" }[art];
+  $("#fKontoText").textContent = { ausgabe: "Bezahlt von", einnahme: "Eingang auf", umbuchung: "Von" }[art];
   optionen($("#fKonto"), art === "ausgabe" ? ZAHL : VERMOEGEN, wert);
   if (!$("#positionen").children.length) positionNeu();
   $$("#positionen .pKonto").forEach((s) => optionen(s, artTypen(art), s.dataset.wert));
@@ -420,7 +420,7 @@ function positionNeu(p = {}) {
   const art = $("#fArt").value;
   const z = document.createElement("div");
   z.className = "position";
-  z.innerHTML = `<label>${art === "umbuchung" ? "Nach Konto" : "Kategorie"}<select class="pKonto" data-wert="${p.konto || ""}"></select></label>
+  z.innerHTML = `<label>${art === "umbuchung" ? "Auf" : "Kategorie"}<select class="pKonto" data-wert="${p.konto || ""}"></select></label>
     <label>Betrag in €<input class="pBetrag" inputmode="decimal" required value="${p.betrag !== undefined ? eingabe(p.betrag) : ""}"></label>
     <label>Notiz<input class="pMemo" value="${esc(p.memo)}"></label>
     <button type="button" class="klein gefahr" style="align-self:end" aria-label="Position entfernen">×</button>`;
@@ -468,8 +468,8 @@ $("#form").onsubmit = sicher(async (e) => {
 // ---------- Wiederkehrend ----------
 function wKonten(konto, gegen) {
   const art = $("#wArt").value;
-  $("#wKontoText").textContent = { ausgabe: "Bezahlt von", einnahme: "Eingang auf", umbuchung: "Von Konto" }[art];
-  $("#wGegenText").textContent = art === "umbuchung" ? "Nach Konto" : "Kategorie";
+  $("#wKontoText").textContent = { ausgabe: "Bezahlt von", einnahme: "Eingang auf", umbuchung: "Von" }[art];
+  $("#wGegenText").textContent = art === "umbuchung" ? "Auf" : "Kategorie";
   optionen($("#wKonto"), art === "ausgabe" ? ZAHL : VERMOEGEN, konto);
   optionen($("#wGegen"), artTypen(art), gegen);
 }

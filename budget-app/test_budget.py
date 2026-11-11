@@ -208,7 +208,7 @@ class Schnittstelle(Basis):
         self.assertNotIn("Lohn", self.rufe("ausgaben_lesen")[1] + self.rufe("monatsauswertung", monat="2026-11")[1])
 
     def test_umbuchung_nach_ok(self):
-        u = {"datum": "2026-11-03", "beschreibung": "Aufs Verrechnungskonto", "von": "Girokonto", "nach": "Verrechnungskonto", "betrag": "50"}
+        u = {"datum": "2026-11-03", "beschreibung": "Aufs Verrechnungskonto", "von": "Girokonto", "auf": "Verrechnungskonto", "betrag": "50"}
         v, roh = self.rufe("umbuchung_vorschlagen", **u)
         self.assertEqual((v["art"], v["gesamt"], v["zahlkonto"]), ("umbuchung", 50.0, "Aktiva:Girokonto"))
         self.rufe("ausgabe_bestaetigen", vorschlag_id=v["vorschlag_id"])
@@ -220,7 +220,7 @@ class Schnittstelle(Basis):
         # Auch über ausgabe_vorschlagen mit einem Zahlkonto als Kategorie.
         f = self.rufe("ausgabe_vorschlagen", **self.bon(positionen=[{"kategorie": "Verrechnungskonto", "betrag": "7"}]))[0]
         self.assertEqual((f["ok"], f["art"]), (True, "umbuchung"))
-        for mehr in ({"nach": "Girokonto"}, {"nach": "Aktiva:Depot:GEHEIMDEPOT"}, {"betrag": "-5"}, {"nach": "Lebensmittel"}):
+        for mehr in ({"auf": "Girokonto"}, {"auf": "Aktiva:Depot:GEHEIMDEPOT"}, {"betrag": "-5"}, {"auf": "Lebensmittel"}):
             self.assertFalse(self.rufe("umbuchung_vorschlagen", **{**u, **mehr})[0]["ok"], mehr)
 
     def test_positionen_als_json_text_wie_aus_dem_skript(self):
