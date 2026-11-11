@@ -127,6 +127,8 @@
     </nav>
 
     <div data-seite="uebersicht">
+      <section class="card" id="kontenKarte"><h2>Konten</h2><div class="kacheln" id="kontoKacheln" style="margin-bottom:8px"></div>
+        <details class="tabelle"><summary>Alle Konten einzeln</summary><table id="konten"></table></details></section>
       <section class="card" id="vorschlaege" hidden></section>
       <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
       <div class="kopf"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
@@ -137,7 +139,6 @@
         <div id="kategorien"></div>
       </section>
       <section class="card" id="zielKarte" hidden></section>
-      <section class="card"><h2>Konten</h2><table id="konten"></table></section>
     </div>
 
     <div data-seite="buchungen">
@@ -303,6 +304,14 @@ async function ladeAlles() {
   }
   $("#konten").innerHTML = s.konten.map((k) => `<tr><td>${esc(kurz(k.pfad))}</td><td class="zahl">${eur(k.saldo)}</td></tr>`).join("")
     + `<tr><td><b>Gesamt</b></td><td class="zahl"><b>${eur(s.vermoegen)}</b></td></tr>`;
+  // Oben je Bank eine Kachel: Konten unter „Aktiva:Bank:…“ werden zusammengezählt.
+  const banken = new Map();
+  for (const k of s.konten) {
+    const teile = kurz(k.pfad).split(":");
+    banken.set(teile[0], (banken.get(teile[0]) || 0) + k.saldo);
+  }
+  $("#kontoKacheln").innerHTML = [...banken].map(([n, b]) => `<div class="kachel"><span>${esc(n)}</span><b>${esc(eur(b))}</b></div>`).join("")
+    + (banken.size > 1 ? `<div class="kachel"><span>Gesamt</span><b>${esc(eur(s.vermoegen))}</b></div>` : "");
   zeichneZiel(s);
   $("#uSparenKarte").hidden = !s.vorschlaege.length;
   if (s.vorschlaege.length) {
