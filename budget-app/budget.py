@@ -122,6 +122,21 @@ def kontenliste():
             for k in sorted(konten.values(), key=lambda k: k["pfad"]) if k["typ"] != "ROOT"]
 
 
+def messmonate(konten, buchungen, heute=None):
+    """Alle Kalendermonate vom ersten Monat mit Einnahme/Ausgabe bis zum laufenden Monat (lückenlos)."""
+    heute = heute or date.today()
+    belegt = [b["datum"][:7] for b in buchungen if any(konten[s["konto"]]["typ"] in ("EXPENSE", "INCOME") for s in b["splits"])]
+    ende = heute.strftime("%Y-%m")
+    if not belegt:
+        return [ende]
+    j, n = int(min(belegt)[:4]), int(min(belegt)[5:])
+    liste = []
+    while f"{j}-{n:02d}" <= max(ende, max(belegt)):
+        liste.append(f"{j}-{n:02d}")
+        j, n = (j + 1, 1) if n == 12 else (j, n + 1)
+    return liste
+
+
 def monat(m):
     if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", m or ""):
         raise BuchFehler("Monat im Format JJJJ-MM angeben")
@@ -152,10 +167,23 @@ def monat(m):
                                            "betrag": p["betrag"], "memo": p["memo"]} for p in positionen]})
     zeilen.sort(key=lambda z: z["datum"], reverse=True)
     summe_ein, summe_aus = sum(einnahmen.values()), sum(ausgaben.values())
+    # Vergleich: Durchschnitt je Monat über die ganze bisherige Messzeit, ohne den gezeigten
+    # und ohne den laufenden (noch unvollständigen) Monat.
+    laufend = date.today().strftime("%Y-%m")
+    schnitt_monate = [x for x in messmonate(konten, buchungen) if x not in (m, laufend)]
+    summen = {}
+    for b in buchungen:
+        if b["datum"][:7] in schnitt_monate:
+            for s in b["splits"]:
+                k = konten[s["konto"]]
+                if k["typ"] == "EXPENSE":
+                    summen[k["pfad"]] = summen.get(k["pfad"], 0) + s["betrag"]
+    schnitt = {p: round(v / len(schnitt_monate)) for p, v in summen.items()} if schnitt_monate else {}
     return {"monat": m, "vormonat": vor, "einnahmen": summe_ein, "ausgaben": summe_aus, "kurs": kurs,
-            "ausgaben_vormonat": sum(davor.values()), "kategorien": [
-                {"pfad": p, "betrag": ausgaben.get(p, 0), "vormonat": davor.get(p, 0)}
-                for p in sorted(set(ausgaben) | set(davor), key=lambda p: -ausgaben.get(p, 0))],
+            "ausgaben_vormonat": sum(davor.values()), "schnitt_monate": schnitt_monate,
+            "ausgaben_schnitt": sum(schnitt.values()), "kategorien": [
+                {"pfad": p, "betrag": ausgaben.get(p, 0), "vormonat": davor.get(p, 0), "schnitt": schnitt.get(p, 0)}
+                for p in sorted(set(ausgaben) | set(schnitt), key=lambda p: (-ausgaben.get(p, 0), -schnitt.get(p, 0)))],
             "einnahmequellen": [{"pfad": p, "betrag": b} for p, b in sorted(einnahmen.items(), key=lambda x: -x[1])],
             "buchungen": zeilen}
 
@@ -191,7 +219,7 @@ def kuchen_bauen(baum, gesamt):
 
 
 def bericht(kennung):
-    """Alle Zahlen für die Grafiken eines Monats (JJJJ-MM) oder der letzten 7 Tage ("woche")."""
+    """Alle Zahlen für die Grafiken eines Monats (JJJJ-MM) oder der ganzen Messzeit ("gesamt")."""
     heute = date.today()
     zeilen = buch.ausgabezeilen()
     konten, buchungen = buch.lesen()
@@ -213,46 +241,56 @@ def bericht(kennung):
             werte[(date.fromisoformat(z["datum"]) - von).days] += z["gesamt"]
         return werte
 
-    quellen = {}  # Einnahmen je Konto, nur im Monatsbericht (für den Geldfluss im Panel)
-    if kennung == "woche":
-        von, bis = heute - timedelta(days=6), heute
-        vor_von, vor_bis = von - timedelta(days=7), von - timedelta(days=1)
-        titel, vergleich_titel = f"{von.strftime('%d.%m.')} bis {bis.strftime('%d.%m.')}", "7 Tage davor"
-        tage, vor_tage = 7, 7
+    def art_von(z):
+        return "Fest" if ist_fix(z) else "Große Posten" if z["gesamt"] >= GROSSER_POSTEN else "Alltag"
+
+    gesamt = kennung == "gesamt"
+    if not gesamt and not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", kennung or ""):
+        raise BuchFehler("Zeitraum nicht lesbar")
+    # Einnahmen je Monat; je Konto nur für den gezeigten Zeitraum (für den Geldfluss im Panel).
+    einnahmen, quellen = {}, {}
+    for b in buchungen:
+        for s in b["splits"]:
+            k = konten[s["konto"]]
+            if k["typ"] == "INCOME" and "Kursgewinn" not in k["name"]:
+                einnahmen[b["datum"][:7]] = einnahmen.get(b["datum"][:7], 0) - s["betrag"]
+                if gesamt or b["datum"][:7] == kennung:
+                    quellen[k["pfad"]] = quellen.get(k["pfad"], 0) - s["betrag"]
+    if gesamt:
+        monate = messmonate(konten, buchungen, heute)
+        von, bis = date.fromisoformat(f"{monate[0]}-01"), heute
+        vor_von, vor_bis = von, von - timedelta(days=1)
+        titel, vergleich_titel = monate[0], ""
+        tage, vor_tage = 0, 0
         trend = []
-        for i in range(7, -1, -1):
-            ende = heute - timedelta(days=7 * i)
-            trend.append({"titel": ende.strftime("%d.%m."), "ausgaben": summe(im(ende - timedelta(days=6), ende))})
+        for m in monate:
+            liste = [z for z in zeilen if z["datum"][:7] == m]
+            eintrag = {"titel": m, "ausgaben": summe(liste), "einnahmen": einnahmen.get(m, 0)}
+            for art in ("Fest", "Alltag", "Große Posten"):
+                eintrag[art] = summe([z for z in liste if art_von(z) == art])
+            trend.append(eintrag)
+        einnahmen_zeitraum = sum(einnahmen.values())
     else:
-        if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", kennung or ""):
-            raise BuchFehler("Zeitraum nicht lesbar")
         von = date.fromisoformat(f"{kennung}-01")
         bis = buch.monat_plus(von, 0, 31)
         vor_von = buch.monat_plus(von, -1, 1)
         vor_bis = von - timedelta(days=1)
         titel, vergleich_titel = kennung, vor_von.strftime("%Y-%m")
         tage, vor_tage = (min(bis, max(heute, von)) - von).days + 1, (vor_bis - vor_von).days + 1
-        einnahmen = {}
-        for b in buchungen:
-            for s in b["splits"]:
-                k = konten[s["konto"]]
-                if k["typ"] == "INCOME" and "Kursgewinn" not in k["name"]:
-                    einnahmen[b["datum"][:7]] = einnahmen.get(b["datum"][:7], 0) - s["betrag"]
-                    if b["datum"][:7] == kennung:
-                        quellen[k["pfad"]] = quellen.get(k["pfad"], 0) - s["betrag"]
         trend = []
         for i in range(5, -1, -1):
             start = buch.monat_plus(von, -i, 1)
             schluessel = start.strftime("%Y-%m")
             trend.append({"titel": schluessel, "ausgaben": summe(im(start, buch.monat_plus(start, 0, 31))),
                           "einnahmen": einnahmen.get(schluessel, 0)})
+        einnahmen_zeitraum = einnahmen.get(kennung, 0)
 
     jetzt, davor = im(von, bis), im(vor_von, vor_bis)
     fix = [z for z in jetzt if ist_fix(z)]
     gross = [z for z in jetzt if not ist_fix(z) and z["gesamt"] >= GROSSER_POSTEN]
     baum = {"Fest": {}, "Alltag": {}, "Große Posten": {}}
     for z in jetzt:
-        art = "Fest" if ist_fix(z) else "Große Posten" if z["gesamt"] >= GROSSER_POSTEN else "Alltag"
+        art = art_von(z)
         woerter = z["beschreibung"].split("(")[0].split()
         name = " ".join(woerter[:3] if woerter[1:2] == ["&"] else woerter[:2]) or z["beschreibung"]
         for p in z["positionen"]:
@@ -261,16 +299,15 @@ def bericht(kennung):
     kuchen = kuchen_bauen(baum, summe(jetzt))
 
     berichte = json_laden(ausgaben.BERICHTE, {})
-    wochen = sorted(k for k in berichte if "W" in k)
-    text = berichte.get(wochen[-1] if kennung == "woche" and wochen else kennung) or {}
-    # Die Wochenansicht zeigt die Sparvorschläge aus dem neuesten Monatsbericht.
+    text = {} if gesamt else berichte.get(kennung) or {}
+    # Die Gesamtübersicht zeigt die Sparvorschläge aus dem neuesten Monatsbericht.
     mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and v.get("vorschlaege"))
-    quelle = kennung if kennung != "woche" else (mit_vorschlaegen[-1] if mit_vorschlaegen else "")
+    quelle = (mit_vorschlaegen[-1] if mit_vorschlaegen else "") if gesamt else kennung
     return {
         "kennung": kennung, "titel": titel, "vergleich_titel": vergleich_titel, "von": von.isoformat(),
         "gesamt": summe(jetzt), "vergleich": summe(davor), "fix": summe(fix), "gross": summe(gross),
         "alltag": summe(jetzt) - summe(fix) - summe(gross),
-        "einnahmen": trend[-1].get("einnahmen"),
+        "einnahmen": einnahmen_zeitraum,
         "verlauf": je_tag(jetzt, von, (bis - von).days + 1)[:tage],
         "vergleich_verlauf": je_tag(davor, vor_von, vor_tage),
         "kuchen": kuchen,
@@ -361,7 +398,7 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "/api/bank":
             return self.antwort(200, {**bank.einstellungen_lesen(), "umsaetze": bank.offene()})
         if pfad == "/api/bericht":
-            return self.antwort(200, bericht(q.get("k", ["woche"])[0]))
+            return self.antwort(200, bericht(q.get("k", ["gesamt"])[0]))
         if pfad == "/api/einstellungen":
             return self.antwort(200, json_laden(EINSTELLUNGEN, {}))
         if pfad == "/api/export":

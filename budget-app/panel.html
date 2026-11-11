@@ -46,11 +46,12 @@
   .gedaempft { color: var(--muted); font-size: 0.85rem; }
   .legende { display: flex; gap: 14px; font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; }
   .legende i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
-  .kat { display: grid; grid-template-columns: minmax(90px, 200px) 1fr 84px; gap: 2px 12px; align-items: center; padding: 5px 0; }
+  .kat { display: grid; grid-template-columns: minmax(90px, 200px) 1fr 84px 96px; gap: 2px 12px; align-items: center; padding: 5px 0; }
+  .kat .schnitt { color: var(--muted); font-size: 0.85rem; }
   .kat .balken { display: grid; gap: 2px; }
   .kat .b { height: 10px; border-radius: 0 4px 4px 0; background: var(--accent); min-width: 2px; }
   .kat .v { height: 5px; border-radius: 0 4px 4px 0; background: var(--vor); min-width: 2px; }
-  @media (max-width: 600px) { .kat { grid-template-columns: 1fr 84px; } .kat > span:first-child { grid-column: 1 / -1; } }
+  @media (max-width: 600px) { .kat { grid-template-columns: 1fr 84px 88px; } .kat > span:first-child { grid-column: 1 / -1; } }
   .meter { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin: 8px 0; }
   .meter div { height: 100%; background: var(--accent); }
   table { width: 100%; border-collapse: collapse; }
@@ -137,6 +138,10 @@
       <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
       <div class="kopf"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
       <div class="kacheln" id="kacheln"></div>
+      <section class="card fluss"><h2>Geldfluss</h2>
+        <p class="gedaempft" style="margin:0 0 8px" id="uFlussHinweis"></p>
+        <div id="uFluss"></div>
+      </section>
       <section class="card">
         <h2>Ausgaben nach Kategorie</h2>
         <div class="legende" id="legende"></div>
@@ -281,7 +286,7 @@ const VERMOEGEN = ["ASSET", "BANK", "CASH", "STOCK", "MUTUAL", "CREDIT", "LIABIL
 const ZAHL = ["BANK", "CASH", "CREDIT"];
 const RHYTHMUS = { 1: "monatlich", 2: "alle 2 Monate", 3: "vierteljährlich", 6: "halbjährlich", 12: "jährlich" };
 
-let konten = [], aktMonat = null, bearbeite = null, wBearbeite = null, wListe = [];
+let konten = [], sparziel = null, aktMonat = null, bearbeite = null, wBearbeite = null, wListe = [];
 
 async function api(pfad, opt = {}) {
   const r = await fetch(pfad, opt);
@@ -303,6 +308,7 @@ function zeige(name) {
   $$(".reiter button").forEach((b) => b.setAttribute("aria-selected", b.dataset.t === name));
   if (name === "wiederkehrend") wLaden();
   if (name === "berichte") berichteLaden();
+  if (name === "uebersicht" && uFluss) flussZeichnen(uFluss, "#uFluss", "#uFlussHinweis", true);
   if (name === "depot") depotLaden();
   if (name === "einstellungen") einstellungenLaden();
   if (name === "bank") bankLaden();
@@ -317,6 +323,7 @@ function optionen(sel, typen, wert) {
 // ---------- Übersicht ----------
 async function ladeAlles() {
   const s = await api("api/stand");
+  sparziel = s.ziel;
   konten = (await api("api/konten")).konten;
   const monate = [...new Set([...s.monate, heute().slice(0, 7)])].sort().reverse();
   if (!aktMonat || !monate.includes(aktMonat)) aktMonat = monate[0];
@@ -367,21 +374,35 @@ function zeichneZiel(s) {
     <div class="gedaempft">${s.konten.some((k) => k.aktuell) ? "Das Depot zählt mit aktuellen Kursen, soweit eingetragen." : "Das Depot zählt mit dem zuletzt gebuchten Wert."}</div>`;
 }
 
+let uFluss = null;
 async function ladeMonat() {
-  const d = await api(`api/monat?m=${aktMonat}`);
+  const [d, fluss] = await Promise.all([api(`api/monat?m=${aktMonat}`), api(`api/bericht?k=${aktMonat}`)]);
+  uFluss = fluss;
+  flussZeichnen(fluss, "#uFluss", "#uFlussHinweis", true);
   $("#monatTitel").textContent = mName(aktMonat);
   const rest = d.einnahmen - d.ausgaben;
   const quote = d.einnahmen > 0 ? `${Math.round(rest / d.einnahmen * 100)} %` : "–";
   $("#kacheln").innerHTML = [
     ["Einnahmen", eur(d.einnahmen)], ["Ausgaben", eur(d.ausgaben)], ["Übrig", eur(rest)], ["Sparquote", quote],
   ].map(([l, v]) => `<div class="kachel"><span>${l}</span><b>${v}</b></div>`).join("");
-  $("#legende").innerHTML = `<span><i style="background:var(--accent)"></i>${mName(d.monat)}</span><span><i style="background:var(--vor)"></i>${mName(d.vormonat)}</span>`;
-  const max = Math.max(1, ...d.kategorien.flatMap((k) => [k.betrag, k.vormonat]));
-  $("#kategorien").innerHTML = d.kategorien.map((k) => `<div class="kat" title="${esc(kurz(k.pfad))}: ${eur(k.betrag)}, Vormonat ${eur(k.vormonat)}">
+  // Vergleich: Durchschnitt je Monat über die ganze bisherige Messzeit ohne diesen und ohne den laufenden Monat.
+  const sm = d.schnitt_monate, mit = sm.length > 0;
+  const kurzM = (m) => `${MONATE[+m.slice(5) - 1].slice(0, 3)} ${m.slice(0, 4)}`;
+  const spanne = !mit ? "" : sm.length === 1 ? mName(sm[0]) : `${kurzM(sm[0])} bis ${kurzM(sm[sm.length - 1])}, ${sm.length} Monate`;
+  $("#legende").innerHTML = `<span><i style="background:var(--accent)"></i>${mName(d.monat)}</span>`
+    + (mit ? `<span><i style="background:var(--vor)"></i>Ø pro Monat (${esc(spanne)}${sm.length > 1 && sm.length < monateZwischen(sm[0], sm[sm.length - 1]) ? `, ohne ${esc(mName(d.monat))}` : ""})</span>` : "<span>Noch kein Vergleich: erst ein Monat gemessen.</span>");
+  const max = Math.max(1, ...d.kategorien.flatMap((k) => [k.betrag, k.schnitt]));
+  $("#kategorien").innerHTML = d.kategorien.map((k) => `<div class="kat" title="${esc(kurz(k.pfad))}: ${eur(k.betrag)}${mit ? `, Ø ${eur(k.schnitt)}` : ""}">
       <span>${esc(kurz(k.pfad))}</span>
-      <div class="balken"><div class="b" style="width:${Math.max(0, k.betrag) / max * 100}%"></div><div class="v" style="width:${Math.max(0, k.vormonat) / max * 100}%"></div></div>
-      <span class="zahl">${eur(k.betrag)}</span></div>`).join("") || '<p class="gedaempft">Noch keine Ausgaben in diesem Monat.</p>';
+      <div class="balken"><div class="b" style="width:${Math.max(0, k.betrag) / max * 100}%"></div>${mit ? `<div class="v" style="width:${Math.max(0, k.schnitt) / max * 100}%"></div>` : ""}</div>
+      <span class="zahl">${eur(k.betrag)}</span><span class="zahl schnitt">${mit ? `Ø ${eur(k.schnitt)}` : ""}</span></div>`).join("")
+    + (d.kategorien.length && mit ? `<div class="kat"><span><b>Zusammen</b></span><span></span><span class="zahl"><b>${eur(d.ausgaben)}</b></span><span class="zahl schnitt">Ø ${eur(d.ausgaben_schnitt)}</span></div>` : "")
+    || '<p class="gedaempft">Noch keine Ausgaben in diesem Monat.</p>';
   zeichneBuchungen(d.buchungen);
+}
+
+function monateZwischen(a, b) {
+  return (+b.slice(0, 4) - +a.slice(0, 4)) * 12 + (+b.slice(5) - +a.slice(5)) + 1;
 }
 
 function zeichneBuchungen(zeilen) {
@@ -549,7 +570,6 @@ $("#wForm").onsubmit = sicher(async (e) => {
 });
 
 // ---------- Berichte und Einstellungen ----------
-const WOTAG = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 const eur0 = (c) => (c / 100).toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const SVG = "http://www.w3.org/2000/svg";
 let bAktuell = null;
@@ -770,19 +790,21 @@ function kuchenZeichnen(d) {
   }
 }
 
-// Sankey: Einnahmen -> Topf -> Fest/Alltag/große Posten/Übrig -> Kategorie.
-// In der Wochenansicht gibt es keine Einnahmen, dort beginnt der Fluss bei den Ausgaben.
-function flussZeichnen(d) {
+// Sankey: Einnahmen -> Topf -> Fest/Alltag/große Posten/Übrig -> Kategorie bzw. Sparziel.
+// Die Übersicht zeigt ihn kleiner (klein = true), die Gesamtansicht ohne Sparvorschläge und Sparziel (beides gilt je Monat).
+function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis", klein = false) {
   const FARBEN = { Fest: "var(--s1)", Alltag: "var(--s2)", "Große Posten": "var(--s3)" };
-  const box = $("#bFluss");
+  const box = $(ziel);
   box.replaceChildren();
-  const woche = d.kennung === "woche";
+  const gesamt = d.kennung === "gesamt";
   const aus = d.kuchen.reduce((a, k) => a + k.betrag, 0);
-  const quellen = woche ? [] : (d.einnahmequellen || []);
+  const quellen = d.einnahmequellen || [];
   const ein = quellen.reduce((a, q) => a + q.betrag, 0);
-  $("#bFlussHinweis").textContent = woche
-    ? "Ausgaben der letzten 7 Tage nach Art und Kategorie."
-    : "Von den Einnahmen über Fest, Alltag und große Posten bis zur Kategorie. Gestreift: was sich laut Monatsbericht sparen ließe.";
+  const spz = !gesamt && sparziel && sparziel.fehlt > 0 ? sparziel.pro_monat : 0;
+  $(hinweis).textContent = (gesamt
+    ? `Alle Einnahmen und Ausgaben seit ${mName(d.titel)}.`
+    : "Von den Einnahmen über Fest, Alltag und große Posten bis zur Kategorie. Gestreift: was sich laut Monatsbericht sparen ließe.")
+    + (spz ? ` Sparziel: ${eur0(spz)} pro Monat bis ${dmy(sparziel.datum)}.` : "");
   if (!aus && !ein) { box.innerHTML = '<p class="gedaempft">Keine Buchungen in diesem Zeitraum.</p>'; return; }
 
   // Knoten je Spalte, Kanten in Zeichenreihenfolge (so kreuzen sich die Bänder nicht).
@@ -794,18 +816,18 @@ function flussZeichnen(d) {
   };
   const kante = (von, nach, wert, farbe) => { if (wert > 0) kanten.push({ von, nach, wert, farbe }); };
   const topfWert = Math.max(ein, aus);
-  const sparen = woche ? [] : (d.vorschlaege || []).map((v) => ({ ...v }));
+  const sparen = gesamt ? [] : (d.vorschlaege || []).map((v) => ({ ...v }));
   // Auf schmalen Bildschirmen fehlt der Platz für eine vierte Spalte, die Quellen stehen dann im Tooltip.
   const W = Math.max(300, box.clientWidth || 640), schmal = W < 560;
-  const mitQuellen = !woche && !schmal;
+  const mitQuellen = !schmal;
   let s = 0;
   if (mitQuellen) {
     for (const q of quellen) kante(knoten(0, kurz(q.name), q.betrag, "var(--s4)"), null, q.betrag, "var(--s4)");
     if (aus > ein) kante(knoten(0, ein ? "Aus Erspartem" : "Ohne Einnahmen", aus - ein, "var(--vor)"), null, aus - ein, "var(--vor)");
     s = 1;
   }
-  const topf = knoten(s, woche ? "Ausgaben" : "Einnahmen", woche ? aus : topfWert, woche ? "var(--muted)" : "var(--s4)",
-    woche || mitQuellen ? [] : [[eur(ein), "Einnahmen"], ...quellen.map((q) => ["", `${kurz(q.name)} ${eur0(q.betrag)}`]),
+  const topf = knoten(s, "Einnahmen", topfWert, "var(--s4)",
+    mitQuellen ? [] : [[eur(ein), "Einnahmen"], ...quellen.map((q) => ["", `${kurz(q.name)} ${eur0(q.betrag)}`]),
       ...(aus > ein ? [["", `Aus Erspartem ${eur0(aus - ein)}`]] : [])]);
   for (const k of kanten) k.nach = topf;
   const anteil = (b) => `${Math.round(b / (topf.wert || 1) * 100)} %`;
@@ -832,7 +854,25 @@ function flussZeichnen(d) {
   // Das Sparpotenzial (Monatsbericht von Claude) steht als gestrichelter Knoten unter „Übrig“:
   // so viel mehr bliebe pro Monat, wenn die Vorschläge umgesetzt würden.
   const sparGesamt = sparen.reduce((a, v) => a + v.betrag, 0);
-  if (ein > aus) kante(topf, knoten(s + 1, d.kennung === new Date().toISOString().slice(0, 7) ? "Bisher übrig" : "Übrig", ein - aus, "var(--gut)", [[eur(ein - aus), anteil(ein - aus)]]), ein - aus, "var(--gut)");
+  const laufend = gesamt || d.kennung === heute().slice(0, 7), uebrig = Math.max(0, ein - aus);
+  if (uebrig > 0) {
+    const zeilen = [[eur(uebrig), anteil(uebrig)]];
+    if (spz) zeilen.push([eur(spz), "pro Monat fürs Sparziel", "var(--gut)"]);
+    const u = knoten(s + 1, laufend ? "Bisher übrig" : "Übrig", uebrig, "var(--gut)", zeilen);
+    kante(topf, u, uebrig, "var(--gut)");
+    // Sparziel: „Übrig“ teilt sich in den Teil fürs Ziel und den Rest, der frei bleibt.
+    if (spz) {
+      const fuers = Math.min(uebrig, spz);
+      kante(u, knoten(s + 2, "Sparziel", fuers, "var(--gut)", [[eur(fuers), `von ${eur(spz)} pro Monat`, "var(--gut)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]), fuers, "var(--gut)");
+      if (uebrig > spz) kante(u, knoten(s + 2, "Frei übrig", uebrig - spz, "var(--gut)", [[eur(uebrig - spz), "über das Sparziel hinaus"]]), uebrig - spz, "var(--gut)");
+    }
+  }
+  if (spz > uebrig) {
+    const f = knoten(s + 1, laufend ? "Fehlt noch zum Sparziel" : "Fehlt zum Sparziel", spz - uebrig, "var(--danger)",
+      [[eur(spz - uebrig), `von ${eur(spz)} pro Monat`, "var(--danger)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]);
+    f.geist = "fehlt";
+    f.zusatz = "";
+  }
   if (sparGesamt > 0) {
     const g = knoten(s + 1, "Sparpotenzial", sparGesamt, "var(--gut)",
       [[`+${eur(sparGesamt)}`, "pro Monat möglich"], ...sparen.map((v) => [eur(v.betrag), v.titel, "var(--gut)"])]);
@@ -841,7 +881,7 @@ function flussZeichnen(d) {
   }
 
   // Höhen: ein Maßstab für alle Spalten, kleine Knoten bekommen Platz für ihre Beschriftung.
-  const NB = 10, LUECKE = 8, MIN = schmal ? 18 : 22, BASIS = schmal ? 300 : 380;
+  const NB = 10, LUECKE = klein ? 6 : 8, MIN = schmal || klein ? 18 : 22, BASIS = klein ? (schmal ? 220 : 260) : schmal ? 300 : 380;
   const voll = Math.max(...spalten.map((sp) => sp.reduce((a, k) => a + k.wert, 0)));
   const nMax = Math.max(...spalten.map((sp) => sp.length));
   const m = Math.max(0.0001, (BASIS - LUECKE * (nMax - 1)) / voll);
@@ -856,7 +896,7 @@ function flussZeichnen(d) {
   const familie = getComputedStyle(document.body).fontFamily;
   const breit = (t, fett) => { mass.font = `${fett ? 600 : 400} 12px ${familie}`; return mass.measureText(t).width; };
   const mitBetrag = (i) => !(schmal && i > 0 && i < letzte);
-  const betragText = (k) => k.geist ? ` +${eur0(k.wert)}` : ` ${eur0(k.wert)}`;
+  const betragText = (k) => k.geist === "fehlt" ? ` −${eur0(k.wert)}` : k.geist ? ` +${eur0(k.wert)}` : ` ${eur0(k.wert)}`;
   const textBreite = (k, i) => breit(k.name, true) + (mitBetrag(i) ? breit(betragText(k)) : 0) + (k.zusatz ? breit(k.zusatz, true) : 0);
   const deckel = W * (schmal ? 0.3 : 0.26);
   const randBreite = (i) => Math.min(deckel, Math.max(...spalten[i].map((k) => textBreite(k, i))) + 8);
@@ -883,7 +923,10 @@ function flussZeichnen(d) {
   svg.setAttribute("class", "grafik");
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Geldfluss von den Einnahmen zu den Ausgabenkategorien");
-  svg.innerHTML = '<defs><pattern id="schraffur" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--card)"/><rect width="2" height="5" fill="var(--gut)"/></pattern></defs>';
+  // Eigene Muster-IDs je Grafik: Übersicht und Berichte liegen im selben Dokument, eins davon oft versteckt.
+  const muster = (id, farbe) => `<pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--card)"/><rect width="2" height="5" fill="${farbe}"/></pattern>`;
+  const SG = `${box.id}-gut`, SF = `${box.id}-fehlt`;
+  svg.innerHTML = `<defs>${muster(SG, "var(--gut)")}${muster(SF, "var(--danger)")}</defs>`;
   for (const k of kanten) {
     const dicke = Math.max(1, k.wert * m);
     const y0 = k.von.y + k.von.raus, y1 = k.nach.y + k.nach.rein;
@@ -907,11 +950,11 @@ function flussZeichnen(d) {
       g.setAttribute("class", "knoten");
       const r = document.createElementNS(SVG, "rect");
       for (const [a, v] of Object.entries({ x: k.x, y: k.y, width: NB, height: k.h, rx: 2, fill: k.farbe })) r.setAttribute(a, v);
-      if (k.geist) for (const [a, v] of Object.entries({ fill: "url(#schraffur)", stroke: k.farbe, "stroke-dasharray": "3 2" })) r.setAttribute(a, v);
+      if (k.geist) for (const [a, v] of Object.entries({ fill: `url(#${k.geist === "fehlt" ? SF : SG})`, stroke: k.farbe, "stroke-dasharray": "3 2" })) r.setAttribute(a, v);
       g.append(r);
       if (k.spar) {
         const hs = Math.max(2, k.spar * m), st = document.createElementNS(SVG, "rect");
-        for (const [a, v] of Object.entries({ x: k.x - 2, y: k.y + k.h - hs, width: NB + 4, height: hs, rx: 2, fill: "url(#schraffur)", stroke: "var(--gut)", "stroke-dasharray": "3 2" })) st.setAttribute(a, v);
+        for (const [a, v] of Object.entries({ x: k.x - 2, y: k.y + k.h - hs, width: NB + 4, height: hs, rx: 2, fill: `url(#${SG})`, stroke: "var(--gut)", "stroke-dasharray": "3 2" })) st.setAttribute(a, v);
         g.append(st);
       }
       const mitte = k.y + k.h / 2;
@@ -957,41 +1000,48 @@ function flussZeichnen(d) {
 
 function berichtZeichnen(d) {
   bAktuell = d;
-  const woche = d.kennung === "woche";
-  const name = woche ? "Letzte 7 Tage" : mName(d.kennung);
-  const vergleich = woche ? "7 Tage davor" : mName(d.vergleich_titel);
-  $("#bTitel").textContent = woche ? d.titel : name;
-  const diff = d.gesamt - d.vergleich;
-  const kacheln = [["Ausgaben", eur(d.gesamt)], [`Zu ${vergleich}`, d.vergleich ? `${diff > 0 ? "+" : ""}${eur(diff)}` : "–"], ["Alltag", eur(d.alltag)]];
-  kacheln.push(woche ? ["Fest", eur(d.fix)] : ["Sparquote", d.einnahmen > 0 ? `${Math.round((d.einnahmen - d.gesamt) / d.einnahmen * 100)} %` : "–"]);
+  const gesamt = d.kennung === "gesamt";
+  const kurzM = (m) => MONATE[+m.slice(5) - 1].slice(0, 3);
+  const quote = d.einnahmen > 0 ? `${Math.round((d.einnahmen - d.gesamt) / d.einnahmen * 100)} %` : "–";
+  let kacheln;
+  if (gesamt) {
+    // Ø nur über abgeschlossene Monate, der laufende zählt erst, wenn er vorbei ist.
+    const voll = d.trend.filter((t) => t.titel !== heute().slice(0, 7));
+    const schnitt = voll.length ? voll.reduce((a, t) => a + t.ausgaben, 0) / voll.length : d.gesamt;
+    $("#bTitel").textContent = `Gesamt seit ${mName(d.titel)}`;
+    kacheln = [["Ausgaben", eur(d.gesamt)], ["Ø Ausgaben pro Monat", eur(schnitt)], ["Übrig", eur(d.einnahmen - d.gesamt)], ["Sparquote", quote]];
+  } else {
+    const name = mName(d.kennung), vergleich = mName(d.vergleich_titel);
+    const diff = d.gesamt - d.vergleich;
+    $("#bTitel").textContent = name;
+    kacheln = [["Ausgaben", eur(d.gesamt)], [`Zu ${vergleich}`, d.vergleich ? `${diff > 0 ? "+" : ""}${eur(diff)}` : "–"], ["Alltag", eur(d.alltag)], ["Sparquote", quote]];
+  }
   $("#bKacheln").innerHTML = kacheln.map(([l, v]) => `<div class="kachel"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join("");
   $("#bFazit").hidden = !d.text;
   $("#bFazit p").textContent = d.text;
 
-  if (woche) {
-    $("#bVerlaufTitel").textContent = "Tag für Tag";
-    legende("#bVerlaufLegende", [[name, "var(--s1)"], [vergleich, "var(--vor)"]]);
-    const start = new Date(`${d.von}T12:00:00`);
-    const gruppen = d.verlauf.map((v, i) => {
-      const t = new Date(start.getTime() + i * 86400000);
-      return { kurz: WOTAG[t.getDay()], lang: `${WOTAG[t.getDay()]}, ${t.toLocaleDateString("de-DE")}`, jetzt: v, davor: d.vergleich_verlauf[i] };
-    });
-    saeulen("#bVerlauf", gruppen, [{ feld: "jetzt", name, farbe: "var(--s1)" }, { feld: "davor", name: vergleich, farbe: "var(--vor)" }]);
-    $("#bVerlauf").insertAdjacentHTML("beforeend", tabelle(["Tag", name, vergleich], gruppen.map((g) => [g.lang, eur(g.jetzt), eur(g.davor)])));
-    $("#bTrendTitel").textContent = "Die letzten 8 Wochen";
-    legende("#bTrendLegende", []);
-    const t = d.trend.map((x) => ({ kurz: x.titel, lang: `7 Tage bis ${x.titel}`, ausgaben: x.ausgaben }));
-    saeulen("#bTrend", t, [{ feld: "ausgaben", name: "Ausgaben", farbe: "var(--s1)" }]);
-    $("#bTrend").insertAdjacentHTML("beforeend", tabelle(["7 Tage bis", "Ausgaben"], t.map((g) => [g.kurz, eur(g.ausgaben)])));
+  const monatsSaeulen = (ziel, reihen, kopf) => {
+    const t = d.trend.map((x) => ({ ...x, kurz: kurzM(x.titel), lang: mName(x.titel) }));
+    saeulen(ziel, t, reihen);
+    $(ziel).insertAdjacentHTML("beforeend", tabelle(["Monat", ...kopf], t.map((g) => [g.lang, ...reihen.map((r) => eur(g[r.feld] || 0))])));
+  };
+  const einAus = [{ feld: "ausgaben", name: "Ausgaben", farbe: "var(--s1)" }, { feld: "einnahmen", name: "Einnahmen", farbe: "var(--s2)" }];
+  if (gesamt) {
+    $("#bVerlaufTitel").textContent = "Einnahmen und Ausgaben, Monat für Monat";
+    legende("#bVerlaufLegende", [["Ausgaben", "var(--s1)"], ["Einnahmen", "var(--s2)"]]);
+    monatsSaeulen("#bVerlauf", einAus, ["Ausgaben", "Einnahmen"]);
+    $("#bTrendTitel").textContent = "Fest, Alltag und große Posten je Monat";
+    const arten = [["Fest", "var(--s1)"], ["Alltag", "var(--s2)"], ["Große Posten", "var(--s3)"]];
+    legende("#bTrendLegende", arten);
+    monatsSaeulen("#bTrend", arten.map(([n, f]) => ({ feld: n, name: n, farbe: f })), arten.map(([n]) => n));
   } else {
+    const name = mName(d.kennung), vergleich = mName(d.vergleich_titel);
     $("#bVerlaufTitel").textContent = "So hat sich der Monat aufgebaut";
     legende("#bVerlaufLegende", [[name, "var(--s1)", 1], [vergleich, "var(--vor)", 1]]);
     linien("#bVerlauf", d.verlauf, d.vergleich_verlauf, name, vergleich);
     $("#bTrendTitel").textContent = "Einnahmen und Ausgaben, 6 Monate";
     legende("#bTrendLegende", [["Ausgaben", "var(--s1)"], ["Einnahmen", "var(--s2)"]]);
-    const t = d.trend.map((x) => ({ kurz: MONATE[+x.titel.slice(5) - 1].slice(0, 3), lang: mName(x.titel), ausgaben: x.ausgaben, einnahmen: x.einnahmen }));
-    saeulen("#bTrend", t, [{ feld: "ausgaben", name: "Ausgaben", farbe: "var(--s1)" }, { feld: "einnahmen", name: "Einnahmen", farbe: "var(--s2)" }]);
-    $("#bTrend").insertAdjacentHTML("beforeend", tabelle(["Monat", "Ausgaben", "Einnahmen"], t.map((g) => [g.lang, eur(g.ausgaben), eur(g.einnahmen)])));
+    monatsSaeulen("#bTrend", einAus, ["Ausgaben", "Einnahmen"]);
   }
 
   flussZeichnen(d);
@@ -999,23 +1049,26 @@ function berichtZeichnen(d) {
   $("#bPosten").innerHTML = d.posten.map((p) => `<tr><td class="gedaempft">${dmy(p.datum).slice(0, 6)}</td><td>${esc(p.beschreibung)}</td><td class="zahl">${eur(p.betrag)}</td></tr>`).join("");
   $("#bSparenKarte").hidden = !d.vorschlaege.length;
   $("#bSparenTitel").textContent = `Sparpotenzial: rund ${eur0(d.vorschlaege.reduce((a, v) => a + v.betrag, 0))} pro Monat`;
-  $("#bSparenQuelle").hidden = !woche;
-  if (woche && d.vorschlaege_aus) $("#bSparenQuelle").textContent = `Aus dem Bericht für ${mName(d.vorschlaege_aus)}.`;
+  $("#bSparenQuelle").hidden = !gesamt;
+  if (gesamt && d.vorschlaege_aus) $("#bSparenQuelle").textContent = `Aus dem Bericht für ${mName(d.vorschlaege_aus)}.`;
   waagerecht("#bSparen", d.vorschlaege.map((v) => ({ name: v.titel, betrag: v.betrag })), "var(--s3)");
 }
 const berichtLaden = sicher(async () => {
   berichtZeichnen(await api(`api/bericht?k=${encodeURIComponent($("#bZeit").value)}`));
 });
 const berichteLaden = sicher(async () => {
-  const { monate } = await api("api/stand");
-  const alt = $("#bZeit").value || "woche";
-  $("#bZeit").innerHTML = '<option value="woche">Letzte 7 Tage</option>' + [...monate].reverse().map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
+  const { monate, ziel } = await api("api/stand");
+  sparziel = ziel;
+  const alt = $("#bZeit").value || "gesamt";
+  $("#bZeit").innerHTML = '<option value="gesamt">Gesamt</option>' + [...monate].reverse().map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
   $("#bZeit").value = alt;
+  if (!$("#bZeit").value) $("#bZeit").value = "gesamt";
   await berichtLaden();
 });
 $("#bZeit").onchange = berichtLaden;
 let bUhr;
-addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="berichte"]').hidden) berichtZeichnen(bAktuell); }, 150); });
+addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="berichte"]').hidden) berichtZeichnen(bAktuell);
+  if (uFluss && !$('[data-seite="uebersicht"]').hidden) flussZeichnen(uFluss, "#uFluss", "#uFlussHinweis", true); }, 150); });
 // ---------- Depot ----------
 const prozent = (p) => `${p > 0 ? "+" : ""}${p.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 const plus = (c) => `${c > 0 ? "+" : ""}${eur(c)}`;
