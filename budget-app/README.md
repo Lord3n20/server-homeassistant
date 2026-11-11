@@ -16,7 +16,7 @@ erste Ausgabenkategorie mit „Gebühr“ im Namen (am liebsten „…Ordergebü
 Karten scrollen bei Bedarf in sich; schmal stapelt sich alles. Oben Konten (mit Kachel „Depot“; alles im Depot zählt als erspart) und
 der Zeitraum („Gesamt“ oder ein Monat) mit Kacheln, darunter Geldfluss (Sankey), Kategorien gegen den Ø aller
 bisherigen Monate (ohne gezeigten und laufenden Monat), Feldkarte (je Kategorie ein Feld, rot über / grün unter Ø),
-Monatsaufbau (Ausgaben, Einnahmen, Ø-Verlauf), Trend, Sparziel und größte Posten (Festes zusammengefasst oben).
+Monatsverlauf als eine Kurslinie (Einnahmen − Ausgaben, aufsummiert, grün/rot um null, Ø gestrichelt), Trend, Sparziel und größte Posten (Festes zusammengefasst oben).
 In „Gesamt“ läuft der Geldfluss ohne Art-Spalte: Einnahmen → Ausgaben → je Kategorie ein Knoten.
 Was ins Depot geht oder dort liegt, zählt als erspart: Im Geldfluss teilt sich „Übrig“ in „Ins Depot“ und „Auf dem
 Konto“, das Sparziel misst sich am Gesamtvermögen bzw. am ganzen „Übrig“, eine Lücke steht rot gestrichelt darunter. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;

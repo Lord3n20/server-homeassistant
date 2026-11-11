@@ -428,6 +428,7 @@ class Panel(Basis):
         self.assertEqual(d["einnahmen_verlauf"][29], 85500)
         self.assertEqual(d["schnitt_monate"][0], "2026-09")
         self.assertEqual(sum(d["schnitt_verlauf"]), round(500 / len(d["schnitt_monate"])))
+        self.assertEqual(sum(d["schnitt_einnahmen"]), 0)
         g = budget.bericht("gesamt")
         monate = budget.messmonate(*buch.lesen())
         self.assertEqual(monate[:2], ["2026-09", "2026-10"])
