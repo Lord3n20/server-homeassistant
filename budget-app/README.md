@@ -6,9 +6,12 @@ Skripte in Home Assistant als Ausgaben ein und kennt nur Ausgaben.
 
 ## Berichte
 
-Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und die letzten 7 Tage. Ganz oben zeigt ein
-Geldfluss (Sankey), wie die Einnahmen eines Monats in Fest, Alltag, große Posten und Übrig und weiter in die Kategorien fließen;
-in der Wochenansicht beginnt er bei den Ausgaben. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;
+Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und als Gesamtübersicht über die ganze
+Messzeit. Ganz oben zeigt ein Geldfluss (Sankey), wie die Einnahmen in Fest, Alltag, große Posten und Übrig und weiter in die
+Kategorien fließen; die Übersicht zeigt ihn etwas kleiner für den gewählten Monat. Ist ein Sparziel eingestellt, teilt sich
+„Übrig“ in den Teil fürs Sparziel (nötiger Betrag pro Monat) und den Rest; reicht es nicht, steht die Lücke rot gestrichelt
+darunter. In der Übersicht vergleicht „Ausgaben nach Kategorie“ mit dem Durchschnitt je Monat über die ganze bisherige
+Messzeit, ohne den gezeigten und ohne den laufenden Monat. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;
 haben Vorschläge eine Kategorie, ist der Teil dort gestreift markiert. Ein Kuchendiagramm zeigt von innen nach außen
 Fest, Alltag und große Posten, dann Kategorie, dann Händler. Claude liefert
 nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.

@@ -423,12 +423,33 @@ class Panel(Basis):
         self.assertEqual(budget.stand()["vorschlaege"][0]["titel"], "A")
         self.assertEqual(d["trend"][-1]["ausgaben"], 38800)
         self.assertEqual(d["vorschlaege"][0]["titel"], "A")
-        w = budget.bericht("woche")
-        self.assertEqual((len(w["verlauf"]), len(w["vergleich_verlauf"]), len(w["trend"])), (7, 7, 8))
-        self.assertEqual((w["vorschlaege"][0]["titel"], w["vorschlaege_aus"]), ("A", "2026-10"))
-        self.assertEqual(w["einnahmequellen"], [])
+        g = budget.bericht("gesamt")
+        monate = budget.messmonate(*buch.lesen())
+        self.assertEqual(monate[:2], ["2026-09", "2026-10"])
+        self.assertEqual([t["titel"] for t in g["trend"]], monate)
+        self.assertEqual((g["gesamt"], g["einnahmen"], g["vergleich"], g["verlauf"]), (38800 + 500, 85500, 0, []))
+        self.assertEqual({k: g["trend"][1][k] for k in ("Fest", "Alltag", "Große Posten")}, {"Fest": 20000, "Alltag": 800, "Große Posten": 18000})
+        self.assertEqual((g["vorschlaege"][0]["titel"], g["vorschlaege_aus"], g["text"]), ("A", "2026-10", ""))
+        self.assertEqual([q["betrag"] for q in g["einnahmequellen"]], [85500])
         with self.assertRaises(buch.BuchFehler):
             budget.bericht("quatsch")
+
+    def test_kategorien_mit_durchschnitt_der_messzeit(self):
+        buch.buchen("ausgabe", "2026-08-05", "Aldi", GIRO, [{"konto": LEB, "betrag": 3000}])
+        buch.buchen("ausgabe", "2026-10-05", "Aldi", GIRO, [{"konto": LEB, "betrag": 6000}])
+        buch.buchen("ausgabe", "2026-10-06", "Aldi", GIRO, [{"konto": LEB, "betrag": 1000}])
+        laufend = date.today().strftime("%Y-%m")
+        buch.buchen("ausgabe", f"{laufend}-01", "Aldi", GIRO, [{"konto": LEB, "betrag": 99900}])
+        m = budget.monat("2026-10")
+        # August, September (leer) zählen mit, Oktober (gezeigt) und der laufende Monat nicht.
+        self.assertEqual(m["schnitt_monate"][:2], ["2026-08", "2026-09"])
+        self.assertNotIn("2026-10", m["schnitt_monate"])
+        self.assertNotIn(laufend, m["schnitt_monate"])
+        n = len(m["schnitt_monate"])
+        self.assertEqual(m["kategorien"][0]["schnitt"], round(3000 / n))
+        self.assertEqual(m["kategorien"][0]["betrag"], 7000)
+        aktuell = budget.monat(laufend)
+        self.assertEqual(aktuell["kategorien"][0]["schnitt"], round(10000 / len(aktuell["schnitt_monate"])))
 
     def test_bericht_laufender_monat_endet_heute(self):
         heute = date.today()
