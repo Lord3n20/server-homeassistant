@@ -20,10 +20,12 @@ map:
 backup_exclude:
   - "*.zip"
   - "*.csv"
+# Kein Host-Port: NPM erreicht die API intern als 91c9b2fc-routing-core:8090, sonst wäre sie im LAN ohne
+# Client-Zertifikat offen.
 ports:
-  8090/tcp: 8090
+  8090/tcp: null
 ports_description:
-  8090/tcp: "Routing-API (nur über den Reverse Proxy mit Client-Zertifikat freigeben)"
+  8090/tcp: "Routing-API (standardmäßig nicht freigegeben, NPM nutzt den internen Namen)"
 watchdog: "tcp://[HOST]:[PORT:8090]"
 environment:
   TZ: "Europe/Berlin"
