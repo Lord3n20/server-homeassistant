@@ -1,8 +1,9 @@
 """Die Ausgaben-Schnittstelle für Claude: läuft über Skripte in Home Assistant.
 
 Dieses Modul darf nur Ausgabenzeilen, Kategorien und die Namen der Zahl- und
-Einnahmekonten herausgeben. Einnahmen kann Claude buchen (Enzo 11.11.), aber nicht
-lesen. Salden, gebuchte Einnahmen, Umbuchungen und Depot bleiben im Panel; darum
+Einnahmekonten herausgeben. Einnahmen und Umbuchungen zwischen Zahlkonten kann Claude
+buchen (Enzo 11.11.), aber nicht lesen. Salden, gebuchte Einnahmen und Umbuchungen und
+das Depot bleiben im Panel; darum
 gibt es hier weder ein Werkzeug noch eine Antwort, die sie enthalten könnte.
 Der Port ist nicht nach außen freigegeben, Anfragen kommen nur von Home Assistant.
 Geschrieben wird in zwei Schritten: erst Vorschlag, nach dem OK Buchung.
@@ -77,6 +78,42 @@ def einnahme_duplikate(gesamt, datum):
     return treffer
 
 
+def umbuchung_duplikate(gesamt, datum):
+    """Umbuchungen mit gleichem Betrag bis zwei Tage daneben; nur Datum und Text."""
+    d = date.fromisoformat(datum)
+    von, bis = (d - timedelta(days=2)).isoformat(), (d + timedelta(days=2)).isoformat()
+    konten, buchungen = buch.lesen()
+    treffer = []
+    for b in buchungen:
+        if von <= b["datum"] <= bis and all(konten[s["konto"]]["typ"] in buch.VERMOEGEN_TYPEN for s in b["splits"]):
+            if sum(s["betrag"] for s in b["splits"] if s["betrag"] > 0) == gesamt:
+                treffer.append({"id": b["id"], "datum": b["datum"], "beschreibung": b["beschreibung"], "gesamt": euro(gesamt)})
+    return treffer
+
+
+DUPLIKATE = {"ausgabe": duplikate, "einnahme": einnahme_duplikate, "umbuchung": umbuchung_duplikate}
+ZIELTYPEN = {"ausgabe": ("EXPENSE",), "einnahme": ("INCOME",), "umbuchung": buch.ZAHLKONTO_TYPEN}
+
+
+def art_erkennen(a):
+    """Ohne Angabe: Einnahmekategorien heißen Einnahme, Zahlkonten als Kategorie Umbuchung."""
+    art = str(a.get("art") or "").strip().lower()
+    if art in ZIELTYPEN:
+        return art
+    roh = a.get("positionen") or []
+    positionen = json.loads(roh) if isinstance(roh, str) else roh
+    konten, _ = buch.lesen()
+    for kandidat in ("einnahme", "umbuchung"):
+        try:
+            for p in positionen:
+                konto_nach_pfad(konten, p.get("kategorie"), ZIELTYPEN[kandidat], "Kategorie")
+        except BuchFehler:
+            continue
+        if positionen:
+            return kandidat
+    return "ausgabe"
+
+
 def vorschlagen(a, art="ausgabe"):
     d = buch.tag(a.get("datum"))
     if d > date.today() + timedelta(days=1):
@@ -90,13 +127,13 @@ def vorschlagen(a, art="ausgabe"):
         positionen = []
         roh = a.get("positionen") or []
         for p in json.loads(roh) if isinstance(roh, str) else roh:
-            k = konto_nach_pfad(konten, p.get("kategorie"), ("EXPENSE",) if art == "ausgabe" else ("INCOME",), "Kategorie")
+            k = konto_nach_pfad(konten, p.get("kategorie"), ZIELTYPEN[art], "Kategorie" if art != "umbuchung" else "Zielkonto")
             positionen.append({"konto": k["id"], "kategorie": k["pfad"], "betrag": cent(p.get("betrag")),
                                "memo": str(p.get("memo") or "").strip()})
         buch.splits_bauen(konten, art, zahlkonto["id"], positionen)
         gesamt = sum(p["betrag"] for p in positionen)
-        if art == "einnahme" and any(p["betrag"] <= 0 for p in positionen):
-            raise BuchFehler("Einnahmen nur mit Beträgen über 0 €")
+        if art != "ausgabe" and any(p["betrag"] <= 0 for p in positionen):
+            raise BuchFehler("Einnahmen und Umbuchungen nur mit Beträgen über 0 €")
         # Erstattungen sind ein Eingang und werden im Panel eingetragen; Pfand im Bon ist in Ordnung.
         if gesamt <= 0:
             raise BuchFehler("Die Summe muss über 0 € liegen. Erstattungen trägt der Nutzer im Panel ein.")
@@ -108,7 +145,7 @@ def vorschlagen(a, art="ausgabe"):
         vorschlag = {"id": "v" + secrets.token_hex(8), "status": "offen", "erstellt": time.strftime("%Y-%m-%d %H:%M"),
                      "art": art, "datum": d.isoformat(), "beschreibung": beschreibung, "zahlkonto": zahlkonto["id"],
                      "zahlkonto_name": zahlkonto["pfad"], "positionen": positionen, "gesamt": gesamt,
-                     "duplikate": (duplikate if art == "ausgabe" else einnahme_duplikate)(gesamt, d.isoformat())}
+                     "duplikate": DUPLIKATE[art](gesamt, d.isoformat())}
         liste = vorschlaege_laden()
         liste.append(vorschlag)
         json_speichern(VORSCHLAEGE, liste[-200:])
@@ -127,7 +164,7 @@ def vorschlag_buchen(vorschlag_id, trotz_duplikat=False):
         if v["status"] != "offen":
             raise BuchFehler("Dieser Vorschlag wurde verworfen")
         art = v.get("art", "ausgabe")
-        treffer = (duplikate if art == "ausgabe" else einnahme_duplikate)(v["gesamt"], v["datum"])
+        treffer = DUPLIKATE[art](v["gesamt"], v["datum"])
         if treffer and not trotz_duplikat:
             raise BuchFehler("Mögliches Duplikat: " + json.dumps(treffer, ensure_ascii=False) +
                              ". Nur mit trotz_duplikat buchen, wenn der Nutzer das bestätigt hat.")
@@ -173,7 +210,7 @@ def w_kategorien(_):
 
 
 def w_vorschlagen(a):
-    return vorschlag_aussen(vorschlagen(a))
+    return vorschlag_aussen(vorschlagen(a, art_erkennen(a)))
 
 
 def w_einnahme_vorschlagen(a):
@@ -182,6 +219,14 @@ def w_einnahme_vorschlagen(a):
                                          "zahlkonto": a.get("zahlkonto"),
                                          "positionen": [{"kategorie": a.get("kategorie"), "betrag": a.get("betrag"),
                                                          "memo": a.get("memo")}]}, "einnahme"))
+
+
+def w_umbuchung_vorschlagen(a):
+    """Geld von einem Zahlkonto auf ein anderes; bucht erst nach dem OK über ausgabe_bestaetigen."""
+    return vorschlag_aussen(vorschlagen({"datum": a.get("datum"), "beschreibung": a.get("beschreibung") or "Umbuchung",
+                                         "zahlkonto": a.get("von"),
+                                         "positionen": [{"kategorie": a.get("nach"), "betrag": a.get("betrag"),
+                                                         "memo": a.get("memo")}]}, "umbuchung"))
 
 
 def w_bestaetigen(a):
@@ -285,6 +330,7 @@ WERKZEUGE = {
     "kategorien_und_zahlkonten": w_kategorien,
     "ausgabe_vorschlagen": w_vorschlagen,
     "einnahme_vorschlagen": w_einnahme_vorschlagen,
+    "umbuchung_vorschlagen": w_umbuchung_vorschlagen,
     "ausgabe_bestaetigen": w_bestaetigen,
     "vorschlag_verwerfen": w_verwerfen,
     "ausgaben_lesen": w_ausgaben,

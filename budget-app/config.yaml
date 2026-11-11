@@ -1,6 +1,6 @@
 name: "Budget"
 description: "Haushaltsbuch im GnuCash-Format: Panel für alles, Claude nur über HA-Skripte und nur für Ausgaben"
-version: "0.9.2"
+version: "0.10.0"
 slug: "budget"
 arch:
   - aarch64

@@ -28,7 +28,7 @@ Die Schnittstelle läuft auf einem internen Port ohne Freigabe nach außen und n
 an. Sie hat keinen Weg zu den Daten des Panels. Claude erreicht sie über den MCP-Server von Home Assistant.
 
 - **Sieht Claude:** gebuchte Ausgaben, Ausgabenkategorien, die Namen der Zahl- und Einnahmekonten und wiederkehrende Ausgaben.
-- **Darf Claude buchen:** Ausgaben und Einnahmen, jeweils erst als Vorschlag und nach deinem OK. Gebuchte Einnahmen sieht Claude danach nicht.
+- **Darf Claude buchen:** Ausgaben, Einnahmen und Umbuchungen zwischen Zahlkonten, jeweils erst als Vorschlag und nach deinem OK. Gebuchte Einnahmen und Umbuchungen sieht Claude danach nicht.
 - **Sieht Claude nicht:** Salden, Vermögen, Sparziel, gebuchte Einnahmen, Umbuchungen, Depot und Kurse, wiederkehrende Einnahmen.
 - Erstattungen trägst du im Panel ein
   (negativer Betrag bei einer Ausgabe); Claude sieht sie danach als negative Ausgabe.

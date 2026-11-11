@@ -28,7 +28,7 @@ budget_kategorien:
 
 budget_ausgabe_vorschlagen:
   alias: "Budget: Ausgabe vorschlagen"
-  description: "Legt eine Ausgabe, etwa von einem Kassenbon, als Vorschlag an und prüft Summe und Duplikate. Bucht noch nicht. Das Ergebnis dem Nutzer zeigen und erst nach seinem OK bestätigen. Einnahmen gehen über budget_einnahme_vorschlagen, Erstattungen und Umbuchungen trägt der Nutzer selbst ein."
+  description: "Legt eine Ausgabe, etwa von einem Kassenbon, als Vorschlag an und prüft Summe und Duplikate. Bucht noch nicht. Das Ergebnis dem Nutzer zeigen und erst nach seinem OK bestätigen. Einnahmen gehen über budget_einnahme_vorschlagen, Umbuchungen über budget_umbuchung_vorschlagen. Steht als Kategorie eine Einnahmekategorie oder ein Zahlkonto, wird daraus automatisch eine Einnahme bzw. Umbuchung."
   icon: mdi:cash-multiple
   mode: parallel
   fields:
@@ -115,9 +115,56 @@ budget_einnahme_vorschlagen:
   - stop: Fertig
     response_variable: antwort
 
+budget_umbuchung_vorschlagen:
+  alias: "Budget: Umbuchung vorschlagen"
+  description: "Legt eine Umbuchung zwischen zwei eigenen Zahlkonten (z. B. Girokonto auf Verrechnungskonto) als Vorschlag an und prüft Duplikate. Bucht noch nicht. Dem Nutzer zeigen und nach seinem OK mit budget_ausgabe_bestaetigen buchen. Salden lassen sich nicht lesen."
+  icon: mdi:bank-transfer
+  mode: parallel
+  fields:
+    datum:
+      description: "Datum als JJJJ-MM-TT"
+      required: true
+      selector:
+        text: {}
+    von:
+      description: "Zahlkonto, von dem das Geld abgeht (Name aus budget_kategorien, zahlkonten)"
+      required: true
+      selector:
+        text: {}
+    nach:
+      description: "Zahlkonto, auf dem das Geld ankommt (Name aus budget_kategorien, zahlkonten)"
+      required: true
+      selector:
+        text: {}
+    betrag:
+      description: "Betrag in Euro, z. B. 200,00"
+      required: true
+      selector:
+        text: {}
+    beschreibung:
+      description: "Zweck, z. B. Sparen"
+      required: false
+      selector:
+        text: {}
+    memo:
+      description: "Notiz"
+      required: false
+      selector:
+        text: {}
+  sequence:
+  - action: rest_command.budget
+    data:
+      werkzeug: umbuchung_vorschlagen
+      daten: "{{ dict(datum=datum, von=von, nach=nach, betrag=betrag, beschreibung=beschreibung | default(''), memo=memo | default('')) }}"
+    response_variable: r
+  - variables:
+      antwort: "{{ {'ergebnis': r.content} }}"
+  - stop: Fertig
+    response_variable: antwort
+
 budget_ausgabe_bestaetigen:
   alias: "Budget: Ausgabe buchen"
-  description: "Bucht einen Vorschlag (Ausgabe oder Einnahme), nachdem der Nutzer ihn bestätigt hat. Ein zweiter Aufruf bucht nicht noch einmal."
+  description: "Bucht einen Vorschlag (Ausgabe, Einnahme oder Umbuchung), nachdem der Nutzer ihn bestätigt hat. Ein zweiter Aufruf bucht nicht noch einmal."
   icon: mdi:cash-multiple
   mode: parallel
   fields:
