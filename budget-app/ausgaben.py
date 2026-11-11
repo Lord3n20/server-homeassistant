@@ -225,7 +225,7 @@ def w_umbuchung_vorschlagen(a):
     """Geld von einem Zahlkonto auf ein anderes; bucht erst nach dem OK über ausgabe_bestaetigen."""
     return vorschlag_aussen(vorschlagen({"datum": a.get("datum"), "beschreibung": a.get("beschreibung") or "Umbuchung",
                                          "zahlkonto": a.get("von"),
-                                         "positionen": [{"kategorie": a.get("nach"), "betrag": a.get("betrag"),
+                                         "positionen": [{"kategorie": a.get("auf") or a.get("nach"), "betrag": a.get("betrag"),
                                                          "memo": a.get("memo")}]}, "umbuchung"))
 
 

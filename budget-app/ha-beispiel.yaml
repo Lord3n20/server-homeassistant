@@ -131,7 +131,7 @@ budget_umbuchung_vorschlagen:
       required: true
       selector:
         text: {}
-    nach:
+    auf:
       description: "Zahlkonto, auf dem das Geld ankommt (Name aus budget_kategorien, zahlkonten)"
       required: true
       selector:
@@ -155,7 +155,7 @@ budget_umbuchung_vorschlagen:
   - action: rest_command.budget
     data:
       werkzeug: umbuchung_vorschlagen
-      daten: "{{ dict(datum=datum, von=von, nach=nach, betrag=betrag, beschreibung=beschreibung | default(''), memo=memo | default('')) }}"
+      daten: "{{ dict(datum=datum, von=von, auf=auf, betrag=betrag, beschreibung=beschreibung | default(''), memo=memo | default('')) }}"
     response_variable: r
   - variables:
       antwort: "{{ {'ergebnis': r.content} }}"
