@@ -221,8 +221,8 @@
 
     <div data-seite="bank">
       <section class="card">
-        <div class="kopf"><h2>Bankabruf</h2><span class="gedaempft" id="gStatus"></span></div>
-        <div class="aktionen" style="margin-top:0"><button class="primaer" id="gAbruf" type="button">Jetzt abrufen</button></div>
+        <div class="kopf"><h2>Bankumsätze</h2><span class="gedaempft" id="gStatus"></span></div>
+        <p class="gedaempft" style="margin:0">Umsätze kommen aus der Chromium-Erweiterung „Budget: Bankumsätze“: dort bei Trade Republic oder der GLS anmelden, Umsätze holen und senden. Hier dann einordnen und buchen.</p>
       </section>
       <section class="card" id="gUmsaetzeKarte">
         <h2>Neue Umsätze</h2>
@@ -231,20 +231,8 @@
         <div class="aktionen"><button type="button" id="gAlle">Alle mit Kategorie buchen</button></div>
       </section>
       <section class="card">
-        <h2>Zugang</h2>
-        <form id="gForm" class="raster" autocomplete="off">
-          <label>Login (VR-NetKey oder Alias)<input id="gLogin" autocomplete="off"></label>
-          <label>PIN<input type="password" id="gPin" autocomplete="new-password"></label>
-          <label>Produkt-ID<input id="gProdukt"></label>
-          <label>Buchkonto<select id="gKonto"></select></label>
-          <label>IBAN (leer = erstes Konto)<input id="gIban"></label>
-          <label>Umsätze ab<input type="date" id="gAb"></label>
-          <label>BLZ<input id="gBlz" inputmode="numeric"></label>
-          <label>Server<input id="gServer"></label>
-          <label style="flex-direction:row;align-items:center;gap:8px;display:flex"><input type="checkbox" id="gAuto" style="width:auto"> Täglich ab 7 Uhr abrufen</label>
-          <div style="align-self:end"><button class="primaer">Speichern</button></div>
-        </form>
-        <p class="gedaempft" id="gHinweis"></p>
+        <h2>Buchkonten</h2>
+        <form id="gForm" class="raster"></form>
       </section>
     </div>
 
@@ -1136,42 +1124,29 @@ $("#monat2").onchange = sicher(async (e) => { aktMonat = e.target.value; $("#mon
 $$(".reiter button").forEach((b) => b.onclick = () => zeige(b.dataset.t));
 
 // ---------- Bank ----------
-const GZUSTAND = { bereit: "", laeuft: "Läuft: ", freigabe: "Warte auf Freigabe: ", fehler: "Fehler: " };
 const bankLaden = sicher(async () => {
   const g = await api("api/bank");
-  const ziele = konten.filter((k) => !k.platzhalter && k.id !== g.buchkonto && (["EXPENSE", "INCOME"].includes(k.typ) || VERMOEGEN.includes(k.typ)));
   const gruppen = [["Ausgaben", ["EXPENSE"]], ["Einnahmen", ["INCOME"]], ["Umbuchung auf/von", VERMOEGEN]];
-  const auswahl = (wert) => `<option value="">Kategorie …</option>` + gruppen.map(([n, typen]) => `<optgroup label="${n}">`
-    + ziele.filter((k) => typen.includes(k.typ)).map((k) => `<option value="${k.id}"${k.id === wert ? " selected" : ""}>${esc(kurz(k.pfad))}</option>`).join("") + "</optgroup>").join("");
-  const s = g.status || {};
-  $("#gStatus").textContent = (GZUSTAND[s.zustand] ?? "") + (s.text || "") + (g.letzter_abruf ? ` · zuletzt ${dmy(g.letzter_abruf)}` : "");
-  $("#gAbruf").disabled = ["laeuft", "freigabe"].includes(s.zustand);
+  const auswahl = (wert, ohne) => `<option value="">Kategorie …</option>` + gruppen.map(([n, typen]) => `<optgroup label="${n}">`
+    + konten.filter((k) => !k.platzhalter && k.id !== ohne && typen.includes(k.typ))
+      .map((k) => `<option value="${k.id}"${k.id === wert ? " selected" : ""}>${esc(kurz(k.pfad))}</option>`).join("") + "</optgroup>").join("");
+  $("#gStatus").textContent = Object.entries(g.zuletzt).map(([b, z]) => `${g.banken[b]}: ${dmy(z.slice(0, 10))} ${z.slice(11)}`).join(" · ");
   $("#bankReiter").textContent = g.umsaetze.length ? `Bank (${g.umsaetze.length})` : "Bank";
   $("#gUmsaetzeKarte").hidden = !g.umsaetze.length;
   $("#gUmsaetze").innerHTML = g.umsaetze.slice().reverse().map((u) => `<div class="umsatz" data-id="${u.id}">
-      <div><span class="gedaempft">${dmy(u.datum).slice(0, 6)}</span> ${esc(u.name)}<div class="gedaempft">${esc(u.zweck.slice(0, 90))}</div>
+      <div><span class="gedaempft">${dmy(u.datum).slice(0, 6)} · ${esc(g.banken[u.bank] || "")}</span><br>${esc(u.name)}<div class="gedaempft">${esc(u.zweck.slice(0, 90))}</div>
         ${u.duplikat ? `<div class="gedaempft">Steht wohl schon im Buch: ${esc(u.duplikat.beschreibung)} (${dmy(u.duplikat.datum).slice(0, 6)})</div>` : ""}</div>
       <div class="zahl"${u.betrag > 0 ? ' style="color:var(--accent)"' : ""}>${eur(u.betrag)}</div>
-      <div class="wahl"><select class="gKat" aria-label="Kategorie">${auswahl(u.duplikat ? "" : u.vorschlag)}</select>
+      <div class="wahl"><select class="gKat" aria-label="Kategorie">${auswahl(u.duplikat ? "" : u.vorschlag, g.konten[u.bank])}</select>
         <button class="klein" data-buchen="1">Buchen</button><button class="klein" data-weg="1">${u.duplikat ? "Schon drin" : "Ignorieren"}</button></div>
     </div>`).join("");
-  optionen($("#gKonto"), ZAHL, g.buchkonto);
-  $("#gLogin").value = g.login; $("#gPin").value = ""; $("#gPin").placeholder = g.pin_gesetzt ? "gespeichert" : "";
-  $("#gProdukt").value = g.produkt_id; $("#gIban").value = g.iban; $("#gAb").value = g.ab;
-  $("#gBlz").value = g.blz; $("#gServer").value = g.server; $("#gAuto").checked = g.automatisch;
-  $("#gHinweis").textContent = (g.konten_bank.length ? `Konten bei der Bank: ${g.konten_bank.join(", ")}. ` : "")
-    + "Die Freigabe kommt als Push in SecureGo plus und reicht meist 90 Tage. Zugangsdaten bleiben in der App und gehen nie an Claude.";
-  clearTimeout(bankLaden.uhr);
-  if (["laeuft", "freigabe"].includes(s.zustand)) bankLaden.uhr = setTimeout(() => !$('[data-seite="bank"]').hidden && bankLaden(), 3000);
-  else if (bankLaden.lief) { bankLaden.lief = false; await ladeAlles(); }
-  if (["laeuft", "freigabe"].includes(s.zustand)) bankLaden.lief = true;
+  $("#gForm").innerHTML = Object.entries(g.banken).map(([b, n]) => `<label>${esc(n)}<select data-bank="${b}"></select></label>`).join("")
+    + `<div style="align-self:end"><button class="primaer">Speichern</button></div>`;
+  for (const sel of $$("#gForm select")) { optionen(sel, ZAHL, g.konten[sel.dataset.bank]); sel.insertAdjacentHTML("afterbegin", '<option value="">automatisch</option>'); sel.value = g.konten[sel.dataset.bank] || ""; }
 });
-$("#gAbruf").onclick = sicher(async () => { await api("api/bank/abruf", json("POST", {})); setTimeout(bankLaden, 800); });
 $("#gForm").onsubmit = sicher(async (e) => {
   e.preventDefault();
-  await api("api/bank/einstellungen", json("PUT", { login: $("#gLogin").value, pin: $("#gPin").value, produkt_id: $("#gProdukt").value,
-    buchkonto: $("#gKonto").value, iban: $("#gIban").value, ab: $("#gAb").value, blz: $("#gBlz").value, server: $("#gServer").value,
-    automatisch: $("#gAuto").checked }));
+  await api("api/bank/einstellungen", json("PUT", { konten: Object.fromEntries($$("#gForm select").map((s) => [s.dataset.bank, s.value])) }));
   toast("Gespeichert");
   await bankLaden();
 });

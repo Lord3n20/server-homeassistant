@@ -1,111 +1,92 @@
-"""Umsätze von der Bank per FinTS (PIN/TAN) abrufen, zuerst für die GLS Bank.
+"""Bankumsätze aus der Chromium-Erweiterung (Trade Republic, GLS) zum Einordnen im Panel.
 
-Abgerufene Umsätze landen als Liste im Panel; gebucht wird erst, wenn Enzo dort
-bestätigt. Zugangsdaten liegen nur in /data (bank-zugang.json, nur für die App lesbar)
-und gehen nie ans Panel zurück. Claude kommt hier nicht heran: ausgaben.py kennt
-dieses Modul nicht.
-Freigaben laufen über SecureGo plus (decoupled): Die Bank schickt eine Push-Anfrage,
-der Abruf wartet bis zu fünf Minuten auf die Bestätigung in der App. Danach reicht
-die Freigabe meist 90 Tage, der Zustand des Clients wird dafür gespeichert.
+Die Erweiterung liest die Umsätze aus dem angemeldeten Online-Banking und schickt sie
+über einen Home-Assistant-Webhook an das Werkzeug bank_einreichen (ausgaben.py). Dort
+werden sie nur abgelegt, die Antwort enthält nur die Anzahl. Gebucht wird erst, wenn
+Enzo im Panel bestätigt. Es gibt hier keine Zugangsdaten.
 """
-import base64
 import hashlib
-import os
 import re
-import threading
 import time
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import date, timedelta
 
 import buch
-from buch import BuchFehler, DATA, json_laden, json_speichern, lock
+from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
 BANK = DATA / "bank.json"
-ZUGANG = DATA / "bank-zugang.json"
-STANDARD = {"blz": "43060967", "server": "https://fints1.atruvia.de/cgi-bin/hbciservlet"}
-WARTEN_FREIGABE = 300  # Sekunden
-AUTO_STUNDE = 7
+ALT_ZUGANG = DATA / "bank-zugang.json"  # vom FinTS-Abruf (0.11.0), wird entfernt
+BANKEN = {"tr": "Trade Republic", "gls": "GLS Bank"}
 MAX_UMSAETZE = 3000
-
-_abruf = threading.Lock()
-_gestartet = threading.Event()
+MAX_EINREICHEN = 2000
 
 
-def _status(zustand, text=""):
-    with lock:
-        daten = json_laden(BANK, {})
-        daten["status"] = {"zustand": zustand, "text": text, "zeit": time.strftime("%Y-%m-%d %H:%M")}
-        json_speichern(BANK, daten)
+def aufraeumen():
+    ALT_ZUGANG.unlink(missing_ok=True)
 
 
-def _zugang():
-    return json_laden(ZUGANG, {})
+def buchkonten(konten=None):
+    """Bank → Konto-ID; ohne eigene Wahl das Zahlkonto, dessen Pfad den Banknamen enthält."""
+    konten = konten or buch.lesen()[0]
+    gewaehlt = json_laden(BANK, {}).get("konten", {})
+    ergebnis = {}
+    for kuerzel, name in BANKEN.items():
+        kid = gewaehlt.get(kuerzel)
+        if not kid or kid not in konten:
+            passend = [k for k in konten.values() if k["typ"] in buch.ZAHLKONTO_TYPEN and not k["platzhalter"]
+                       and name.split()[0].lower() in k["pfad"].lower()]
+            kid = passend[0]["id"] if len(passend) == 1 else ""
+        ergebnis[kuerzel] = kid
+    return ergebnis
 
 
 def einstellungen_lesen():
-    """Fürs Panel: alles außer der PIN."""
-    z = _zugang()
     daten = json_laden(BANK, {})
-    status = daten.get("status") or {"zustand": "bereit", "text": "", "zeit": ""}
-    if status["zustand"] in ("laeuft", "freigabe") and not (_abruf.locked() or _gestartet.is_set()):
-        status = {**status, "zustand": "fehler", "text": "Abruf wurde unterbrochen (Neustart)"}
-    return {"login": z.get("login", ""), "pin_gesetzt": bool(z.get("pin")), "produkt_id": z.get("produkt_id", ""),
-            "blz": z.get("blz", STANDARD["blz"]), "server": z.get("server", STANDARD["server"]),
-            "iban": z.get("iban", ""), "buchkonto": z.get("buchkonto", ""), "ab": z.get("ab", ""),
-            "automatisch": z.get("automatisch", False), "status": status,
-            "letzter_abruf": daten.get("letzter_abruf", ""), "konten_bank": daten.get("konten_bank", [])}
+    return {"banken": BANKEN, "konten": buchkonten(), "zuletzt": daten.get("zuletzt", {})}
 
 
 def einstellungen_speichern(neu):
     with lock:
-        z = _zugang()
         konten, _ = buch.lesen()
-        buchkonto = str(neu.get("buchkonto") or "")
-        if buchkonto and (buchkonto not in konten or konten[buchkonto]["typ"] not in buch.ZAHLKONTO_TYPEN):
-            raise BuchFehler("Das Buchkonto muss ein Zahlkonto sein")
-        ab = buch.tag(neu["ab"]).isoformat() if neu.get("ab") else ""
-        server = str(neu.get("server") or STANDARD["server"]).strip()
-        if not server.startswith("https://"):
-            raise BuchFehler("Der Server muss mit https:// beginnen")
-        blz = re.sub(r"\s", "", str(neu.get("blz") or STANDARD["blz"]))
-        if not re.fullmatch(r"\d{8}", blz):
-            raise BuchFehler("Die BLZ hat 8 Ziffern")
-        alt = (z.get("login"), z.get("blz"), z.get("server"))
-        z.update(login=str(neu.get("login") or "").strip(), produkt_id=str(neu.get("produkt_id") or "").strip(),
-                 blz=blz, server=server, iban=re.sub(r"\s", "", str(neu.get("iban") or "")).upper(),
-                 buchkonto=buchkonto, ab=ab, automatisch=neu.get("automatisch") is True)
-        if neu.get("pin"):
-            z["pin"] = str(neu["pin"])
-        if alt != (z["login"], z["blz"], z["server"]):
-            z.pop("client", None)  # anderer Zugang: Freigaben und Bankdaten neu holen
-        json_speichern(ZUGANG, z)
-        os.chmod(ZUGANG, 0o600)
+        wahl = {}
+        for kuerzel in BANKEN:
+            kid = str((neu.get("konten") or {}).get(kuerzel) or "")
+            if kid and (kid not in konten or konten[kid]["typ"] not in buch.ZAHLKONTO_TYPEN):
+                raise BuchFehler("Das Buchkonto muss ein Zahlkonto sein")
+            wahl[kuerzel] = kid
+        daten = json_laden(BANK, {})
+        daten["konten"] = wahl
+        json_speichern(BANK, daten)
 
 
 # ---------- Umsätze ----------
 
-def _text(x):
-    return re.sub(r"\s+", " ", str(x or "")).strip()
+def _text(x, laenge=300):
+    return re.sub(r"\s+", " ", str(x or "")).strip()[:laenge]
 
 
-def umsaetze_aus_bank(transaktionen):
-    """Macht aus den FinTS-Umsätzen einfache Einträge mit fester Kennung (gleiche Umsätze am selben Tag zählen mit)."""
+def umsaetze_pruefen(bank, roh):
+    """Macht aus den Einträgen der Erweiterung feste Umsätze; ohne Bank-Kennung zählen gleiche am selben Tag mit."""
+    if bank not in BANKEN:
+        raise BuchFehler("Unbekannte Bank")
+    if not isinstance(roh, list) or len(roh) > MAX_EINREICHEN:
+        raise BuchFehler("Umsätze als Liste schicken")
     liste, gesehen = [], {}
-    for t in transaktionen:
-        d = t.data if hasattr(t, "data") else t
-        tag = d.get("date") or d.get("entry_date")
-        if isinstance(tag, datetime):
-            tag = tag.date()
-        betrag = d.get("amount")
-        betrag = getattr(betrag, "amount", betrag)
-        cents = int((Decimal(str(betrag)) * 100).to_integral_value())
-        name = _text(d.get("applicant_name") or d.get("posting_text") or "Unbekannt")
-        zweck = _text(d.get("purpose"))
-        schluessel = f"{tag.isoformat()}|{cents}|{name}|{zweck}"
-        n = gesehen.get(schluessel, 0)
-        gesehen[schluessel] = n + 1
-        kennung = "u" + hashlib.sha1(f"{schluessel}|{n}".encode()).hexdigest()[:16]
-        liste.append({"id": kennung, "datum": tag.isoformat(), "betrag": cents, "name": name, "zweck": zweck[:300]})
+    for e in roh:
+        tag = buch.tag(e.get("datum")).isoformat()
+        betrag = cent(e.get("betrag"))
+        if betrag == 0:
+            continue
+        name = _text(e.get("name"), 120) or "Unbekannt"
+        zweck = _text(e.get("zweck"))
+        if e.get("id"):
+            schluessel = f"{bank}|id|{_text(e['id'], 100)}"
+        else:
+            grund = f"{bank}|{tag}|{betrag}|{name}|{zweck}"
+            n = gesehen.get(grund, 0)
+            gesehen[grund] = n + 1
+            schluessel = f"{grund}|{n}"
+        kennung = "u" + hashlib.sha1(schluessel.encode()).hexdigest()[:16]
+        liste.append({"id": kennung, "bank": bank, "datum": tag, "betrag": betrag, "name": name, "zweck": zweck})
     return liste
 
 
@@ -132,26 +113,28 @@ def einordnen(umsatz, kontoid, konten, buchungen, verknuepft):
                        if duplikat else None)
 
 
-def uebernehmen(neue):
-    """Fügt neue Umsätze hinzu; bekannte (gleiche Kennung) bleiben, wie sie sind."""
+def einreichen(bank, roh):
+    """Neue Umsätze ablegen; bekannte (gleiche Kennung) bleiben, wie sie sind. Liefert nur die Anzahl."""
+    neue = umsaetze_pruefen(bank, roh)
     with lock:
-        z = _zugang()
-        kontoid = z.get("buchkonto")
+        konten, buchungen = buch.lesen()
+        kontoid = buchkonten(konten)[bank]
         daten = json_laden(BANK, {})
         liste = daten.get("umsaetze", [])
         bekannt = {u["id"] for u in liste}
-        konten, buchungen = buch.lesen()
         verknuepft = {u.get("buchung_id") for u in liste} | {(u.get("duplikat") or {}).get("id") for u in liste}
         dazu = 0
         for u in sorted(neue, key=lambda u: u["datum"]):
-            if u["id"] in bekannt or (z.get("ab") and u["datum"] < z["ab"]):
+            if u["id"] in bekannt:
                 continue
-            vorschlag, duplikat = einordnen(u, kontoid, konten, buchungen, verknuepft)
+            vorschlag, duplikat = einordnen(u, kontoid, konten, buchungen, verknuepft) if kontoid else ("", None)
             if duplikat:
                 verknuepft.add(duplikat["id"])
             liste.append({**u, "status": "offen", "vorschlag": vorschlag, "duplikat": duplikat})
+            bekannt.add(u["id"])
             dazu += 1
         daten["umsaetze"] = liste[-MAX_UMSAETZE:]
+        daten.setdefault("zuletzt", {})[bank] = time.strftime("%Y-%m-%d %H:%M")
         json_speichern(BANK, daten)
     return dazu
 
@@ -162,17 +145,16 @@ def offene():
 
 def umsatz_buchen(kennung, gegenkonto, beschreibung=None):
     with lock:
-        z = _zugang()
-        kontoid = z.get("buchkonto")
         daten = json_laden(BANK, {})
         u = next((x for x in daten.get("umsaetze", []) if x["id"] == kennung), None)
         if not u or u["status"] != "offen":
             raise BuchFehler("Kein offener Umsatz mit dieser Nummer")
         konten, _ = buch.lesen()
+        kontoid = buchkonten(konten).get(u.get("bank", "gls"))
         g = konten.get(gegenkonto)
-        if not kontoid or kontoid not in konten:
-            raise BuchFehler("Erst in den Bank-Einstellungen das Buchkonto wählen")
-        if not g or g["platzhalter"]:
+        if not kontoid:
+            raise BuchFehler(f"Erst das Buchkonto für {BANKEN[u['bank']]} wählen")
+        if not g or g["platzhalter"] or g["id"] == kontoid:
             raise BuchFehler("Bitte eine Kategorie wählen")
         text = _text(beschreibung) or u["name"]
         memo = u["zweck"][:120]
@@ -203,129 +185,3 @@ def umsatz_ignorieren(kennung):
             raise BuchFehler("Kein offener Umsatz mit dieser Nummer")
         u["status"] = "ignoriert"
         json_speichern(BANK, daten)
-
-
-# ---------- Abruf ----------
-
-def _client(z):
-    from fints.client import FinTS3PinTanClient
-    alt = base64.b64decode(z["client"]) if z.get("client") else None
-    return FinTS3PinTanClient(z["blz"], z["login"], z["pin"], z["server"], product_id=z["produkt_id"], from_data=alt)
-
-
-def _warten(client, antwort):
-    """Wartet auf die Freigabe in SecureGo plus; liefert die Antwort danach."""
-    from fints.client import NeedTANResponse
-    ende = time.time() + WARTEN_FREIGABE
-    while isinstance(antwort, NeedTANResponse):
-        if not antwort.decoupled:
-            raise BuchFehler("Die Bank will eine TAN zum Eintippen; bitte in den Einstellungen SecureGo plus nutzen")
-        _status("freigabe", "Bitte in SecureGo plus freigeben")
-        if time.time() > ende:
-            raise BuchFehler("Keine Freigabe in SecureGo plus innerhalb von fünf Minuten")
-        time.sleep(3)
-        antwort = client.send_tan(antwort, "")
-    return antwort
-
-
-def _tan_verfahren(client):
-    if not client.get_current_tan_mechanism():
-        client.fetch_tan_mechanisms()
-        verfahren = client.get_tan_mechanisms()
-        # SecureGo plus bevorzugen, sonst das erste angebotene Verfahren
-        wahl = next((k for k, p in verfahren.items() if "securego" in str(getattr(p, "name", "")).lower()),
-                    next(iter(verfahren), None))
-        if wahl:
-            client.set_tan_mechanism(wahl)
-    if client.selected_tan_medium is None and client.is_tan_media_required():
-        medien = client.get_tan_media()[1]
-        if medien:
-            client.set_tan_medium(medien[0])
-        else:
-            client.selected_tan_medium = ""
-
-
-def abrufen():
-    """Ein Abruf: Konto suchen, Umsätze seit dem letzten Abruf holen, übernehmen."""
-    if not _abruf.acquire(blocking=False):
-        raise BuchFehler("Es läuft schon ein Abruf")
-    try:
-        z = _zugang()
-        if not all(z.get(k) for k in ("login", "pin", "produkt_id", "buchkonto")):
-            raise BuchFehler("Login, PIN, Produkt-ID und Buchkonto eintragen")
-        _status("laeuft", "Verbinde mit der Bank")
-        daten = json_laden(BANK, {})
-        heute = date.today()
-        if daten.get("letzter_abruf"):
-            start = date.fromisoformat(daten["letzter_abruf"]) - timedelta(days=10)
-        else:
-            start = date.fromisoformat(z["ab"]) if z.get("ab") else heute - timedelta(days=30)
-        start = max(start, heute - timedelta(days=360))
-        client = _client(z)
-        _tan_verfahren(client)
-        with client:
-            if client.init_tan_response:
-                _warten(client, client.init_tan_response)
-            _status("laeuft", "Hole Umsätze")
-            konten = _warten(client, client.get_sepa_accounts())
-            if not konten:
-                raise BuchFehler("Die Bank meldet kein Konto")
-            konto = next((k for k in konten if k.iban == z.get("iban")), None) if z.get("iban") else konten[0]
-            if not konto:
-                raise BuchFehler("Konto mit dieser IBAN nicht gefunden")
-            umsaetze = _warten(client, client.get_transactions(konto, start, heute))
-        with lock:
-            z = _zugang()
-            z["client"] = base64.b64encode(client.deconstruct(including_private=True)).decode()
-            json_speichern(ZUGANG, z)
-            os.chmod(ZUGANG, 0o600)
-        dazu = uebernehmen(umsaetze_aus_bank(umsaetze or []))
-        with lock:
-            daten = json_laden(BANK, {})
-            daten["letzter_abruf"] = heute.isoformat()
-            daten["konten_bank"] = [k.iban[:4] + " … " + k.iban[-4:] for k in konten]
-            json_speichern(BANK, daten)
-        _status("bereit", f"{dazu} neue Umsätze" if dazu != 1 else "1 neuer Umsatz")
-        return dazu
-    except BuchFehler as ex:
-        _status("fehler", str(ex))
-        raise
-    except Exception as ex:  # Fehler der Bank oder der Verbindung: als Text ins Panel
-        text = re.sub(r"\s+", " ", str(ex))[:300] or type(ex).__name__
-        _status("fehler", f"Bank: {text}")
-        raise BuchFehler(f"Bank: {text}")
-    finally:
-        _abruf.release()
-
-
-def im_hintergrund():
-    if _abruf.locked() or _gestartet.is_set():
-        raise BuchFehler("Es läuft schon ein Abruf")
-    _gestartet.set()
-    _status("laeuft", "Starte")
-    threading.Thread(target=_sicher_abrufen, daemon=True).start()
-
-
-def _sicher_abrufen():
-    try:
-        abrufen()
-    except BuchFehler:
-        pass
-    finally:
-        _gestartet.clear()
-
-
-def schleife():
-    """Einmal am Tag ab 7 Uhr, wenn automatisch eingeschaltet."""
-    while True:
-        try:
-            z = _zugang()
-            daten = json_laden(BANK, {})
-            heute = date.today().isoformat()
-            if z.get("automatisch") and datetime.now().hour >= AUTO_STUNDE and daten.get("auto_versuch") != heute:
-                daten["auto_versuch"] = heute
-                json_speichern(BANK, daten)
-                _sicher_abrufen()
-        except OSError as ex:
-            print(f"Bankabruf: {ex}")
-        time.sleep(600)

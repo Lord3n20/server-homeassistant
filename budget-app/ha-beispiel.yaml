@@ -7,6 +7,22 @@
 #     payload: "{{ daten | tojson }}"
 #     timeout: 20
 #
+# Für automations.yaml (Bankumsätze aus der Chromium-Erweiterung; Kennung geheim halten):
+#
+#   - id: budget_bank_einreichen
+#     alias: "Budget: Bankumsätze aus der Erweiterung"
+#     mode: queued
+#     triggers:
+#     - trigger: webhook
+#       webhook_id: budget-bank-…
+#       allowed_methods: [POST]
+#       local_only: true
+#     actions:
+#     - action: rest_command.budget
+#       data:
+#         werkzeug: bank_einreichen
+#         daten: "{{ trigger.json }}"
+#
 # Für scripts.yaml. Die Felder gehen gesammelt als dict in die Daten: einzeln würde
 # Home Assistant aus Text wie "12,34" beim Auswerten die Liste [12, 34] machen.
 

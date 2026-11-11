@@ -6,6 +6,8 @@ buchen (Enzo 11.11.), aber nicht lesen. Salden, gebuchte Einnahmen und Umbuchung
 das Depot bleiben im Panel; darum
 gibt es hier weder ein Werkzeug noch eine Antwort, die sie enthalten könnte.
 Der Port ist nicht nach außen freigegeben, Anfragen kommen nur von Home Assistant.
+Ausnahme: bank_einreichen nimmt Bankumsätze vom Webhook der Chromium-Erweiterung an (kein
+Skript für Claude) und antwortet nur mit der Anzahl.
 Geschrieben wird in zwei Schritten: erst Vorschlag, nach dem OK Buchung.
 """
 import json
@@ -15,6 +17,7 @@ import time
 from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler
 
+import bank
 import buch
 from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
@@ -326,6 +329,11 @@ def w_bericht(a):
     return {"ok": True}
 
 
+def w_bank_einreichen(a):
+    """Nur für den Webhook der Chromium-Erweiterung (kein Skript für Claude): legt Umsätze ab, antwortet nur mit der Anzahl."""
+    return {"neu": bank.einreichen(str(a.get("bank") or ""), a.get("umsaetze"))}
+
+
 WERKZEUGE = {
     "kategorien_und_zahlkonten": w_kategorien,
     "ausgabe_vorschlagen": w_vorschlagen,
@@ -338,6 +346,7 @@ WERKZEUGE = {
     "monatsauswertung": w_monat,
     "wiederkehrende_ausgaben": w_wiederkehrend,
     "monatsbericht_speichern": w_bericht,
+    "bank_einreichen": w_bank_einreichen,
 }
 
 
