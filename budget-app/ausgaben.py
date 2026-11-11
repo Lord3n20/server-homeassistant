@@ -36,10 +36,23 @@ def vorschlaege_laden():
 
 
 def konto_nach_pfad(konten, pfad, typen, was):
-    treffer = [k for k in konten.values() if k["pfad"] == pfad and k["typ"] in typen and not k["platzhalter"]]
-    if not treffer:
-        raise BuchFehler(f"{was} unbekannt: {pfad}. Gültige Namen liefert kategorien_und_zahlkonten.")
-    return treffer[0]
+    """Sucht genau, dann ohne Groß-/Kleinschreibung, dann nach dem letzten Namensteil (wenn eindeutig)."""
+    pfad = str(pfad or "").strip()
+    frei = [k for k in konten.values() if k["typ"] in typen and not k["platzhalter"]
+            and not (k["typ"] == "INCOME" and "Kursgewinn" in k["name"])]
+    klein = pfad.lower()
+    for passt in (lambda k: k["pfad"] == pfad,
+                  lambda k: k["pfad"].lower() == klein or k["pfad"].lower().split(":", 1)[-1] == klein,
+                  lambda k: k["name"].lower() == klein.split(":")[-1]):
+        treffer = [k for k in frei if passt(k)]
+        if len(treffer) == 1:
+            return treffer[0]
+    hinweis = ""
+    if "EXPENSE" in typen and any(k["typ"] == "INCOME" and (k["pfad"] == pfad or k["name"].lower() == klein.split(":")[-1])
+                                  for k in konten.values()):
+        hinweis = " Das ist ein Einnahmekonto: Einnahmen über einnahme_vorschlagen buchen."
+    gueltig = ", ".join(sorted(k["pfad"] for k in frei))
+    raise BuchFehler(f"{was} unbekannt: {pfad}.{hinweis} Gültig sind: {gueltig}")
 
 
 def duplikate(gesamt, datum):

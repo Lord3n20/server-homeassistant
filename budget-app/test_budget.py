@@ -196,6 +196,11 @@ class Schnittstelle(Basis):
         v2, _ = self.rufe("einnahme_vorschlagen", **e)
         self.assertEqual(len(v2["duplikate"]), 1)
         self.assertFalse(self.rufe("ausgabe_bestaetigen", vorschlag_id=v2["vorschlag_id"])[0]["ok"])
+        # Kurze Namen und andere Schreibweise gehen auch.
+        for kurzname in ("GEHEIMEINKOMMEN", "einnahmen:geheimeinkommen"):
+            self.assertTrue(self.rufe("einnahme_vorschlagen", **{**e, "kategorie": kurzname, "datum": "2026-10-20"})[0]["ok"], kurzname)
+        f = self.rufe("ausgabe_vorschlagen", **self.bon(positionen=[{"kategorie": "GEHEIMEINKOMMEN", "betrag": "3"}]))[0]
+        self.assertIn("einnahme_vorschlagen", f["fehler"])
         for mehr in ({"kategorie": "Ausgaben:Lebensmittel"}, {"betrag": "-5"}, {"zahlkonto": "Aktiva:Depot:GEHEIMDEPOT"}):
             self.assertFalse(self.rufe("einnahme_vorschlagen", **{**e, **mehr})[0]["ok"], mehr)
         # Gebuchte Einnahmen bleiben unsichtbar.
