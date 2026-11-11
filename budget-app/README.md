@@ -59,15 +59,17 @@ rutscht in kürzeren Monaten auf den letzten Tag. Pausieren oder Entfernen läss
 
 `python3 test_budget.py`
 
-## Bankabruf (GLS)
+## Bankumsätze (Trade Republic, GLS)
 
-Reiter „Bank“: holt die Umsätze des Girokontos per FinTS (PIN/TAN, python-fints) von der GLS Bank
-(BLZ 43060967, Server `https://fints1.atruvia.de/cgi-bin/hbciservlet`). Neue Umsätze erscheinen als Liste,
-die Kategorie ist nach dem letzten gleichen Empfänger vorausgefüllt, gebucht wird erst per Klick.
-Umsätze, die schon im Buch stehen (gleicher Betrag ±3 Tage), werden als „Schon drin“ angeboten.
+Die Chromium-Erweiterung in `erweiterung/` (entpackt laden) meldet sich auf Knopfdruck selbst bei
+Trade Republic bzw. im GLS-Onlinebanking an: Telefonnummer/VR-NetKey und PIN gibst du dort jedes Mal ein,
+gespeichert wird nichts davon. Bestätigt wird in der TR-App bzw. in SecureGo plus. Die Erweiterung liest
+die Umsätze, zeigt sie an und schickt sie nach deinem OK an einen Home-Assistant-Webhook
+(Automation „Budget: Bankumsätze aus der Erweiterung“), der sie an das Werkzeug `bank_einreichen` gibt.
+Im Panel (Reiter „Bank“) ordnest du sie ein; die Kategorie ist nach dem letzten gleichen Empfänger
+vorausgefüllt, Umsätze, die schon im Buch stehen, kommen als „Schon drin“.
 
-- Nötig: Login (VR-NetKey/Alias), PIN, **Produkt-ID** der Deutschen Kreditwirtschaft (kostenlos registrieren, dauert bis zu zwei Wochen) und das Buchkonto.
-- Freigabe per SecureGo plus (Push); sie reicht meist 90 Tage, der Client-Zustand wird gespeichert.
-- Optional täglich ab 7 Uhr automatisch.
-- Zugangsdaten liegen nur in `/data/bank-zugang.json` (0600) und damit auch in HA-Backups; das Panel bekommt die PIN nie zurück, Claude kommt an nichts davon heran.
-
+- Trade Republic: Umsätze über die Timeline der Web-App (dieselbe Schnittstelle, die die Seite nutzt).
+- GLS: liest die JSON-Antworten der Umsatzseite; erkennt die Felder selbst und zeigt sie unter Einstellungen an.
+- Die Webhook-Adresse steht in `erweiterung/konfig.js` (nicht im Repo, siehe `konfig.beispiel.js`).
+- Claude kommt nicht an die Umsätze: Für `bank_einreichen` gibt es kein Skript, die Antwort ist nur die Anzahl.

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budget: Bankumsätze</title>
+<style>
+  :root { --bg: #f4f5f7; --card: #fff; --text: #1d1f23; --muted: #6b7280; --line: #e3e5e9; --accent: #2c7be5; --danger: #c0392b; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15171b; --card: #1e2126; --text: #e8eaed; --muted: #9aa0a6; --line: #30343b; --accent: #5aa2ff; --danger: #ff7b6b; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 1.4rem; margin: 0 0 16px; }
+  h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+  input, select, button { font: inherit; color: inherit; }
+  input, select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--text); }
+  button { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.primaer { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .aktionen { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .gedaempft { color: var(--muted); font-size: 0.85rem; }
+  #status { min-height: 1.4em; }
+  #status.fehler { color: var(--danger); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  td { border-top: 1px solid var(--line); padding: 6px 4px; vertical-align: top; }
+  td.zahl { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .reiter { display: flex; gap: 8px; margin-bottom: 12px; }
+  .reiter button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  details summary { cursor: pointer; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bankumsätze holen</h1>
+  <section class="card">
+    <div class="reiter">
+      <button type="button" data-bank="tr" aria-pressed="true">Trade Republic</button>
+      <button type="button" data-bank="gls" aria-pressed="false">GLS Bank</button>
+    </div>
+    <form id="anmelden" class="raster" autocomplete="off">
+      <label><span id="kennungText">Telefonnummer</span><input id="kennung" required autocomplete="off"></label>
+      <label>PIN<input id="pin" type="password" required autocomplete="off"></label>
+      <label>Zeitraum<select id="tage"><option value="14">14 Tage</option><option value="31" selected>31 Tage</option><option value="62">2 Monate</option><option value="93">3 Monate</option></select></label>
+      <div style="align-self:end"><button class="primaer" id="los">Anmelden und Umsätze holen</button></div>
+    </form>
+    <p class="gedaempft">Die Anmeldedaten bleiben nur bis zum Ende dieses Abrufs in dieser Seite und werden nirgends gespeichert. Die Bestätigung kommt in der Trade-Republic-App bzw. in SecureGo plus.</p>
+    <div id="codeZeile" class="aktionen" hidden>
+      <input id="code" inputmode="numeric" placeholder="Code" style="width:8em">
+      <button type="button" id="codeSenden">Code eingeben</button>
+    </div>
+    <p id="status" role="status"></p>
+    <div class="aktionen" id="hilfe" hidden>
+      <button type="button" id="nochmal">Nochmal lesen</button>
+      <button type="button" id="zeigen">Bank-Tab zeigen</button>
+    </div>
+  </section>
+
+  <section class="card" id="ergebnis" hidden>
+    <h2 id="ergebnisTitel"></h2>
+    <table id="liste"></table>
+    <div class="aktionen">
+      <button class="primaer" id="senden" type="button">An die Budget-App senden</button>
+      <button id="verwerfen" type="button">Verwerfen</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Einstellungen</summary>
+      <div class="raster" style="margin-top:10px">
+        <label>Webhook der Budget-App<input id="webhook"></label>
+        <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="schliessen" checked> Bank-Tab danach schließen</label>
+      </div>
+      <p class="gedaempft" id="felder"></p>
+    </details>
+  </section>
+</main>
+<script src="konfig.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

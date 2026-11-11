@@ -449,82 +449,31 @@ class Panel(Basis):
         self.assertIn("Budget", anfrage(f"{url}/")[1])
 
 
-class Bankabruf(Basis):
-    """Abruf mit nachgebautem FinTS-Client; python-fints muss installiert sein (wie im Image)."""
+class Bankumsaetze(Basis):
+    """Umsätze aus der Chromium-Erweiterung: ablegen, einordnen, buchen; nach außen nur die Anzahl."""
 
-    def setUp(self):
-        super().setUp()
-        bank.einstellungen_speichern({"login": "NETKEY", "pin": "GEHEIMPIN", "produkt_id": "PRODUKT", "buchkonto": GIRO,
-                                      "ab": "2026-10-01"})
+    def umsaetze(self):
+        return [{"datum": "2026-11-03", "betrag": "-12.50", "name": "REWE Markt", "zweck": "Karte"},
+                {"datum": "2026-11-03", "betrag": "-12.50", "name": "REWE Markt", "zweck": "Karte"},
+                {"datum": "2026-11-04", "betrag": 520, "name": "GEHEIMAMT", "zweck": "Foerderung"},
+                {"datum": "2026-11-05", "betrag": "-100", "name": "Trade Republic", "zweck": "Sparen"},
+                {"datum": "2026-11-06", "betrag": -3, "name": "Bäcker", "zweck": ""}]
 
-    def transaktionen(self):
-        from decimal import Decimal
-        tx = lambda tag, betrag, name, zweck: {"date": date(2026, 11, tag), "amount": Decimal(betrag), "applicant_name": name, "purpose": zweck}
-        return [tx(3, "-12.50", "REWE Markt", "Karte 1234"), tx(3, "-12.50", "REWE Markt", "Karte 1234"),
-                tx(4, "520.00", "BAfoeG Amt", "Foerderung"), tx(5, "-100.00", "Trade Republic", "Sparen"), tx(6, "-3.00", "Bäcker", "")]
-
-    def fake_client(self, freigaben=2):
-        from fints.client import NeedTANResponse
-        test = self
-
-        class Konto:
-            iban = "DE00430609670000000001"
-
-        class Client:
-            selected_tan_medium = ""
-            init_tan_response = NeedTANResponse.__new__(NeedTANResponse)
-            init_tan_response.decoupled = True
-
-            def __init__(self):
-                self.offen = freigaben
-
-            def get_current_tan_mechanism(self):
-                return "946"
-
-            def is_tan_media_required(self):
-                return False
-
-            def __enter__(self):
-                pass
-
-            def __exit__(self, *a):
-                pass
-
-            def send_tan(self, antwort, tan):
-                self.offen -= 1
-                return antwort if self.offen > 0 else None
-
-            def get_sepa_accounts(self):
-                return [Konto()]
-
-            def get_transactions(self, konto, start, ende):
-                test.zeitraum = (start, ende)
-                return test.transaktionen()
-
-            def deconstruct(self, including_private=False):
-                return b"ZUSTAND"
-        return Client()
-
-    def test_abruf_einordnen_und_buchen(self):
+    def test_einreichen_einordnen_und_buchen(self):
         buch.buchen("ausgabe", "2026-10-20", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
         buch.buchen("ausgabe", "2026-11-06", "Bäcker vom Bon", GIRO, [{"konto": LEB, "betrag": 300}])
-        bank.WARTEN_FREIGABE, schlaf = 30, bank.time.sleep
-        bank.time.sleep = lambda s: None
-        alt = bank._client
-        bank._client = lambda z: self.fake_client()
-        try:
-            self.assertEqual(bank.abrufen(), 5)
-            self.assertEqual(bank.abrufen(), 0)  # zweiter Abruf überlappt, nichts doppelt
-        finally:
-            bank._client, bank.time.sleep = alt, schlaf
-        self.assertEqual(self.zeitraum[0], date.today() - __import__("datetime").timedelta(days=10))
+        bank.einstellungen_speichern({"konten": {"gls": GIRO}})
+        url = starten(ausgaben.Handler)
+        r, roh = json.loads(anfrage(f"{url}/werkzeug/bank_einreichen", {"bank": "gls", "umsaetze": self.umsaetze()})[1]), None
+        self.assertEqual(r, {"ok": True, "neu": 5})
+        roh = anfrage(f"{url}/werkzeug/bank_einreichen", {"bank": "gls", "umsaetze": self.umsaetze()})[1]
+        self.assertEqual(json.loads(roh), {"ok": True, "neu": 0})  # zweimal geschickt, nichts doppelt
+        self.assertFalse(json.loads(anfrage(f"{url}/werkzeug/bank_einreichen", {"bank": "x", "umsaetze": []})[1])["ok"])
         u = bank.offene()
         self.assertEqual([x["betrag"] for x in u], [-1250, -1250, 52000, -10000, -300])
         self.assertNotEqual(u[0]["id"], u[1]["id"])
         self.assertEqual((u[0]["vorschlag"], u[1]["vorschlag"]), (LEB, LEB))
         self.assertEqual(u[4]["duplikat"]["beschreibung"], "Bäcker vom Bon")
-        self.assertEqual(bank.einstellungen_lesen()["status"]["zustand"], "bereit")
-        self.assertIn("ZUSTAND", __import__("base64").b64decode(bank._zugang()["client"]).decode())
         bank.umsatz_buchen(u[0]["id"], LEB)
         bank.umsatz_buchen(u[2]["id"], BAF)
         bank.umsatz_buchen(u[3]["id"], VERR)
@@ -536,34 +485,29 @@ class Bankabruf(Basis):
         for b in buchungen:
             for s in b["splits"]:
                 salden[s["konto"]] = salden.get(s["konto"], 0) + s["betrag"]
-        self.assertEqual(salden[VERR], 10000)
-        self.assertEqual(salden[LEB], 800 + 300 + 1250)
-        self.assertEqual(salden[BAF], -52000)
+        self.assertEqual((salden[VERR], salden[LEB], salden[BAF]), (10000, 800 + 300 + 1250, -52000))
         self.assertEqual(len(bank.offene()), 1)
+        # Für Claude bleiben Einnahmen unsichtbar.
+        self.assertNotIn("GEHEIMAMT", anfrage(f"{url}/werkzeug/ausgaben_lesen", {})[1])
 
-    def test_ohne_freigabe_fehler_und_pin_bleibt_geheim(self):
-        bank.WARTEN_FREIGABE, schlaf = 0, bank.time.sleep
-        bank.time.sleep = lambda s: None
-        alt = bank._client
-        bank._client = lambda z: self.fake_client(freigaben=99)
-        try:
-            with self.assertRaises(buch.BuchFehler):
-                bank.abrufen()
-        finally:
-            bank._client, bank.time.sleep = alt, schlaf
-        self.assertEqual(bank.einstellungen_lesen()["status"]["zustand"], "fehler")
-        url = starten(budget.Handler)
-        roh = anfrage(f"{url}/api/bank")[1]
-        self.assertNotIn("GEHEIMPIN", roh)
-        self.assertTrue(json.loads(roh)["pin_gesetzt"])
-        # Leere PIN beim Speichern behält die alte.
-        bank.einstellungen_speichern({"login": "NETKEY", "pin": "", "produkt_id": "PRODUKT", "buchkonto": GIRO})
-        self.assertEqual(bank._zugang()["pin"], "GEHEIMPIN")
-        self.assertEqual(oct(os.stat(bank.ZUGANG).st_mode & 0o777), "0o600")
-        # Die Schnittstelle für Claude kennt keinen Bankweg.
-        self.assertEqual(json.loads(anfrage(f"{starten(ausgaben.Handler)}/werkzeug/bank", {})[1])["ok"], False)
+    def test_kennung_der_bank_und_kontowahl(self):
+        mit_id = [{"id": "tr-1", "datum": "2026-11-03", "betrag": -5, "name": "A"}]
+        self.assertEqual(bank.einreichen("tr", mit_id), 1)
+        self.assertEqual(bank.einreichen("tr", [{**mit_id[0], "name": "A geändert"}]), 0)
+        # Ohne Wahl wird das Zahlkonto genommen, dessen Name passt; hier gibt es keins.
+        self.assertEqual(bank.buchkonten()["tr"], "")
         with self.assertRaises(buch.BuchFehler):
-            bank.einstellungen_speichern({"buchkonto": LEB})
+            bank.umsatz_buchen(bank.offene()[0]["id"], LEB)
+        with self.assertRaises(buch.BuchFehler):
+            bank.einstellungen_speichern({"konten": {"tr": LEB}})
+        bank.einstellungen_speichern({"konten": {"tr": VERR}})
+        bank.umsatz_buchen(bank.offene()[0]["id"], LEB)
+        for kaputt in ([{"datum": "quatsch", "betrag": 1}], [{"datum": "2026-11-03", "betrag": "1,234"}], "keine Liste"):
+            with self.assertRaises((buch.BuchFehler, ValueError)):
+                bank.einreichen("tr", kaputt)
+        url = starten(budget.Handler)
+        g = json.loads(anfrage(f"{url}/api/bank")[1])
+        self.assertEqual(g["konten"]["tr"], VERR)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Budget: Bankumsätze",
+  "version": "0.1.0",
+  "description": "Meldet sich auf Zuruf bei Trade Republic oder der GLS Bank an, liest die Umsätze und schickt sie an die Budget-App.",
+  "action": { "default_title": "Budget: Bankumsätze" },
+  "background": { "service_worker": "hintergrund.js" },
+  "permissions": ["scripting", "storage", "tabs"],
+  "host_permissions": [
+    "https://app.traderepublic.com/*",
+    "https://www.gls-online-filiale.de/*",
+    "http://10.168.178.20:8123/*",
+    "http://192.168.178.20:8123/*"
+  ],
+  "content_scripts": [
+    { "matches": ["https://app.traderepublic.com/*"], "js": ["tr-haken.js"], "run_at": "document_start", "world": "MAIN" },
+    { "matches": ["https://www.gls-online-filiale.de/*"], "js": ["gls-haken.js"], "run_at": "document_start", "world": "MAIN" }
+  ]
+}
