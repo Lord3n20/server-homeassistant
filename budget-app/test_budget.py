@@ -29,7 +29,7 @@ NS = ('xmlns:gnc="http://www.gnucash.org/XML/gnc" xmlns:act="http://www.gnucash.
       'xmlns:cmdty="http://www.gnucash.org/XML/cmdty" xmlns:slot="http://www.gnucash.org/XML/slot" '
       'xmlns:split="http://www.gnucash.org/XML/split" xmlns:trn="http://www.gnucash.org/XML/trn" '
       'xmlns:ts="http://www.gnucash.org/XML/ts"')
-ROOT, AKTIVA, GIRO, DEPOT, AUSG, LEB, EIN, BAF, EK, DEPOTORDNER = [f"{i:032x}" for i in range(1, 11)]
+ROOT, AKTIVA, GIRO, DEPOT, AUSG, LEB, EIN, BAF, EK, DEPOTORDNER, VERR = [f"{i:032x}" for i in range(1, 12)]
 
 
 def konto(kid, name, typ, eltern=None, platzhalter=False):
@@ -43,7 +43,7 @@ def konto(kid, name, typ, eltern=None, platzhalter=False):
 
 def testbuch():
     konten = (konto(ROOT, "Root Account", "ROOT") + konto(AKTIVA, "Aktiva", "ASSET", ROOT, True)
-              + konto(GIRO, "Girokonto", "BANK", AKTIVA) + konto(DEPOTORDNER, "Depot", "ASSET", AKTIVA, True) + konto(DEPOT, "GEHEIMDEPOT", "ASSET", DEPOTORDNER)
+              + konto(GIRO, "Girokonto", "BANK", AKTIVA) + konto(VERR, "Verrechnungskonto", "BANK", AKTIVA) + konto(DEPOTORDNER, "Depot", "ASSET", AKTIVA, True) + konto(DEPOT, "GEHEIMDEPOT", "ASSET", DEPOTORDNER)
               + konto(AUSG, "Ausgaben", "EXPENSE", ROOT, True) + konto(LEB, "Lebensmittel", "EXPENSE", AUSG)
               + konto(EIN, "Einnahmen", "INCOME", ROOT, True) + konto(BAF, "GEHEIMEINKOMMEN", "INCOME", EIN)
               + konto(EK, "Eroeffnung", "EQUITY", ROOT))
@@ -199,12 +199,29 @@ class Schnittstelle(Basis):
         # Kurze Namen und andere Schreibweise gehen auch.
         for kurzname in ("GEHEIMEINKOMMEN", "einnahmen:geheimeinkommen"):
             self.assertTrue(self.rufe("einnahme_vorschlagen", **{**e, "kategorie": kurzname, "datum": "2026-10-20"})[0]["ok"], kurzname)
+        # Über ausgabe_vorschlagen mit Einnahmekategorie wird es eine Einnahme (falls das Handy das neue Skript nicht kennt).
         f = self.rufe("ausgabe_vorschlagen", **self.bon(positionen=[{"kategorie": "GEHEIMEINKOMMEN", "betrag": "3"}]))[0]
-        self.assertIn("einnahme_vorschlagen", f["fehler"])
+        self.assertEqual((f["ok"], f["art"]), (True, "einnahme"))
         for mehr in ({"kategorie": "Ausgaben:Lebensmittel"}, {"betrag": "-5"}, {"zahlkonto": "Aktiva:Depot:GEHEIMDEPOT"}):
             self.assertFalse(self.rufe("einnahme_vorschlagen", **{**e, **mehr})[0]["ok"], mehr)
         # Gebuchte Einnahmen bleiben unsichtbar.
         self.assertNotIn("Lohn", self.rufe("ausgaben_lesen")[1] + self.rufe("monatsauswertung", monat="2026-11")[1])
+
+    def test_umbuchung_nach_ok(self):
+        u = {"datum": "2026-11-03", "beschreibung": "Aufs Verrechnungskonto", "von": "Girokonto", "nach": "Verrechnungskonto", "betrag": "50"}
+        v, roh = self.rufe("umbuchung_vorschlagen", **u)
+        self.assertEqual((v["art"], v["gesamt"], v["zahlkonto"]), ("umbuchung", 50.0, "Aktiva:Girokonto"))
+        self.rufe("ausgabe_bestaetigen", vorschlag_id=v["vorschlag_id"])
+        _, buchungen = buch.lesen()
+        b = next(x for x in buchungen if x["beschreibung"] == "Aufs Verrechnungskonto")
+        self.assertEqual(sorted((s["konto"], s["betrag"]) for s in b["splits"]), sorted([(GIRO, -5000), (VERR, 5000)]))
+        self.assertEqual(buch.ausgabezeilen(), [])
+        self.assertEqual(len(self.rufe("umbuchung_vorschlagen", **u)[0]["duplikate"]), 1)
+        # Auch über ausgabe_vorschlagen mit einem Zahlkonto als Kategorie.
+        f = self.rufe("ausgabe_vorschlagen", **self.bon(positionen=[{"kategorie": "Verrechnungskonto", "betrag": "7"}]))[0]
+        self.assertEqual((f["ok"], f["art"]), (True, "umbuchung"))
+        for mehr in ({"nach": "Girokonto"}, {"nach": "Aktiva:Depot:GEHEIMDEPOT"}, {"betrag": "-5"}, {"nach": "Lebensmittel"}):
+            self.assertFalse(self.rufe("umbuchung_vorschlagen", **{**u, **mehr})[0]["ok"], mehr)
 
     def test_positionen_als_json_text_wie_aus_dem_skript(self):
         text = json.dumps([{"kategorie": "Ausgaben:Lebensmittel", "betrag": "2,50", "memo": "Äpfel"},
@@ -215,7 +232,8 @@ class Schnittstelle(Basis):
     def test_falsche_eingaben_abgelehnt(self):
         self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(bonsumme="9,99"))[0]["ok"])
         self.assertFalse(self.rufe("ausgabe_vorschlagen", **self.bon(positionen="kein json"))[0]["ok"])
-        for mehr in ({"positionen": [{"kategorie": "Einnahmen:GEHEIMEINKOMMEN", "betrag": "3"}]},
+        # Gemischt aus Einnahme und Ausgabe geht nicht.
+        for mehr in ({"positionen": [{"kategorie": "Einnahmen:GEHEIMEINKOMMEN", "betrag": "3"}, {"kategorie": "Lebensmittel", "betrag": "1"}]},
                      {"zahlkonto": "Aktiva:Depot:GEHEIMDEPOT"},
                      {"positionen": [{"kategorie": "Ausgaben:Lebensmittel", "betrag": "-3,00"}]},
                      {"datum": "2099-01-01"}):
