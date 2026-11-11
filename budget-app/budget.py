@@ -100,7 +100,7 @@ def stand():
     liste = [{"pfad": k["pfad"], "saldo": aktuell.get(k["id"], salden.get(k["id"], 0)), "typ": k["typ"], "aktuell": k["id"] in aktuell}
              for k in sorted(aktiv, key=lambda k: k["pfad"]) if not k["platzhalter"]]
     vermoegen = sum(x["saldo"] for x in liste)
-    # Erspartes = alles, was im Depot liegt (Enzo 11.11.); daran misst sich das Sparziel.
+    # Erspartes = alles, was im Depot liegt (Enzo 11.11.). Das Sparziel misst sich am Gesamtvermögen.
     erspartes = sum(x["saldo"] for x, k in zip(liste, [k for k in sorted(aktiv, key=lambda k: k["pfad"]) if not k["platzhalter"]])
                     if depot.ist_position(k))
     e = json_laden(EINSTELLUNGEN, {})
@@ -110,7 +110,7 @@ def stand():
         heute = date.today()
         monate = max(1, (z.year - heute.year) * 12 + z.month - heute.month + (z.day >= heute.day))
         ziel = {"betrag": e["sparziel"], "datum": e["sparziel_datum"], "monate": monate,
-                "fehlt": max(0, e["sparziel"] - erspartes), "pro_monat": max(0, e["sparziel"] - erspartes) // monate}
+                "fehlt": max(0, e["sparziel"] - vermoegen), "pro_monat": max(0, e["sparziel"] - vermoegen) // monate}
     monate = sorted({b["datum"][:7] for b in buchungen if any(konten[s["konto"]]["typ"] in ("EXPENSE", "INCOME") for s in b["splits"])})
     berichte = json_laden(ausgaben.BERICHTE, {})
     mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and v.get("vorschlaege"))

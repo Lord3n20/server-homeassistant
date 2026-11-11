@@ -422,11 +422,11 @@ function zeichneZiel(s) {
   const k = $("#zielKarte");
   k.hidden = !s.ziel;
   if (!s.ziel) return;
-  const anteil = Math.min(100, s.erspartes / s.ziel.betrag * 100);
+  const anteil = Math.min(100, s.vermoegen / s.ziel.betrag * 100);
   k.innerHTML = `<h2>Sparziel: ${eur(s.ziel.betrag)} bis ${dmy(s.ziel.datum)}</h2>
     <div class="meter" role="img" aria-label="${anteil.toFixed(0)} Prozent erreicht"><div style="width:${anteil}%"></div></div>
-    <div>${eur(s.erspartes)} im Depot erspart, ${anteil.toFixed(0)} %. ${s.ziel.fehlt ? `Es fehlen ${eur(s.ziel.fehlt)}, also rund ${eur(s.ziel.pro_monat)} pro Monat über ${s.ziel.monate} Monate.` : "Ziel erreicht."}</div>
-    <div class="gedaempft">Als erspart zählt, was im Depot liegt, ${s.konten.some((k) => k.aktuell) ? "mit aktuellen Kursen, soweit eingetragen." : "mit dem zuletzt gebuchten Wert."}</div>`;
+    <div>${eur(s.vermoegen)} erreicht (alle Konten und Depot), ${anteil.toFixed(0)} %. ${s.ziel.fehlt ? `Es fehlen ${eur(s.ziel.fehlt)}, also rund ${eur(s.ziel.pro_monat)} pro Monat über ${s.ziel.monate} Monate.` : "Ziel erreicht."}</div>
+    <div class="gedaempft">${s.konten.some((k) => k.aktuell) ? "Das Depot zählt mit aktuellen Kursen, soweit eingetragen." : "Das Depot zählt mit dem zuletzt gebuchten Wert."}</div>`;
 }
 
 async function ladeMonat() {
@@ -859,7 +859,7 @@ function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis") {
     ? `Alle Einnahmen und Ausgaben seit ${mName(d.titel)}.`
     : "Von den Einnahmen über Fest, Alltag und große Posten bis zur Kategorie. Gestreift: was sich laut Monatsbericht sparen ließe.")
     + " Was ins Depot geht, zählt als gespart."
-    + (spz ? ` Sparziel: ${eur0(spz)} pro Monat ins Depot bis ${dmy(sparziel.datum)}.` : "");
+    + (spz ? ` Sparziel: ${eur0(spz)} pro Monat übrig bis ${dmy(sparziel.datum)}.` : "");
   if (!aus && !ein) { box.innerHTML = '<p class="gedaempft">Keine Buchungen in diesem Zeitraum.</p>'; return; }
 
   // Knoten je Spalte, Kanten in Zeichenreihenfolge (so kreuzen sich die Bänder nicht).
@@ -916,20 +916,20 @@ function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis") {
   // so viel mehr bliebe pro Monat, wenn die Vorschläge umgesetzt würden.
   const sparGesamt = sparen.reduce((a, v) => a + v.betrag, 0);
   const laufend = gesamt || d.kennung === heute().slice(0, 7), uebrig = Math.max(0, ein - aus);
-  // Erspartes = was ins Depot geht. „Übrig“ teilt sich in „Ins Depot“ und was auf dem Konto bleibt;
-  // am Depot-Anteil misst sich das Sparziel, eine Lücke steht rot gestrichelt darunter.
+  // Erspartes = was ins Depot geht. „Übrig“ teilt sich in „Ins Depot“ und was auf dem Konto bleibt.
+  // Das Sparziel misst sich am ganzen „Übrig“ (Konten + Depot), eine Lücke steht rot gestrichelt darunter.
   const insDepot = Math.max(0, d.ins_depot || 0), dep = Math.min(uebrig, insDepot);
   const zielZeile = spz ? [[eur(spz), `Sparziel pro Monat, bis ${dmy(sparziel.datum)}`, "var(--gut)"]] : [];
   if (uebrig > 0) {
     const u = knoten(s + 1, laufend ? "Bisher übrig" : "Übrig", uebrig, "var(--gut)",
-      [[eur(uebrig), anteil(uebrig)], ...(insDepot ? [[eur(insDepot), "davon ins Depot", "var(--gut)"]] : [])]);
+      [[eur(uebrig), anteil(uebrig)], ...(insDepot ? [[eur(insDepot), "davon ins Depot", "var(--gut)"]] : []), ...zielZeile]);
     kante(topf, u, uebrig, "var(--gut)");
-    if (dep > 0) kante(u, knoten(s + 2, "Ins Depot", dep, "var(--gut)", [[eur(insDepot), "ins Depot, zählt als gespart", "var(--gut)"], ...zielZeile]), dep, "var(--gut)");
+    if (dep > 0) kante(u, knoten(s + 2, "Ins Depot", dep, "var(--gut)", [[eur(insDepot), "ins Depot, zählt als gespart", "var(--gut)"]]), dep, "var(--gut)");
     if (uebrig > dep) kante(u, knoten(s + 2, "Auf dem Konto", uebrig - dep, "var(--muted)", [[eur(uebrig - dep), "übrig, aber nicht im Depot"]]), uebrig - dep, "var(--muted)");
   }
-  if (spz > insDepot) {
-    const f = knoten(s + 2, laufend ? "Fehlt noch zum Sparziel" : "Fehlt zum Sparziel", spz - insDepot, "var(--danger)",
-      [[eur(spz - insDepot), `noch ins Depot, von ${eur(spz)} pro Monat`, "var(--danger)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]);
+  if (spz > uebrig) {
+    const f = knoten(s + 2, laufend ? "Fehlt noch zum Sparziel" : "Fehlt zum Sparziel", spz - uebrig, "var(--danger)",
+      [[eur(spz - uebrig), `von ${eur(spz)} pro Monat`, "var(--danger)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]);
     f.geist = "fehlt";
     f.zusatz = "";
   }
