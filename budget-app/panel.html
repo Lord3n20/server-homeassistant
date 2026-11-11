@@ -6,20 +6,20 @@
 <title>Budget</title>
 <style>
   :root {
-    --bg: #f4f5f7; --card: #fff; --text: #1c1f23; --muted: #69707a; --line: #dfe2e6;
+    --bg: #f4f5f7; --card: #fff; --feld: #f4f5f7; --text: #1c1f23; --muted: #69707a; --line: #dfe2e6;
     --accent: #2a78d6; --vor: #b3bdb8; --danger: #c5362a; --gut: #1d7a4c;
     --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #111315; --card: #1c1e21; --text: #e3e5e8; --muted: #9aa1a9; --line: #2e3236;
-      --accent: #3987e5; --vor: #56625c; --danger: #ef6c5e; --gut: #52c08a;
+    :root { --bg: #0a0a0b; --card: #141416; --feld: #1c1c1f; --text: #f2f2f3; --muted: #8b8b92; --line: #232327;
+      --accent: #3987e5; --vor: #4a4f55; --danger: #f0524a; --gut: #2fc27a;
       --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 1680px; margin: 0 auto; padding: 16px; }
+  main { max-width: 2560px; margin: 0 auto; padding: 16px; }
   /* Formulare und Listen bleiben schmal, Übersicht, Berichte und Depot nutzen breite Bildschirme wie ein Dashboard. */
   [data-seite]:not([data-seite="uebersicht"]):not([data-seite="berichte"]):not([data-seite="depot"]) { max-width: 980px; margin-inline: auto; }
   nav.reiter, main > h1 { max-width: 100%; }
@@ -29,6 +29,19 @@
   .reihe > .spalte { display: flex; flex-direction: column; gap: 16px; }
   .reihe > .spalte > .card, .reihe .kacheln, .reihe .kopf { margin-bottom: 0; }
   .reihe > .drittel { flex: 1 1 420px; }
+  .reihe > .spalte > .reihe { margin-bottom: 0; }
+  .reihe.gleich { align-items: stretch; }
+  /* Großer Bildschirm: dichter wie ein Trading-Board, damit möglichst alles ohne Scrollen passt. */
+  @media (min-width: 1400px) {
+    main { padding: 12px 16px; }
+    .reihe { gap: 12px; margin-bottom: 12px; }
+    .reihe > .spalte { gap: 12px; }
+    .card { padding: 12px 14px; margin-bottom: 12px; border-radius: 10px; }
+    h2 { font-size: 0.95rem; margin-bottom: 8px; }
+    .kachel { padding: 8px 12px; }
+    .kachel b { font-size: 1.2rem; }
+    .kat { padding: 3px 0; }
+  }
   h1 { font-size: 1.5rem; margin: 4px 0 12px; }
   h2 { font-size: 1.05rem; margin: 0 0 12px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
@@ -114,6 +127,33 @@
   #tip b { font-size: 0.9rem; }
   #tip i { display: inline-block; width: 12px; height: 2px; margin-right: 6px; vertical-align: middle; }
   [hidden] { display: none !important; }
+
+  /* ---------- Board-Look (Vorbild Trading-Software): dicht, dunkel, Kacheln als eigene Felder ---------- */
+  .card { border-radius: 8px; }
+  .card > h2:first-child, .card > .kopf > h2 { display: flex; align-items: center; gap: 8px; letter-spacing: 0.01em; }
+  .card > h2:first-child::before, .card > .kopf > h2::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gut); flex: none; }
+  .kacheln { gap: 8px; background: none; border: 0; border-radius: 0; overflow: visible; }
+  .kachel { background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+  .card .kachel { background: var(--feld); border-color: transparent; }
+  .kachel span { font-size: 0.75rem; }
+  .kachel b { letter-spacing: -0.01em; }
+  .kachel .auf { color: var(--danger); } .kachel .ab { color: var(--gut); }
+  .reiter { border-bottom: 0; gap: 2px; }
+  .reiter button { font-weight: 600; color: var(--muted); border-bottom: 0; padding: 6px 10px; border-radius: 6px; }
+  .reiter button:hover { color: var(--text); }
+  .reiter button[aria-selected="true"] { color: var(--text); background: var(--feld); }
+  .kat .zahl.auf { color: var(--danger); } .kat .zahl.ab { color: var(--gut); }
+  .kat .zahl small { font-size: 0.7rem; margin-right: 4px; }
+  select { background: var(--feld); border-color: var(--line); }
+  @media (min-width: 900px) {
+    main > h1 { float: left; font-size: 1.1rem; margin: 6px 28px 0 0; }
+    [data-seite] { clear: both; }
+  }
+  @media (min-width: 1400px) {
+    body { font-size: 14px; }
+    /* Lange Listen scrollen in ihrer Karte, die Seite selbst bleibt möglichst in einer Bildschirmhöhe. */
+    .board-hoch { max-height: calc(100vh - 90px); overflow: auto; position: sticky; top: 12px; }
+  }
   #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; z-index: 5; max-width: 90vw; }
 </style>
 </head>
@@ -142,27 +182,29 @@
     <div data-seite="uebersicht">
       <section class="card" id="vorschlaege" hidden></section>
       <div class="reihe">
-        <section class="card" id="kontenKarte"><h2>Konten</h2><div class="kacheln" id="kontoKacheln" style="margin-bottom:8px"></div>
-          <details class="tabelle"><summary>Alle Konten einzeln</summary><table id="konten"></table></details></section>
-        <div class="spalte">
-          <div class="kopf"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
-          <div class="kacheln" id="kacheln"></div>
-        </div>
-      </div>
-      <div class="reihe">
-        <section class="card fluss breit"><h2>Geldfluss</h2>
-          <p class="gedaempft" style="margin:0 0 8px" id="uFlussHinweis"></p>
-          <div id="uFluss"></div>
-        </section>
-        <div class="spalte">
-          <section class="card">
-            <h2>Ausgaben nach Kategorie</h2>
-            <div class="legende" id="legende"></div>
-            <div id="kategorien"></div>
+        <div class="spalte breit">
+          <div class="reihe gleich">
+            <section class="card" id="kontenKarte"><h2>Konten</h2><div class="kacheln" id="kontoKacheln" style="margin-bottom:8px"></div>
+              <details class="tabelle"><summary>Alle Konten einzeln</summary><table id="konten"></table></details></section>
+            <section class="card">
+              <div class="kopf" style="margin-bottom:8px"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
+              <div class="kacheln" id="kacheln"></div>
+            </section>
+          </div>
+          <section class="card fluss"><h2>Geldfluss</h2>
+            <p class="gedaempft" style="margin:0 0 8px" id="uFlussHinweis"></p>
+            <div id="uFluss"></div>
           </section>
-          <section class="card" id="zielKarte" hidden></section>
-          <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
+          <div class="reihe">
+            <section class="card" id="zielKarte" hidden></section>
+            <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
+          </div>
         </div>
+        <section class="card board-hoch">
+          <h2>Ausgaben nach Kategorie</h2>
+          <div class="legende" id="legende"></div>
+          <div id="kategorien"></div>
+        </section>
       </div>
     </div>
 
@@ -406,9 +448,10 @@ async function ladeMonat() {
   $("#monatTitel").textContent = mName(aktMonat);
   const rest = d.einnahmen - d.ausgaben;
   const quote = d.einnahmen > 0 ? `${Math.round(rest / d.einnahmen * 100)} %` : "–";
+  const schnittText = d.schnitt_monate.length ? `Ø ${eur(d.ausgaben_schnitt)} pro Monat` : "";
   $("#kacheln").innerHTML = [
-    ["Einnahmen", eur(d.einnahmen)], ["Ausgaben", eur(d.ausgaben)], ["Übrig", eur(rest)], ["Sparquote", quote],
-  ].map(([l, v]) => `<div class="kachel"><span>${l}</span><b>${v}</b></div>`).join("");
+    ["Einnahmen", eur(d.einnahmen)], ["Ausgaben", eur(d.ausgaben), schnittText], ["Übrig", eur(rest), "", rest < 0 ? "auf" : "ab"], ["Sparquote", quote],
+  ].map(([l, v, unten, farbe]) => `<div class="kachel"><span>${l}</span><b class="${farbe || ""}">${v}</b>${unten ? `<span>${esc(unten)}</span>` : ""}</div>`).join("");
   // Vergleich: Durchschnitt je Monat über die ganze bisherige Messzeit ohne diesen und ohne den laufenden Monat.
   const sm = d.schnitt_monate, mit = sm.length > 0;
   const kurzM = (m) => `${MONATE[+m.slice(5) - 1].slice(0, 3)} ${m.slice(0, 4)}`;
@@ -416,10 +459,13 @@ async function ladeMonat() {
   $("#legende").innerHTML = `<span><i style="background:var(--accent)"></i>${mName(d.monat)}</span>`
     + (mit ? `<span><i style="background:var(--vor)"></i>Ø pro Monat (${esc(spanne)}${sm.length > 1 && sm.length < monateZwischen(sm[0], sm[sm.length - 1]) ? `, ohne ${esc(mName(d.monat))}` : ""})</span>` : "<span>Noch kein Vergleich: erst ein Monat gemessen.</span>");
   const max = Math.max(1, ...d.kategorien.flatMap((k) => [k.betrag, k.schnitt]));
+  // Rot über, grün unter dem Durchschnitt (ab 10 % und 1 € Abstand); im laufenden Monat nur rot, der Rest kommt ja noch.
+  const laeuft = d.monat === heute().slice(0, 7);
+  const abw = (k) => !mit || Math.abs(k.betrag - k.schnitt) < 100 ? "" : k.betrag > k.schnitt * 1.1 ? "auf" : !laeuft && k.betrag < k.schnitt * 0.9 ? "ab" : "";
   $("#kategorien").innerHTML = d.kategorien.map((k) => `<div class="kat" title="${esc(kurz(k.pfad))}: ${eur(k.betrag)}${mit ? `, Ø ${eur(k.schnitt)}` : ""}">
       <span>${esc(kurz(k.pfad))}</span>
       <div class="balken"><div class="b" style="width:${Math.max(0, k.betrag) / max * 100}%"></div>${mit ? `<div class="v" style="width:${Math.max(0, k.schnitt) / max * 100}%"></div>` : ""}</div>
-      <span class="zahl">${eur(k.betrag)}</span><span class="zahl schnitt">${mit ? `Ø ${eur(k.schnitt)}` : ""}</span></div>`).join("")
+      <span class="zahl ${abw(k)}">${abw(k) ? `<small>${abw(k) === "auf" ? "▲" : "▼"}</small>` : ""}${eur(k.betrag)}</span><span class="zahl schnitt">${mit ? `Ø ${eur(k.schnitt)}` : ""}</span></div>`).join("")
     + (d.kategorien.length && mit ? `<div class="kat"><span><b>Zusammen</b></span><span></span><span class="zahl"><b>${eur(d.ausgaben)}</b></span><span class="zahl schnitt">Ø ${eur(d.ausgaben_schnitt)}</span></div>` : "")
     || '<p class="gedaempft">Noch keine Ausgaben in diesem Monat.</p>';
   zeichneBuchungen(d.buchungen);
@@ -892,7 +938,8 @@ function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis", klein = 
     }
   }
   if (spz > uebrig) {
-    const f = knoten(s + 1, laufend ? "Fehlt noch zum Sparziel" : "Fehlt zum Sparziel", spz - uebrig, "var(--danger)",
+    // Rechts unter „Sparziel“: dort hat die Beschriftung Platz.
+    const f = knoten(s + 2, laufend ? "Fehlt noch zum Sparziel" : "Fehlt zum Sparziel", spz - uebrig, "var(--danger)",
       [[eur(spz - uebrig), `von ${eur(spz)} pro Monat`, "var(--danger)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]);
     f.geist = "fehlt";
     f.zusatz = "";
