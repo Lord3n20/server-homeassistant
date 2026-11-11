@@ -6,7 +6,9 @@ Skripte in Home Assistant als Ausgaben ein und kennt nur Ausgaben.
 
 ## Berichte
 
-Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und die letzten 7 Tage. Ein Kuchendiagramm zeigt von innen nach außen
+Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und die letzten 7 Tage. Ganz oben zeigt ein
+Geldfluss (Sankey), wie die Einnahmen eines Monats in Fest, Alltag, große Posten und Übrig und weiter in die Kategorien fließen;
+in der Wochenansicht beginnt er bei den Ausgaben. Ein Kuchendiagramm zeigt von innen nach außen
 Fest, Alltag und große Posten, dann Kategorie, dann Händler. Claude liefert
 nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.
 

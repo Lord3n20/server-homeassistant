@@ -362,6 +362,7 @@ class Panel(Basis):
         d = budget.bericht("2026-10")
         self.assertEqual((d["gesamt"], d["fix"], d["gross"], d["alltag"], d["vergleich"]), (38800, 20000, 18000, 800, 500))
         self.assertEqual(d["einnahmen"], 85500)
+        self.assertEqual([q["betrag"] for q in d["einnahmequellen"]], [85500])
         self.assertEqual(len(d["verlauf"]), 31)
         self.assertEqual(d["verlauf"][30], 800)
         self.assertEqual(len(d["vergleich_verlauf"]), 30)
@@ -376,6 +377,7 @@ class Panel(Basis):
         w = budget.bericht("woche")
         self.assertEqual((len(w["verlauf"]), len(w["vergleich_verlauf"]), len(w["trend"])), (7, 7, 8))
         self.assertEqual((w["vorschlaege"][0]["titel"], w["vorschlaege_aus"]), ("A", "2026-10"))
+        self.assertEqual(w["einnahmequellen"], [])
         with self.assertRaises(buch.BuchFehler):
             budget.bericht("quatsch")
 
