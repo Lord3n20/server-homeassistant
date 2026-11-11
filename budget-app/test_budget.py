@@ -226,6 +226,10 @@ class Schnittstelle(Basis):
         self.rufe("monatsbericht_speichern", monat="2026-W46", text="Neu")
         self.assertEqual(sorted(buch.json_laden(ausgaben.BERICHTE, {})), ["2026-10", "2026-W46"])
         self.rufe("monatsbericht_speichern", monat="2026-10", text="B", vorschlaege='[{"titel": "Abo", "betrag": "17,00"}]')
+        self.assertTrue(self.rufe("monatsbericht_speichern", monat="2026-10", text="B", vorschlaege='[{"titel": "Abo", "betrag": "17,00", "kategorie": "Lebensmittel"}]')[0]["ok"])
+        self.assertEqual(buch.json_laden(ausgaben.BERICHTE, {})["2026-10"]["vorschlaege"][0]["kategorie"], "Ausgaben:Lebensmittel")
+        self.assertFalse(self.rufe("monatsbericht_speichern", monat="2026-10", text="B", vorschlaege='[{"titel": "Abo", "betrag": "17,00", "kategorie": "Gibtsnicht"}]')[0]["ok"])
+        self.rufe("monatsbericht_speichern", monat="2026-10", text="B", vorschlaege='[{"titel": "Abo", "betrag": "17,00"}]')
         self.assertEqual(buch.json_laden(ausgaben.BERICHTE, {})["2026-10"]["vorschlaege"], [{"titel": "Abo", "betrag": 1700}])
         for falsch in ("2026-13", "2026-W54", "2026-W00", "letzte Woche"):
             self.assertFalse(self.rufe("monatsbericht_speichern", monat=falsch, text="Bericht")[0]["ok"], falsch)

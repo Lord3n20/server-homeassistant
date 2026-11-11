@@ -216,8 +216,20 @@ def w_bericht(a):
     if len(text) > 20000:
         raise BuchFehler("Der Bericht ist zu lang")
     roh = a.get("vorschlaege") or []
-    vorschlaege = [{"titel": str(v["titel"]).strip(), "betrag": cent(v["betrag"])}
+    vorschlaege = [{"titel": str(v["titel"]).strip(), "betrag": cent(v["betrag"]), "kategorie": str(v.get("kategorie") or "").strip()}
                    for v in (json.loads(roh) if isinstance(roh, str) else roh)]
+    if any(v["kategorie"] for v in vorschlaege):
+        # Die Kategorie ist freiwillig; sie markiert im Panel, wo sich sparen ließe.
+        konten, _ = buch.lesen()
+        pfade = {k["pfad"] for k in konten.values() if k["typ"] == "EXPENSE"}
+        for v in vorschlaege:
+            if v["kategorie"] and v["kategorie"] not in pfade:
+                v["kategorie"] = "Ausgaben:" + v["kategorie"]
+                if v["kategorie"] not in pfade:
+                    raise BuchFehler(f"Kategorie {v['kategorie'][9:]} gibt es nicht")
+    for v in vorschlaege:
+        if not v["kategorie"]:
+            del v["kategorie"]
     with lock:
         berichte = json_laden(BERICHTE, {})
         # Von den Wochenübersichten bleibt nur die neueste, Monatsberichte bleiben alle.
