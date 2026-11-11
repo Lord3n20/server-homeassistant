@@ -15,11 +15,12 @@ erste Ausgabenkategorie mit „Gebühr“ im Namen (am liebsten „…Ordergebü
 Übersicht und Berichte sind ein Reiter: auf großen Bildschirmen (ab 1500 × 760) ein Board ohne Seiten-Scrollen,
 Karten scrollen bei Bedarf in sich; schmal stapelt sich alles. Oben Konten (mit „Erspartes“ = alles im Depot) und
 der Zeitraum („Gesamt“ oder ein Monat) mit Kacheln, darunter Geldfluss (Sankey), Kategorien gegen den Ø aller
-bisherigen Monate (ohne gezeigten und laufenden Monat), Kuchen, Verlauf, Trend, Sparziel und größte Posten.
+bisherigen Monate (ohne gezeigten und laufenden Monat), Feldkarte (je Kategorie ein Feld, rot über / grün unter Ø),
+Monatsaufbau (Ausgaben, Einnahmen, Ø-Verlauf), Trend, Sparziel und größte Posten (Festes zusammengefasst oben).
+In „Gesamt“ läuft der Geldfluss ohne Art-Spalte: Einnahmen → Ausgaben → je Kategorie ein Knoten.
 Was ins Depot geht oder dort liegt, zählt als erspart: Im Geldfluss teilt sich „Übrig“ in „Ins Depot“ und „Auf dem
 Konto“, das Sparziel misst sich am Depot, eine Lücke steht rot gestrichelt darunter. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;
-haben Vorschläge eine Kategorie, ist der Teil dort gestreift markiert. Ein Kuchendiagramm zeigt von innen nach außen
-Fest, Alltag und große Posten, dann Kategorie, dann Händler. Claude liefert
+haben Vorschläge eine Kategorie, ist der Teil dort gestreift markiert. Claude liefert
 nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.
 
 ## Depot
