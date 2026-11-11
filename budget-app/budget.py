@@ -289,7 +289,8 @@ def bericht(kennung):
                     quellen[k["pfad"]] = quellen.get(k["pfad"], 0) - s["betrag"]
     if gesamt:
         monate = messmonate(konten, buchungen, heute)
-        von, bis = date.fromisoformat(f"{monate[0]}-01"), heute
+        # Bis Monatsende wie monat("gesamt"), damit Kacheln, Kategorien und Fluss dieselben Summen zeigen.
+        von, bis = date.fromisoformat(f"{monate[0]}-01"), buch.monat_plus(heute.replace(day=1), 0, 31)
         vor_von, vor_bis = von, von - timedelta(days=1)
         titel, vergleich_titel = monate[0], ""
         tage, vor_tage = 0, 0
@@ -334,6 +335,34 @@ def bericht(kennung):
             ast[name] = ast.get(name, 0) + p["betrag"]
     kuchen = kuchen_bauen(baum, summe(jetzt))
 
+    fest_summen = {}
+    for z in fix:
+        f = fest_summen.setdefault(z["beschreibung"], {"beschreibung": z["beschreibung"], "betrag": 0, "anzahl": 0})
+        f["betrag"] += z["gesamt"]
+        f["anzahl"] += 1
+    fest_liste = sorted(fest_summen.values(), key=lambda f: -f["betrag"])
+
+    # Monatsaufbau: Einnahmen je Tag und der Ø-Verlauf der Ausgaben je Tag über alle bisherigen Monate
+    # (ohne den gezeigten und den laufenden), damit man sieht, wo man am Tag X sonst steht.
+    ein_tage, schnitt_tage, schnitt_monate = [], [], []
+    if not gesamt:
+        ein_tage = [0] * tage
+        for b in buchungen:
+            if von.isoformat() <= b["datum"] <= bis.isoformat():
+                for s in b["splits"]:
+                    k = konten[s["konto"]]
+                    if k["typ"] == "INCOME" and "Kursgewinn" not in k["name"]:
+                        tag_nr = (date.fromisoformat(b["datum"]) - von).days
+                        if tag_nr < tage:
+                            ein_tage[tag_nr] -= s["betrag"]
+        laufend = heute.strftime("%Y-%m")
+        schnitt_monate = [x for x in messmonate(konten, buchungen, heute) if x not in (kennung, laufend)]
+        summen = [0] * 31
+        for z in zeilen:
+            if z["datum"][:7] in schnitt_monate:
+                summen[int(z["datum"][8:10]) - 1] += z["gesamt"]
+        schnitt_tage = [round(v / len(schnitt_monate)) for v in summen] if schnitt_monate else []
+
     berichte = json_laden(ausgaben.BERICHTE, {})
     text = {} if gesamt else berichte.get(kennung) or {}
     # Die Gesamtübersicht zeigt die Sparvorschläge aus dem neuesten Monatsbericht.
@@ -348,8 +377,11 @@ def bericht(kennung):
         "vergleich_verlauf": je_tag(davor, vor_von, vor_tage),
         "kuchen": kuchen,
         "einnahmequellen": [{"name": p, "betrag": b} for p, b in sorted(quellen.items(), key=lambda x: -x[1]) if b > 0],
+        # Größte Posten ohne Festes; das Feste steht zusammengefasst je Beschreibung darüber.
         "posten": [{"datum": z["datum"], "beschreibung": z["beschreibung"], "betrag": z["gesamt"]}
-                   for z in sorted(jetzt, key=lambda z: -z["gesamt"])[:5]],
+                   for z in sorted((z for z in jetzt if not ist_fix(z)), key=lambda z: -z["gesamt"])[:5]],
+        "fest": fest_liste,
+        "einnahmen_verlauf": ein_tage, "schnitt_verlauf": schnitt_tage, "schnitt_monate": schnitt_monate,
         "trend": trend, "text": text.get("text", ""),
         "vorschlaege": berichte.get(quelle, {}).get("vorschlaege", []), "vorschlaege_aus": quelle,
     }
