@@ -42,10 +42,11 @@
     <form id="anmelden" class="raster" autocomplete="off">
       <label><span id="kennungText">Telefonnummer</span><input id="kennung" required autocomplete="off"></label>
       <label>PIN<input id="pin" type="password" required autocomplete="off"></label>
-      <label>Zeitraum<select id="tage"><option value="14">14 Tage</option><option value="31" selected>31 Tage</option><option value="62">2 Monate</option><option value="93">3 Monate</option></select></label>
+      <label>Zeitraum<select id="tage"><option value="seit" selected>Seit dem letzten Abruf</option><option value="14">14 Tage</option><option value="31">31 Tage</option><option value="62">2 Monate</option><option value="93">3 Monate</option></select></label>
       <div style="align-self:end"><button class="primaer" id="los">Anmelden und Umsätze holen</button></div>
     </form>
-    <p class="gedaempft">Die Anmeldedaten bleiben nur bis zum Ende dieses Abrufs in dieser Seite und werden nirgends gespeichert. Die Bestätigung kommt in der Trade-Republic-App bzw. in SecureGo plus.</p>
+    <p class="gedaempft" id="zuletzt"></p>
+    <p class="gedaempft">Schon geschickte Umsätze kommen nicht noch einmal, und was älter ist als der letzte Abruf (bis auf ein paar Tage Überlappung), fragt die Budget-App nicht mehr nach. Die Anmeldedaten bleiben nur bis zum Ende dieses Abrufs in dieser Seite und werden nirgends gespeichert. Die Bestätigung kommt in der Trade-Republic-App bzw. in SecureGo plus.</p>
     <div id="codeZeile" class="aktionen" hidden>
       <input id="code" inputmode="numeric" placeholder="Code" style="width:8em">
       <button type="button" id="codeSenden">Code eingeben</button>

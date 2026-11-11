@@ -292,6 +292,18 @@ async function glsLesen(tage) {
   return r.posten.filter((p) => p.datum >= grenze);
 }
 
+// Ohne früheren Abruf 31 Tage, sonst seit dem letzten Abruf plus fünf Tage Überlappung.
+async function zeitraum() {
+  if ($("#tage").value !== "seit") return Number($("#tage").value);
+  const wert = (await chrome.storage.local.get("zuletzt_" + bank))["zuletzt_" + bank];
+  return wert ? Math.ceil((Date.now() - Date.parse(wert)) / 86400000) + 5 : 31;
+}
+
+async function zuletztZeigen() {
+  const wert = (await chrome.storage.local.get("zuletzt_" + bank))["zuletzt_" + bank];
+  $("#zuletzt").textContent = wert ? `Zuletzt gesendet (${BANKEN[bank].name}): ${new Date(wert).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}` : `Von ${BANKEN[bank].name} wurde noch nichts gesendet; „Seit dem letzten Abruf“ holt dann 31 Tage.`;
+}
+
 function zeigeErgebnis(liste) {
   gefunden = liste;
   $("#ergebnis").hidden = false;
@@ -307,7 +319,7 @@ async function tabZu() {
 
 $("#anmelden").onsubmit = async (e) => {
   e.preventDefault();
-  const kennung = $("#kennung").value.trim(), pin = $("#pin").value, tage = Number($("#tage").value);
+  const kennung = $("#kennung").value.trim(), pin = $("#pin").value, tage = await zeitraum();
   $("#pin").value = "";
   $("#los").disabled = true; $("#hilfe").hidden = true; $("#ergebnis").hidden = true;
   try {
@@ -324,7 +336,7 @@ $("#anmelden").onsubmit = async (e) => {
 
 $("#codeSenden").onclick = () => { codeWartet = $("#code").value.trim(); $("#code").value = ""; };
 $("#nochmal").onclick = async () => {
-  try { zeigeErgebnis(await glsLesen(Number($("#tage").value))); $("#hilfe").hidden = true; await tabZu(); }
+  try { zeigeErgebnis(await glsLesen(await zeitraum())); $("#hilfe").hidden = true; await tabZu(); }
   catch (ex) { status(ex.message, true); }
 };
 $("#zeigen").onclick = () => bankTab && chrome.tabs.update(bankTab, { active: true });
@@ -336,6 +348,8 @@ $("#senden").onclick = async () => {
   try {
     const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bank, umsaetze: gefunden }) });
     if (!r.ok) throw new Error(`Budget-App antwortet mit ${r.status}`);
+    await chrome.storage.local.set({ ["zuletzt_" + bank]: new Date().toISOString() });
+    await zuletztZeigen();
     status(`${gefunden.length} Umsätze gesendet. Neue erscheinen in der Budget-App im Reiter „Bank“.`);
     gefunden = []; $("#ergebnis").hidden = true;
   } catch (ex) {
@@ -352,9 +366,11 @@ for (const b of document.querySelectorAll(".reiter button")) {
     $("#kennungText").textContent = BANKEN[bank].kennung;
     $("#kennung").value = ""; $("#pin").value = "";
     $("#kennung").type = bank === "tr" ? "tel" : "text";
+    zuletztZeigen();
   };
 }
 
 chrome.storage.local.get("webhook").then(({ webhook }) => { $("#webhook").value = webhook || (typeof WEBHOOK_STANDARD !== "undefined" ? WEBHOOK_STANDARD : ""); });
 $("#webhook").onchange = () => chrome.storage.local.set({ webhook: $("#webhook").value.trim() });
 $("#kennung").type = "tel";
+zuletztZeigen();

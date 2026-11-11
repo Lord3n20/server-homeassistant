@@ -72,4 +72,5 @@ vorausgefüllt, Umsätze, die schon im Buch stehen, kommen als „Schon drin“.
 - Trade Republic: Umsätze über die Timeline der Web-App (dieselbe Schnittstelle, die die Seite nutzt).
 - GLS: liest die JSON-Antworten der Umsatzseite; erkennt die Felder selbst und zeigt sie unter Einstellungen an.
 - Die Webhook-Adresse steht in `erweiterung/konfig.js` (nicht im Repo, siehe `konfig.beispiel.js`).
+- Doppelt kommt nichts: Schon geschickte Umsätze (auch gebuchte/ignorierte) werden übergangen, und was älter ist als der letzte Abruf dieser Bank minus 5 Tage, nimmt die App gar nicht mehr an. Die Erweiterung holt standardmäßig „seit dem letzten Abruf“.
 - Claude kommt nicht an die Umsätze: Für `bank_einreichen` gibt es kein Skript, die Antwort ist nur die Anzahl.
