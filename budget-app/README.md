@@ -13,7 +13,7 @@ erste Ausgabenkategorie mit „Gebühr“ im Namen (am liebsten „…Ordergebü
 ## Übersicht (Board)
 
 Übersicht und Berichte sind ein Reiter: auf großen Bildschirmen (ab 1500 × 760) ein Board ohne Seiten-Scrollen,
-Karten scrollen bei Bedarf in sich; schmal stapelt sich alles. Oben Konten (mit „Erspartes“ = alles im Depot) und
+Karten scrollen bei Bedarf in sich; schmal stapelt sich alles. Oben Konten (mit Kachel „Depot“; alles im Depot zählt als erspart) und
 der Zeitraum („Gesamt“ oder ein Monat) mit Kacheln, darunter Geldfluss (Sankey), Kategorien gegen den Ø aller
 bisherigen Monate (ohne gezeigten und laufenden Monat), Feldkarte (je Kategorie ein Feld, rot über / grün unter Ø),
 Monatsaufbau (Ausgaben, Einnahmen, Ø-Verlauf), Trend, Sparziel und größte Posten (Festes zusammengefasst oben).

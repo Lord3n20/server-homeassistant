@@ -411,7 +411,7 @@ async function ladeAlles() {
   for (const b of banken.values()) { gesamt.frei += b.frei; b.extra.forEach((x) => gesamt.extra.add(x)); }
   $("#kontoKacheln").innerHTML = [...banken].map(([n, b]) => kachel(n, b)).join("")
     + (banken.size > 1 ? kachel("Gesamt", gesamt) : "")
-    + `<div class="kachel"><span>Erspartes (Depot)</span><b class="ab">${esc(eur(s.erspartes))}</b></div>`;
+    + `<div class="kachel"><span>Depot</span><b class="ab">${esc(eur(s.erspartes))}</b></div>`;
   zeichneZiel(s);
   formKonten(); wKonten();
   optionenEltern();
