@@ -292,6 +292,15 @@ async function glsLesen(tage) {
   return r.posten.filter((p) => p.datum >= grenze);
 }
 
+// Gemerkte Anmeldedaten der gewählten Bank eintragen.
+async function loginZeigen() {
+  const login = (await chrome.storage.local.get("login_" + bank))["login_" + bank];
+  $("#kennung").value = login?.kennung || "";
+  $("#pin").value = login?.pin || "";
+  $("#vergessen").hidden = !login;
+  if (login) $("#merken").checked = true;
+}
+
 // Ohne früheren Abruf 31 Tage, sonst seit dem letzten Abruf plus fünf Tage Überlappung.
 async function zeitraum() {
   if ($("#tage").value !== "seit") return Number($("#tage").value);
@@ -320,7 +329,9 @@ async function tabZu() {
 $("#anmelden").onsubmit = async (e) => {
   e.preventDefault();
   const kennung = $("#kennung").value.trim(), pin = $("#pin").value, tage = await zeitraum();
-  $("#pin").value = "";
+  if ($("#merken").checked) await chrome.storage.local.set({ ["login_" + bank]: { kennung, pin } });
+  else { await chrome.storage.local.remove("login_" + bank); $("#pin").value = ""; }
+  await loginZeigen();
   $("#los").disabled = true; $("#hilfe").hidden = true; $("#ergebnis").hidden = true;
   try {
     const liste = bank === "tr" ? await trAblauf(kennung, pin, tage) : await glsAblauf(kennung, pin, tage);
@@ -364,8 +375,8 @@ for (const b of document.querySelectorAll(".reiter button")) {
     bank = b.dataset.bank;
     document.querySelectorAll(".reiter button").forEach((x) => x.setAttribute("aria-pressed", x === b));
     $("#kennungText").textContent = BANKEN[bank].kennung;
-    $("#kennung").value = ""; $("#pin").value = "";
     $("#kennung").type = bank === "tr" ? "tel" : "text";
+    loginZeigen();
     zuletztZeigen();
   };
 }
@@ -373,4 +384,6 @@ for (const b of document.querySelectorAll(".reiter button")) {
 chrome.storage.local.get("webhook").then(({ webhook }) => { $("#webhook").value = webhook || (typeof WEBHOOK_STANDARD !== "undefined" ? WEBHOOK_STANDARD : ""); });
 $("#webhook").onchange = () => chrome.storage.local.set({ webhook: $("#webhook").value.trim() });
 $("#kennung").type = "tel";
+loginZeigen();
+$("#vergessen").onclick = async () => { await chrome.storage.local.remove("login_" + bank); await loginZeigen(); status("Gespeicherte Anmeldedaten gelöscht."); };
 zuletztZeigen();
