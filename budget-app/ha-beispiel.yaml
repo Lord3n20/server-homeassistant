@@ -226,7 +226,7 @@ budget_monatsbericht_speichern:
       selector:
         text: {}
     vorschlaege:
-      description: 'Sparvorschläge als JSON-Liste, z. B. [{"titel": "Abo kündigen", "betrag": "17,00"}]; Betrag pro Monat'
+      description: 'Sparvorschläge als JSON-Liste, z. B. [{"titel": "Abo kündigen", "betrag": "17,00", "kategorie": "Ausgaben:Abos & Digitales"}]; Betrag pro Monat, Kategorie freiwillig (markiert im Panel, wo sich sparen ließe)'
       required: false
       selector:
         text: {}

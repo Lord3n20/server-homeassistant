@@ -90,6 +90,7 @@
   .fluss text { fill: var(--text); font-size: 12px; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
   .fluss text tspan.name { font-weight: 600; }
   .fluss text tspan.betrag { fill: var(--muted); }
+  .fluss text tspan.spar { fill: var(--gut); font-weight: 600; }
   .kuchenart { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; padding: 8px 0 3px; border-top: 1px solid var(--line); }
   .kuchenart:first-child { border-top: 0; }
   .kuchenkat { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; color: var(--muted); padding: 1px 0 1px 16px; }
@@ -740,7 +741,7 @@ function flussZeichnen(d) {
   const ein = quellen.reduce((a, q) => a + q.betrag, 0);
   $("#bFlussHinweis").textContent = woche
     ? "Ausgaben der letzten 7 Tage nach Art und Kategorie."
-    : "Von den Einnahmen über Fest, Alltag und große Posten bis zur Kategorie.";
+    : "Von den Einnahmen über Fest, Alltag und große Posten bis zur Kategorie. Gestreift: was sich laut Monatsbericht sparen ließe.";
   if (!aus && !ein) { box.innerHTML = '<p class="gedaempft">Keine Buchungen in diesem Zeitraum.</p>'; return; }
 
   // Knoten je Spalte, Kanten in Zeichenreihenfolge (so kreuzen sich die Bänder nicht).
@@ -752,6 +753,7 @@ function flussZeichnen(d) {
   };
   const kante = (von, nach, wert, farbe) => { if (wert > 0) kanten.push({ von, nach, wert, farbe }); };
   const topfWert = Math.max(ein, aus);
+  const sparen = woche ? [] : (d.vorschlaege || []).map((v) => ({ ...v }));
   // Auf schmalen Bildschirmen fehlt der Platz für eine vierte Spalte, die Quellen stehen dann im Tooltip.
   const W = Math.max(300, box.clientWidth || 640), schmal = W < 560;
   const mitQuellen = !woche && !schmal;
@@ -773,10 +775,29 @@ function flussZeichnen(d) {
     for (const kat of art.kategorien) {
       const orte = kat.haendler.slice(0, 4).map((h) => ["", `${h.name} ${eur0(h.betrag)}`]);
       const k = knoten(s + 2, kurz(kat.name), kat.betrag, farbe, [[eur(kat.betrag), anteil(kat.betrag)], ["", art.name], ...orte]);
+      k.pfad = kat.name;
       kante(a, k, kat.betrag, farbe);
     }
   }
+  // Sparvorschläge mit Kategorie markieren gestreift den Teil der Kategorie, der sich sparen ließe.
+  // Steht eine Kategorie bei mehreren Arten, trägt es der größte Knoten.
+  for (const v of sparen.filter((x) => x.kategorie)) {
+    const k = (spalten[s + 2] || []).filter((n) => n.pfad === v.kategorie).sort((a, b) => b.wert - a.wert)[0];
+    if (!k) continue;
+    k.spar = Math.min(k.wert, (k.spar || 0) + v.betrag);
+    k.zusatz = ` −${eur0(k.spar)}`;
+    k.zeilen.push([eur(v.betrag), `sparen: ${v.titel}`, "var(--gut)"]);
+  }
+  // Das Sparpotenzial (Monatsbericht von Claude) steht als gestrichelter Knoten unter „Übrig“:
+  // so viel mehr bliebe pro Monat, wenn die Vorschläge umgesetzt würden.
+  const sparGesamt = sparen.reduce((a, v) => a + v.betrag, 0);
   if (ein > aus) kante(topf, knoten(s + 1, d.kennung === new Date().toISOString().slice(0, 7) ? "Bisher übrig" : "Übrig", ein - aus, "var(--gut)", [[eur(ein - aus), anteil(ein - aus)]]), ein - aus, "var(--gut)");
+  if (sparGesamt > 0) {
+    const g = knoten(s + 1, "Sparpotenzial", sparGesamt, "var(--gut)",
+      [[`+${eur(sparGesamt)}`, "pro Monat möglich"], ...sparen.map((v) => [eur(v.betrag), v.titel, "var(--gut)"])]);
+    g.geist = true;
+    g.zusatz = "";
+  }
 
   // Höhen: ein Maßstab für alle Spalten, kleine Knoten bekommen Platz für ihre Beschriftung.
   const NB = 10, LUECKE = 8, MIN = schmal ? 18 : 22, BASIS = schmal ? 300 : 380;
@@ -794,7 +815,8 @@ function flussZeichnen(d) {
   const familie = getComputedStyle(document.body).fontFamily;
   const breit = (t, fett) => { mass.font = `${fett ? 600 : 400} 12px ${familie}`; return mass.measureText(t).width; };
   const mitBetrag = (i) => !(schmal && i > 0 && i < letzte);
-  const textBreite = (k, i) => breit(k.name, true) + (mitBetrag(i) ? breit(` ${eur0(k.wert)}`) : 0);
+  const betragText = (k) => k.geist ? ` +${eur0(k.wert)}` : ` ${eur0(k.wert)}`;
+  const textBreite = (k, i) => breit(k.name, true) + (mitBetrag(i) ? breit(betragText(k)) : 0) + (k.zusatz ? breit(k.zusatz, true) : 0);
   const deckel = W * (schmal ? 0.3 : 0.26);
   const randBreite = (i) => Math.min(deckel, Math.max(...spalten[i].map((k) => textBreite(k, i))) + 8);
   const RL = randBreite(0), RR = randBreite(letzte);
@@ -807,6 +829,7 @@ function flussZeichnen(d) {
   spalten.forEach((sp, i) => {
     let y = (H - hoehen[i]) / 2;
     for (const k of sp) {
+      if (k.geist) y -= LUECKE - 3;
       k.x = xVon(i); k.h = Math.max(2, k.wert * m);
       k.y = y + (platz(k) - k.h) / 2;
       k.baender = [];
@@ -819,6 +842,7 @@ function flussZeichnen(d) {
   svg.setAttribute("class", "grafik");
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Geldfluss von den Einnahmen zu den Ausgabenkategorien");
+  svg.innerHTML = '<defs><pattern id="schraffur" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--card)"/><rect width="2" height="5" fill="var(--gut)"/></pattern></defs>';
   for (const k of kanten) {
     const dicke = Math.max(1, k.wert * m);
     const y0 = k.von.y + k.von.raus, y1 = k.nach.y + k.nach.rein;
@@ -842,7 +866,13 @@ function flussZeichnen(d) {
       g.setAttribute("class", "knoten");
       const r = document.createElementNS(SVG, "rect");
       for (const [a, v] of Object.entries({ x: k.x, y: k.y, width: NB, height: k.h, rx: 2, fill: k.farbe })) r.setAttribute(a, v);
+      if (k.geist) for (const [a, v] of Object.entries({ fill: "url(#schraffur)", stroke: k.farbe, "stroke-dasharray": "3 2" })) r.setAttribute(a, v);
       g.append(r);
+      if (k.spar) {
+        const hs = Math.max(2, k.spar * m), st = document.createElementNS(SVG, "rect");
+        for (const [a, v] of Object.entries({ x: k.x - 2, y: k.y + k.h - hs, width: NB + 4, height: hs, rx: 2, fill: "url(#schraffur)", stroke: "var(--gut)", "stroke-dasharray": "3 2" })) st.setAttribute(a, v);
+        g.append(st);
+      }
       const mitte = k.y + k.h / 2;
       const t = document.createElementNS(SVG, "text");
       t.setAttribute("y", mitte + 4);
@@ -852,20 +882,22 @@ function flussZeichnen(d) {
       betrag.setAttribute("class", "betrag");
       if (i === 0 || i === letzte) {
         const max = (i === 0 ? RL : RR) - 8;
-        const b = ` ${eur0(k.wert)}`;
-        name.textContent = kuerzen(k.name, max - breit(b));
+        const b = betragText(k), z = k.zusatz || "";
+        name.textContent = kuerzen(k.name, max - breit(b) - (z ? breit(z, true) : 0));
         betrag.textContent = b;
         t.setAttribute("x", i === 0 ? k.x - 6 : k.x + NB + 6);
         t.setAttribute("text-anchor", i === 0 ? "end" : "start");
         t.append(name, betrag);
+        if (z) { const sp = document.createElementNS(SVG, "tspan"); sp.setAttribute("class", "spar"); sp.textContent = z; t.append(sp); }
       } else {
         name.textContent = k.name;
-        if (mitBetrag(i)) betrag.textContent = ` ${eur0(k.wert)}`;
+        if (mitBetrag(i)) betrag.textContent = betragText(k);
         t.append(name, betrag);
         // Schmal sitzt das Schild links vom Balken, sonst liefe es in die Beschriftung der letzten Spalte.
         const breite = textBreite(k, i) + 10, x = schmal ? k.x - 2 - breite : k.x + NB + 2;
         const schild = document.createElementNS(SVG, "rect");
         for (const [a, v] of Object.entries({ x, y: mitte - 9, width: breite, height: 18, rx: 4, class: "schild", stroke: k.farbe })) schild.setAttribute(a, v);
+        if (k.geist) schild.setAttribute("stroke-dasharray", "3 2");
         g.append(schild);
         t.setAttribute("x", x + 5);
       }
