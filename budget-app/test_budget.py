@@ -23,6 +23,7 @@ import buch  # noqa: E402
 import budget  # noqa: E402
 import depot  # noqa: E402
 import ausgaben  # noqa: E402
+import bank  # noqa: E402
 
 NS = ('xmlns:gnc="http://www.gnucash.org/XML/gnc" xmlns:act="http://www.gnucash.org/XML/act" '
       'xmlns:book="http://www.gnucash.org/XML/book" xmlns:cd="http://www.gnucash.org/XML/cd" '
@@ -446,6 +447,123 @@ class Panel(Basis):
         self.assertEqual(anfrage(f"{url}/api/buchungen/{kid}", methode="DELETE")[0], 200)
         self.assertEqual(anfrage(f"{url}/api/buchungen", {"art": "ausgabe", "beschreibung": "x"})[0], 400)
         self.assertIn("Budget", anfrage(f"{url}/")[1])
+
+
+class Bankabruf(Basis):
+    """Abruf mit nachgebautem FinTS-Client; python-fints muss installiert sein (wie im Image)."""
+
+    def setUp(self):
+        super().setUp()
+        bank.einstellungen_speichern({"login": "NETKEY", "pin": "GEHEIMPIN", "produkt_id": "PRODUKT", "buchkonto": GIRO,
+                                      "ab": "2026-10-01"})
+
+    def transaktionen(self):
+        from decimal import Decimal
+        tx = lambda tag, betrag, name, zweck: {"date": date(2026, 11, tag), "amount": Decimal(betrag), "applicant_name": name, "purpose": zweck}
+        return [tx(3, "-12.50", "REWE Markt", "Karte 1234"), tx(3, "-12.50", "REWE Markt", "Karte 1234"),
+                tx(4, "520.00", "BAfoeG Amt", "Foerderung"), tx(5, "-100.00", "Trade Republic", "Sparen"), tx(6, "-3.00", "Bäcker", "")]
+
+    def fake_client(self, freigaben=2):
+        from fints.client import NeedTANResponse
+        test = self
+
+        class Konto:
+            iban = "DE00430609670000000001"
+
+        class Client:
+            selected_tan_medium = ""
+            init_tan_response = NeedTANResponse.__new__(NeedTANResponse)
+            init_tan_response.decoupled = True
+
+            def __init__(self):
+                self.offen = freigaben
+
+            def get_current_tan_mechanism(self):
+                return "946"
+
+            def is_tan_media_required(self):
+                return False
+
+            def __enter__(self):
+                pass
+
+            def __exit__(self, *a):
+                pass
+
+            def send_tan(self, antwort, tan):
+                self.offen -= 1
+                return antwort if self.offen > 0 else None
+
+            def get_sepa_accounts(self):
+                return [Konto()]
+
+            def get_transactions(self, konto, start, ende):
+                test.zeitraum = (start, ende)
+                return test.transaktionen()
+
+            def deconstruct(self, including_private=False):
+                return b"ZUSTAND"
+        return Client()
+
+    def test_abruf_einordnen_und_buchen(self):
+        buch.buchen("ausgabe", "2026-10-20", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
+        buch.buchen("ausgabe", "2026-11-06", "Bäcker vom Bon", GIRO, [{"konto": LEB, "betrag": 300}])
+        bank.WARTEN_FREIGABE, schlaf = 30, bank.time.sleep
+        bank.time.sleep = lambda s: None
+        alt = bank._client
+        bank._client = lambda z: self.fake_client()
+        try:
+            self.assertEqual(bank.abrufen(), 5)
+            self.assertEqual(bank.abrufen(), 0)  # zweiter Abruf überlappt, nichts doppelt
+        finally:
+            bank._client, bank.time.sleep = alt, schlaf
+        self.assertEqual(self.zeitraum[0], date.today() - __import__("datetime").timedelta(days=10))
+        u = bank.offene()
+        self.assertEqual([x["betrag"] for x in u], [-1250, -1250, 52000, -10000, -300])
+        self.assertNotEqual(u[0]["id"], u[1]["id"])
+        self.assertEqual((u[0]["vorschlag"], u[1]["vorschlag"]), (LEB, LEB))
+        self.assertEqual(u[4]["duplikat"]["beschreibung"], "Bäcker vom Bon")
+        self.assertEqual(bank.einstellungen_lesen()["status"]["zustand"], "bereit")
+        self.assertIn("ZUSTAND", __import__("base64").b64decode(bank._zugang()["client"]).decode())
+        bank.umsatz_buchen(u[0]["id"], LEB)
+        bank.umsatz_buchen(u[2]["id"], BAF)
+        bank.umsatz_buchen(u[3]["id"], VERR)
+        bank.umsatz_ignorieren(u[4]["id"])
+        with self.assertRaises(buch.BuchFehler):
+            bank.umsatz_buchen(u[0]["id"], LEB)
+        _, buchungen = buch.lesen()
+        salden = {}
+        for b in buchungen:
+            for s in b["splits"]:
+                salden[s["konto"]] = salden.get(s["konto"], 0) + s["betrag"]
+        self.assertEqual(salden[VERR], 10000)
+        self.assertEqual(salden[LEB], 800 + 300 + 1250)
+        self.assertEqual(salden[BAF], -52000)
+        self.assertEqual(len(bank.offene()), 1)
+
+    def test_ohne_freigabe_fehler_und_pin_bleibt_geheim(self):
+        bank.WARTEN_FREIGABE, schlaf = 0, bank.time.sleep
+        bank.time.sleep = lambda s: None
+        alt = bank._client
+        bank._client = lambda z: self.fake_client(freigaben=99)
+        try:
+            with self.assertRaises(buch.BuchFehler):
+                bank.abrufen()
+        finally:
+            bank._client, bank.time.sleep = alt, schlaf
+        self.assertEqual(bank.einstellungen_lesen()["status"]["zustand"], "fehler")
+        url = starten(budget.Handler)
+        roh = anfrage(f"{url}/api/bank")[1]
+        self.assertNotIn("GEHEIMPIN", roh)
+        self.assertTrue(json.loads(roh)["pin_gesetzt"])
+        # Leere PIN beim Speichern behält die alte.
+        bank.einstellungen_speichern({"login": "NETKEY", "pin": "", "produkt_id": "PRODUKT", "buchkonto": GIRO})
+        self.assertEqual(bank._zugang()["pin"], "GEHEIMPIN")
+        self.assertEqual(oct(os.stat(bank.ZUGANG).st_mode & 0o777), "0o600")
+        # Die Schnittstelle für Claude kennt keinen Bankweg.
+        self.assertEqual(json.loads(anfrage(f"{starten(ausgaben.Handler)}/werkzeug/bank", {})[1])["ok"], False)
+        with self.assertRaises(buch.BuchFehler):
+            bank.einstellungen_speichern({"buchkonto": LEB})
 
 
 if __name__ == "__main__":

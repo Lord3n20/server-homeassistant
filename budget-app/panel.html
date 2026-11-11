@@ -96,6 +96,9 @@
   .kuchenkat { display: flex; justify-content: space-between; gap: 12px; font-size: 0.85rem; color: var(--muted); padding: 1px 0 1px 16px; }
   .kuchenorte { font-size: 0.75rem; color: var(--muted); padding: 0 0 4px 16px; }
   .zwei-text { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+  .umsatz { border-top: 1px solid var(--line); padding: 10px 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+  .umsatz .wahl { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .umsatz .wahl select { flex: 1 1 200px; width: auto; }
   details.tabelle { margin-top: 10px; font-size: 0.85rem; }
   details.tabelle summary { cursor: pointer; color: var(--muted); }
   #tip { position: fixed; pointer-events: none; background: var(--text); color: var(--bg); font-size: 0.8rem; padding: 6px 9px; border-radius: 6px; z-index: 6; max-width: 240px; }
@@ -123,6 +126,7 @@
       <button role="tab" data-t="wiederkehrend">Wiederkehrend</button>
       <button role="tab" data-t="berichte">Berichte</button>
       <button role="tab" data-t="depot">Depot</button>
+      <button role="tab" data-t="bank" id="bankReiter">Bank</button>
       <button role="tab" data-t="einstellungen">Einstellungen</button>
     </nav>
 
@@ -215,6 +219,35 @@
       <section class="card"><h2>Positionen</h2><div id="dPositionen"></div></section>
     </div>
 
+    <div data-seite="bank">
+      <section class="card">
+        <div class="kopf"><h2>Bankabruf</h2><span class="gedaempft" id="gStatus"></span></div>
+        <div class="aktionen" style="margin-top:0"><button class="primaer" id="gAbruf" type="button">Jetzt abrufen</button></div>
+      </section>
+      <section class="card" id="gUmsaetzeKarte">
+        <h2>Neue Umsätze</h2>
+        <p class="gedaempft" style="margin:0 0 8px">Kategorie ist nach dem letzten gleichen Empfänger vorausgefüllt. Was schon im Buch steht (z. B. per Bon), mit „Schon drin“ abhaken.</p>
+        <div id="gUmsaetze"></div>
+        <div class="aktionen"><button type="button" id="gAlle">Alle mit Kategorie buchen</button></div>
+      </section>
+      <section class="card">
+        <h2>Zugang</h2>
+        <form id="gForm" class="raster" autocomplete="off">
+          <label>Login (VR-NetKey oder Alias)<input id="gLogin" autocomplete="off"></label>
+          <label>PIN<input type="password" id="gPin" autocomplete="new-password"></label>
+          <label>Produkt-ID<input id="gProdukt"></label>
+          <label>Buchkonto<select id="gKonto"></select></label>
+          <label>IBAN (leer = erstes Konto)<input id="gIban"></label>
+          <label>Umsätze ab<input type="date" id="gAb"></label>
+          <label>BLZ<input id="gBlz" inputmode="numeric"></label>
+          <label>Server<input id="gServer"></label>
+          <label style="flex-direction:row;align-items:center;gap:8px;display:flex"><input type="checkbox" id="gAuto" style="width:auto"> Täglich ab 7 Uhr abrufen</label>
+          <div style="align-self:end"><button class="primaer">Speichern</button></div>
+        </form>
+        <p class="gedaempft" id="gHinweis"></p>
+      </section>
+    </div>
+
     <div data-seite="einstellungen">
       <section class="card">
         <h2>Sparziel</h2>
@@ -284,6 +317,7 @@ function zeige(name) {
   if (name === "berichte") berichteLaden();
   if (name === "depot") depotLaden();
   if (name === "einstellungen") einstellungenLaden();
+  if (name === "bank") bankLaden();
 }
 
 function optionen(sel, typen, wert) {
@@ -1101,6 +1135,62 @@ $("#monat").onchange = sicher(async (e) => { aktMonat = e.target.value; $("#mona
 $("#monat2").onchange = sicher(async (e) => { aktMonat = e.target.value; $("#monat").value = aktMonat; await ladeMonat(); });
 $$(".reiter button").forEach((b) => b.onclick = () => zeige(b.dataset.t));
 
+// ---------- Bank ----------
+const GZUSTAND = { bereit: "", laeuft: "Läuft: ", freigabe: "Warte auf Freigabe: ", fehler: "Fehler: " };
+const bankLaden = sicher(async () => {
+  const g = await api("api/bank");
+  const ziele = konten.filter((k) => !k.platzhalter && k.id !== g.buchkonto && (["EXPENSE", "INCOME"].includes(k.typ) || VERMOEGEN.includes(k.typ)));
+  const gruppen = [["Ausgaben", ["EXPENSE"]], ["Einnahmen", ["INCOME"]], ["Umbuchung auf/von", VERMOEGEN]];
+  const auswahl = (wert) => `<option value="">Kategorie …</option>` + gruppen.map(([n, typen]) => `<optgroup label="${n}">`
+    + ziele.filter((k) => typen.includes(k.typ)).map((k) => `<option value="${k.id}"${k.id === wert ? " selected" : ""}>${esc(kurz(k.pfad))}</option>`).join("") + "</optgroup>").join("");
+  const s = g.status || {};
+  $("#gStatus").textContent = (GZUSTAND[s.zustand] ?? "") + (s.text || "") + (g.letzter_abruf ? ` · zuletzt ${dmy(g.letzter_abruf)}` : "");
+  $("#gAbruf").disabled = ["laeuft", "freigabe"].includes(s.zustand);
+  $("#bankReiter").textContent = g.umsaetze.length ? `Bank (${g.umsaetze.length})` : "Bank";
+  $("#gUmsaetzeKarte").hidden = !g.umsaetze.length;
+  $("#gUmsaetze").innerHTML = g.umsaetze.slice().reverse().map((u) => `<div class="umsatz" data-id="${u.id}">
+      <div><span class="gedaempft">${dmy(u.datum).slice(0, 6)}</span> ${esc(u.name)}<div class="gedaempft">${esc(u.zweck.slice(0, 90))}</div>
+        ${u.duplikat ? `<div class="gedaempft">Steht wohl schon im Buch: ${esc(u.duplikat.beschreibung)} (${dmy(u.duplikat.datum).slice(0, 6)})</div>` : ""}</div>
+      <div class="zahl"${u.betrag > 0 ? ' style="color:var(--accent)"' : ""}>${eur(u.betrag)}</div>
+      <div class="wahl"><select class="gKat" aria-label="Kategorie">${auswahl(u.duplikat ? "" : u.vorschlag)}</select>
+        <button class="klein" data-buchen="1">Buchen</button><button class="klein" data-weg="1">${u.duplikat ? "Schon drin" : "Ignorieren"}</button></div>
+    </div>`).join("");
+  optionen($("#gKonto"), ZAHL, g.buchkonto);
+  $("#gLogin").value = g.login; $("#gPin").value = ""; $("#gPin").placeholder = g.pin_gesetzt ? "gespeichert" : "";
+  $("#gProdukt").value = g.produkt_id; $("#gIban").value = g.iban; $("#gAb").value = g.ab;
+  $("#gBlz").value = g.blz; $("#gServer").value = g.server; $("#gAuto").checked = g.automatisch;
+  $("#gHinweis").textContent = (g.konten_bank.length ? `Konten bei der Bank: ${g.konten_bank.join(", ")}. ` : "")
+    + "Die Freigabe kommt als Push in SecureGo plus und reicht meist 90 Tage. Zugangsdaten bleiben in der App und gehen nie an Claude.";
+  clearTimeout(bankLaden.uhr);
+  if (["laeuft", "freigabe"].includes(s.zustand)) bankLaden.uhr = setTimeout(() => !$('[data-seite="bank"]').hidden && bankLaden(), 3000);
+  else if (bankLaden.lief) { bankLaden.lief = false; await ladeAlles(); }
+  if (["laeuft", "freigabe"].includes(s.zustand)) bankLaden.lief = true;
+});
+$("#gAbruf").onclick = sicher(async () => { await api("api/bank/abruf", json("POST", {})); setTimeout(bankLaden, 800); });
+$("#gForm").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  await api("api/bank/einstellungen", json("PUT", { login: $("#gLogin").value, pin: $("#gPin").value, produkt_id: $("#gProdukt").value,
+    buchkonto: $("#gKonto").value, iban: $("#gIban").value, ab: $("#gAb").value, blz: $("#gBlz").value, server: $("#gServer").value,
+    automatisch: $("#gAuto").checked }));
+  toast("Gespeichert");
+  await bankLaden();
+});
+const umsatzBuchen = (zeile) => api(`api/bank/umsaetze/${zeile.dataset.id}/buchen`, json("POST", { gegenkonto: zeile.querySelector(".gKat").value }));
+$("#gUmsaetze").onclick = sicher(async (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const zeile = b.closest(".umsatz");
+  if (b.dataset.buchen) await umsatzBuchen(zeile);
+  else await api(`api/bank/umsaetze/${zeile.dataset.id}/ignorieren`, json("POST", {}));
+  await Promise.all([bankLaden(), ladeAlles()]);
+});
+$("#gAlle").onclick = sicher(async () => {
+  let n = 0;
+  for (const zeile of $$("#gUmsaetze .umsatz")) if (zeile.querySelector(".gKat").value) { await umsatzBuchen(zeile); n++; }
+  toast(`${n} gebucht`);
+  await Promise.all([bankLaden(), ladeAlles()]);
+});
+
 const start = sicher(async () => {
   const { buch } = await api("api/status");
   $("#ersteinrichtung").hidden = buch;
@@ -1109,6 +1199,7 @@ const start = sicher(async () => {
   await ladeAlles();
   formLeeren(); wLeeren();
   zeige("uebersicht");
+  api("api/bank").then((g) => { $("#bankReiter").textContent = g.umsaetze.length ? `Bank (${g.umsaetze.length})` : "Bank"; }).catch(() => {});
 });
 start();
 </script>
