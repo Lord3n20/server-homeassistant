@@ -494,6 +494,14 @@ class Bankumsaetze(Basis):
         mit_id = [{"id": "tr-1", "datum": "2026-11-03", "betrag": -5, "name": "A"}]
         self.assertEqual(bank.einreichen("tr", mit_id), 1)
         self.assertEqual(bank.einreichen("tr", [{**mit_id[0], "name": "A geändert"}]), 0)
+        # Nach einem Abruf zählt nur noch, was höchstens ein paar Tage vor ihm liegt.
+        heute = date.today()
+        alt = [{"datum": (heute - __import__("datetime").timedelta(days=d)).isoformat(), "betrag": -1, "name": f"Alt {d}"} for d in (30, 6, 4, 0)]
+        self.assertEqual(bank.einreichen("tr", alt), 2)
+        self.assertEqual(sorted(u["name"] for u in bank.offene() if u["name"].startswith("Alt")), ["Alt 0", "Alt 4"])
+        for u in bank.offene():
+            if u["name"].startswith("Alt"):
+                bank.umsatz_ignorieren(u["id"])
         # Ohne Wahl wird das Zahlkonto genommen, dessen Name passt; hier gibt es keins.
         self.assertEqual(bank.buchkonten()["tr"], "")
         with self.assertRaises(buch.BuchFehler):

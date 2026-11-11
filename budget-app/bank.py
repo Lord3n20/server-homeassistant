@@ -18,6 +18,7 @@ ALT_ZUGANG = DATA / "bank-zugang.json"  # vom FinTS-Abruf (0.11.0), wird entfern
 BANKEN = {"tr": "Trade Republic", "gls": "GLS Bank"}
 MAX_UMSAETZE = 3000
 MAX_EINREICHEN = 2000
+UEBERLAPPUNG = 5  # Tage vor dem letzten Abruf, die noch angenommen werden (spät gebuchte Kartenzahlungen)
 
 
 def aufraeumen():
@@ -114,18 +115,24 @@ def einordnen(umsatz, kontoid, konten, buchungen, verknuepft):
 
 
 def einreichen(bank, roh):
-    """Neue Umsätze ablegen; bekannte (gleiche Kennung) bleiben, wie sie sind. Liefert nur die Anzahl."""
+    """Neue Umsätze ablegen; liefert nur die Anzahl.
+
+    Bekannte (gleiche Kennung, auch gebuchte und ignorierte) kommen nicht wieder. Was älter ist als der
+    letzte Abruf dieser Bank (abzüglich ein paar Tage Überlappung), wird gar nicht mehr nachgefragt.
+    """
     neue = umsaetze_pruefen(bank, roh)
     with lock:
         konten, buchungen = buch.lesen()
         kontoid = buchkonten(konten)[bank]
         daten = json_laden(BANK, {})
+        zuletzt = daten.get("zuletzt", {}).get(bank)
+        grenze = (date.fromisoformat(zuletzt[:10]) - timedelta(days=UEBERLAPPUNG)).isoformat() if zuletzt else ""
         liste = daten.get("umsaetze", [])
         bekannt = {u["id"] for u in liste}
         verknuepft = {u.get("buchung_id") for u in liste} | {(u.get("duplikat") or {}).get("id") for u in liste}
         dazu = 0
         for u in sorted(neue, key=lambda u: u["datum"]):
-            if u["id"] in bekannt:
+            if u["id"] in bekannt or u["datum"] < grenze:
                 continue
             vorschlag, duplikat = einordnen(u, kontoid, konten, buchungen, verknuepft) if kontoid else ("", None)
             if duplikat:
