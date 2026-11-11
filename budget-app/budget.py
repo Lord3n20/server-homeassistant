@@ -344,7 +344,7 @@ def bericht(kennung):
 
     # Monatsaufbau: Einnahmen je Tag und der Ø-Verlauf der Ausgaben je Tag über alle bisherigen Monate
     # (ohne den gezeigten und den laufenden), damit man sieht, wo man am Tag X sonst steht.
-    ein_tage, schnitt_tage, schnitt_monate = [], [], []
+    ein_tage, schnitt_tage, schnitt_ein, schnitt_monate = [], [], [], []
     if not gesamt:
         ein_tage = [0] * tage
         for b in buchungen:
@@ -362,6 +362,14 @@ def bericht(kennung):
             if z["datum"][:7] in schnitt_monate:
                 summen[int(z["datum"][8:10]) - 1] += z["gesamt"]
         schnitt_tage = [round(v / len(schnitt_monate)) for v in summen] if schnitt_monate else []
+        ein_summen = [0] * 31
+        for b in buchungen:
+            if b["datum"][:7] in schnitt_monate:
+                for s in b["splits"]:
+                    k = konten[s["konto"]]
+                    if k["typ"] == "INCOME" and "Kursgewinn" not in k["name"]:
+                        ein_summen[int(b["datum"][8:10]) - 1] -= s["betrag"]
+        schnitt_ein = [round(v / len(schnitt_monate)) for v in ein_summen] if schnitt_monate else []
 
     berichte = json_laden(ausgaben.BERICHTE, {})
     text = {} if gesamt else berichte.get(kennung) or {}
@@ -381,7 +389,7 @@ def bericht(kennung):
         "posten": [{"datum": z["datum"], "beschreibung": z["beschreibung"], "betrag": z["gesamt"]}
                    for z in sorted((z for z in jetzt if not ist_fix(z)), key=lambda z: -z["gesamt"])[:5]],
         "fest": fest_liste,
-        "einnahmen_verlauf": ein_tage, "schnitt_verlauf": schnitt_tage, "schnitt_monate": schnitt_monate,
+        "einnahmen_verlauf": ein_tage, "schnitt_verlauf": schnitt_tage, "schnitt_einnahmen": schnitt_ein, "schnitt_monate": schnitt_monate,
         "trend": trend, "text": text.get("text", ""),
         "vorschlaege": berichte.get(quelle, {}).get("vorschlaege", []), "vorschlaege_aus": quelle,
     }
