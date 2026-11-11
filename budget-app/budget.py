@@ -100,6 +100,9 @@ def stand():
     liste = [{"pfad": k["pfad"], "saldo": aktuell.get(k["id"], salden.get(k["id"], 0)), "typ": k["typ"], "aktuell": k["id"] in aktuell}
              for k in sorted(aktiv, key=lambda k: k["pfad"]) if not k["platzhalter"]]
     vermoegen = sum(x["saldo"] for x in liste)
+    # Erspartes = alles, was im Depot liegt (Enzo 11.11.); daran misst sich das Sparziel.
+    erspartes = sum(x["saldo"] for x, k in zip(liste, [k for k in sorted(aktiv, key=lambda k: k["pfad"]) if not k["platzhalter"]])
+                    if depot.ist_position(k))
     e = json_laden(EINSTELLUNGEN, {})
     ziel = None
     if e.get("sparziel") and e.get("sparziel_datum"):
@@ -107,12 +110,12 @@ def stand():
         heute = date.today()
         monate = max(1, (z.year - heute.year) * 12 + z.month - heute.month + (z.day >= heute.day))
         ziel = {"betrag": e["sparziel"], "datum": e["sparziel_datum"], "monate": monate,
-                "fehlt": max(0, e["sparziel"] - vermoegen), "pro_monat": max(0, e["sparziel"] - vermoegen) // monate}
+                "fehlt": max(0, e["sparziel"] - erspartes), "pro_monat": max(0, e["sparziel"] - erspartes) // monate}
     monate = sorted({b["datum"][:7] for b in buchungen if any(konten[s["konto"]]["typ"] in ("EXPENSE", "INCOME") for s in b["splits"])})
     berichte = json_laden(ausgaben.BERICHTE, {})
     mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and v.get("vorschlaege"))
     quelle = mit_vorschlaegen[-1] if mit_vorschlaegen else ""
-    return {"konten": liste, "vermoegen": vermoegen, "ziel": ziel, "monate": monate,
+    return {"konten": liste, "vermoegen": vermoegen, "erspartes": erspartes, "ziel": ziel, "monate": monate,
             "vorschlaege": berichte.get(quelle, {}).get("vorschlaege", []), "vorschlaege_aus": quelle}
 
 
@@ -137,7 +140,35 @@ def messmonate(konten, buchungen, heute=None):
     return liste
 
 
+def gesamtmonat():
+    """Wie monat(), aber über die ganze Messzeit: Summen je Kategorie und Ø je abgeschlossenem Monat."""
+    konten, buchungen = buch.lesen()
+    laufend = date.today().strftime("%Y-%m")
+    monate = messmonate(konten, buchungen)
+    voll = [x for x in monate if x != laufend]
+    ausgaben, einnahmen, schnitt_summen, kurs = {}, 0, {}, 0
+    for b in buchungen:
+        for s in b["splits"]:
+            k = konten[s["konto"]]
+            if k["typ"] == "EXPENSE":
+                ausgaben[k["pfad"]] = ausgaben.get(k["pfad"], 0) + s["betrag"]
+                if b["datum"][:7] in voll:
+                    schnitt_summen[k["pfad"]] = schnitt_summen.get(k["pfad"], 0) + s["betrag"]
+            elif k["typ"] == "INCOME" and "Kursgewinn" in k["name"]:
+                kurs -= s["betrag"]
+            elif k["typ"] == "INCOME":
+                einnahmen -= s["betrag"]
+    schnitt = {p: round(v / len(voll)) for p, v in schnitt_summen.items()} if voll else {}
+    return {"monat": "gesamt", "vormonat": "", "einnahmen": einnahmen, "ausgaben": sum(ausgaben.values()), "kurs": kurs,
+            "ausgaben_vormonat": 0, "schnitt_monate": voll, "ausgaben_schnitt": sum(schnitt.values()), "von": monate[0],
+            "kategorien": [{"pfad": p, "betrag": ausgaben.get(p, 0), "vormonat": 0, "schnitt": schnitt.get(p, 0)}
+                           for p in sorted(set(ausgaben) | set(schnitt), key=lambda p: -ausgaben.get(p, 0))],
+            "einnahmequellen": [], "buchungen": []}
+
+
 def monat(m):
+    if m == "gesamt":
+        return gesamtmonat()
     if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", m or ""):
         raise BuchFehler("Monat im Format JJJJ-MM angeben")
     jahr, nr = int(m[:4]), int(m[5:])
@@ -286,6 +317,11 @@ def bericht(kennung):
         einnahmen_zeitraum = einnahmen.get(kennung, 0)
 
     jetzt, davor = im(von, bis), im(vor_von, vor_bis)
+    # Was im Zeitraum ins Depot ging (Käufe minus Verkäufe), zählt als gespart. Kursgewinne und Eröffnung nicht.
+    ins_depot = 0
+    for b in buchungen:
+        if von.isoformat() <= b["datum"] <= bis.isoformat() and not any("Kursgewinn" in konten[s["konto"]]["name"] or konten[s["konto"]]["typ"] == "EQUITY" for s in b["splits"]):
+            ins_depot += sum(s["betrag"] for s in b["splits"] if depot.ist_position(konten[s["konto"]]))
     fix = [z for z in jetzt if ist_fix(z)]
     gross = [z for z in jetzt if not ist_fix(z) and z["gesamt"] >= GROSSER_POSTEN]
     baum = {"Fest": {}, "Alltag": {}, "Große Posten": {}}
@@ -307,7 +343,7 @@ def bericht(kennung):
         "kennung": kennung, "titel": titel, "vergleich_titel": vergleich_titel, "von": von.isoformat(),
         "gesamt": summe(jetzt), "vergleich": summe(davor), "fix": summe(fix), "gross": summe(gross),
         "alltag": summe(jetzt) - summe(fix) - summe(gross),
-        "einnahmen": einnahmen_zeitraum,
+        "einnahmen": einnahmen_zeitraum, "ins_depot": ins_depot,
         "verlauf": je_tag(jetzt, von, (bis - von).days + 1)[:tage],
         "vergleich_verlauf": je_tag(davor, vor_von, vor_tage),
         "kuchen": kuchen,
@@ -414,8 +450,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.antwort(200, {"konten": konten, "buchungen": buchungen})
         daten = json.loads(self.koerper() or b"{}")
         if pfad == "/api/buchungen":
+            gebuehr = cent(daten["gebuehr"]) if daten.get("gebuehr") not in (None, "", 0) else 0
+            if gebuehr and daten.get("art") != "umbuchung":
+                raise BuchFehler("Die Ordergebühr gibt es nur bei Umbuchungen aufs Depot")
+            if gebuehr:
+                buch.gebuehrenkonto(buch.lesen()[0])  # vorher prüfen, damit nicht nur die Hälfte gebucht wird
             kennung = buch.buchen(daten.get("art"), daten.get("datum"), daten.get("beschreibung"),
                                   daten.get("konto"), positionen_lesen(daten))
+            if gebuehr:
+                buch.gebuehr_buchen(daten.get("datum"), daten.get("konto"), gebuehr, daten.get("beschreibung") or "")
             return self.antwort(200, {"id": kennung})
         if pfad == "/api/konten":
             return self.antwort(200, {"id": buch.konto_anlegen(daten.get("name"), daten.get("eltern"))})
@@ -427,7 +470,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.antwort(200, {"gebucht": faellige_buchen()})
         m = re.fullmatch(r"/api/bank/umsaetze/(\w+)/(buchen|ignorieren)", pfad)
         if m and m[2] == "buchen":
-            return self.antwort(200, {"id": bank.umsatz_buchen(m[1], daten.get("gegenkonto"), daten.get("beschreibung"))})
+            return self.antwort(200, {"id": bank.umsatz_buchen(m[1], daten.get("gegenkonto"), daten.get("beschreibung"),
+                                                                  cent(daten["gebuehr"]) if daten.get("gebuehr") else 0)})
         if m:
             bank.umsatz_ignorieren(m[1])
             return self.antwort(200, {"ok": True})

@@ -21,7 +21,7 @@
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   main { max-width: 2560px; margin: 0 auto; padding: 16px; }
   /* Formulare und Listen bleiben schmal, Übersicht, Berichte und Depot nutzen breite Bildschirme wie ein Dashboard. */
-  [data-seite]:not([data-seite="uebersicht"]):not([data-seite="berichte"]):not([data-seite="depot"]) { max-width: 980px; margin-inline: auto; }
+  [data-seite]:not([data-seite="uebersicht"]):not([data-seite="depot"]) { max-width: 980px; margin-inline: auto; }
   nav.reiter, main > h1 { max-width: 100%; }
   .reihe { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
   .reihe > * { flex: 1 1 440px; min-width: 0; margin-bottom: 0; }
@@ -151,9 +151,25 @@
   }
   @media (min-width: 1400px) {
     body { font-size: 14px; }
-    /* Lange Listen scrollen in ihrer Karte, die Seite selbst bleibt möglichst in einer Bildschirmhöhe. */
-    .board-hoch { max-height: calc(100vh - 90px); overflow: auto; position: sticky; top: 12px; }
   }
+  /* Übersicht als Board: auf großen Bildschirmen passt alles in eine Bildschirmhöhe, Karten scrollen bei Bedarf in sich. */
+  .board > .spalte { display: flex; flex-direction: column; gap: 12px; }
+  .board > .spalte > .card { margin-bottom: 0; }
+  @media (min-width: 1500px) and (min-height: 760px) {
+    .board { display: grid; gap: 12px; height: calc(100vh - 76px);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-rows: auto auto minmax(0, 1.15fr) minmax(0, 1fr);
+      grid-template-areas: "vor vor vor vor" "konten konten zeit zeit" "fluss fluss fluss kat" "kuchen verlauf trend seite"; }
+    .board > * { margin: 0; min-height: 0; overflow: auto; }
+    .board > .card { display: flex; flex-direction: column; }
+    .board .fuell { flex: 1 1 0; min-height: 0; }
+    .board .kuchen { align-items: start; }
+    .board #bFluss > svg { max-height: calc(100% - 26px); }
+    .board #bKuchen svg { max-height: calc((100vh - 66px - 200px) / 2.15 - 60px); }
+    .board .tabelle summary { font-size: 0.75rem; }
+    .board .kacheln { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  }
+  button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
   #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; z-index: 5; max-width: 90vw; }
 </style>
 </head>
@@ -173,38 +189,38 @@
       <button role="tab" data-t="buchungen">Buchungen</button>
       <button role="tab" data-t="eintragen">Eintragen</button>
       <button role="tab" data-t="wiederkehrend">Wiederkehrend</button>
-      <button role="tab" data-t="berichte">Berichte</button>
       <button role="tab" data-t="depot">Depot</button>
       <button role="tab" data-t="bank" id="bankReiter">Bank</button>
       <button role="tab" data-t="einstellungen">Einstellungen</button>
     </nav>
 
-    <div data-seite="uebersicht">
-      <section class="card" id="vorschlaege" hidden></section>
-      <div class="reihe">
-        <div class="spalte breit">
-          <div class="reihe gleich">
-            <section class="card" id="kontenKarte"><h2>Konten</h2><div class="kacheln" id="kontoKacheln" style="margin-bottom:8px"></div>
-              <details class="tabelle"><summary>Alle Konten einzeln</summary><table id="konten"></table></details></section>
-            <section class="card">
-              <div class="kopf" style="margin-bottom:8px"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
-              <div class="kacheln" id="kacheln"></div>
-            </section>
-          </div>
-          <section class="card fluss"><h2>Geldfluss</h2>
-            <p class="gedaempft" style="margin:0 0 8px" id="uFlussHinweis"></p>
-            <div id="uFluss"></div>
-          </section>
-          <div class="reihe">
-            <section class="card" id="zielKarte" hidden></section>
-            <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
-          </div>
-        </div>
-        <section class="card board-hoch">
-          <h2>Ausgaben nach Kategorie</h2>
-          <div class="legende" id="legende"></div>
-          <div id="kategorien"></div>
-        </section>
+    <div data-seite="uebersicht" class="board">
+      <section class="card" id="vorschlaege" hidden style="grid-area:vor"></section>
+      <section class="card" id="kontenKarte" style="grid-area:konten"><h2>Konten</h2><div class="kacheln" id="kontoKacheln" style="margin-bottom:6px"></div>
+        <details class="tabelle"><summary>Alle Konten einzeln</summary><table id="konten"></table></details></section>
+      <section class="card" style="grid-area:zeit">
+        <div class="kopf" style="margin-bottom:8px"><h2 id="monatTitel"></h2><select id="monat" aria-label="Zeitraum"></select></div>
+        <div class="kacheln" id="kacheln"></div>
+      </section>
+      <section class="card fluss" style="grid-area:fluss"><h2>Geldfluss</h2>
+        <p class="gedaempft" style="margin:0 0 6px" id="bFlussHinweis"></p>
+        <div id="bFluss" class="fuell"></div>
+      </section>
+      <section class="card" style="grid-area:kat">
+        <h2>Ausgaben nach Kategorie</h2>
+        <div class="legende" id="legende"></div>
+        <div id="kategorien"></div>
+      </section>
+      <section class="card" style="grid-area:kuchen"><h2>Wofür und wo das Geld hinging</h2>
+        <div class="kuchen fuell"><div id="bKuchen"></div><div id="bKuchenListe"></div></div>
+      </section>
+      <section class="card" style="grid-area:verlauf"><h2 id="bVerlaufTitel"></h2><div class="legende" id="bVerlaufLegende"></div><div id="bVerlauf" class="fuell"></div></section>
+      <section class="card" style="grid-area:trend"><h2 id="bTrendTitel"></h2><div class="legende" id="bTrendLegende"></div><div id="bTrend" class="fuell"></div></section>
+      <div class="spalte" style="grid-area:seite">
+        <section class="card" id="zielKarte" hidden></section>
+        <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" style="margin:6px 0 0"></p></section>
+        <section class="card" id="bFazit" hidden><h2>Fazit</h2><p class="fazit"></p></section>
+        <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
       </div>
     </div>
 
@@ -226,6 +242,7 @@
           <div id="positionen"></div>
           <div class="aktionen">
             <button type="button" id="plus">Position hinzufügen</button>
+            <button type="button" id="fGebuehr" aria-pressed="false" hidden title="Trade Republic nimmt bei normalen Käufen 1 € (bei Sparplänen nicht). Wird als eigene Ausgabe vom selben Konto gebucht.">+ 1 € Ordergebühr</button>
             <button class="primaer">Speichern</button>
             <button type="button" id="abbrechen" hidden>Abbrechen</button>
           </div>
@@ -254,30 +271,6 @@
         </form>
       </section>
       <section class="card"><h2>Eingestellt</h2><table id="wListe"></table></section>
-    </div>
-
-    <div data-seite="berichte">
-      <div class="kopf"><h2 id="bTitel"></h2><select id="bZeit" aria-label="Zeitraum"></select></div>
-      <div class="kacheln" id="bKacheln"></div>
-      <div class="reihe">
-        <section class="card fluss breit"><h2>Geldfluss</h2>
-          <p class="gedaempft" style="margin:0 0 8px" id="bFlussHinweis"></p>
-          <div id="bFluss"></div>
-        </section>
-        <div class="spalte">
-          <section class="card" id="bFazit" hidden><p class="fazit"></p></section>
-          <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" hidden></p></section>
-          <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
-        </div>
-      </div>
-      <div class="reihe">
-        <section class="card drittel"><h2>Wofür und wo das Geld hinging</h2>
-          <p class="gedaempft" style="margin:0 0 8px">Von innen nach außen: Fest, Alltag, große Posten ab 50 €, dann Kategorie, dann Händler.</p>
-          <div class="kuchen"><div id="bKuchen"></div><div id="bKuchenListe"></div></div>
-        </section>
-        <section class="card drittel"><h2 id="bVerlaufTitel"></h2><div class="legende" id="bVerlaufLegende"></div><div id="bVerlauf"></div></section>
-        <section class="card drittel"><h2 id="bTrendTitel"></h2><div class="legende" id="bTrendLegende"></div><div id="bTrend"></div></section>
-      </div>
     </div>
 
     <div data-seite="depot">
@@ -352,7 +345,7 @@ const VERMOEGEN = ["ASSET", "BANK", "CASH", "STOCK", "MUTUAL", "CREDIT", "LIABIL
 const ZAHL = ["BANK", "CASH", "CREDIT"];
 const RHYTHMUS = { 1: "monatlich", 2: "alle 2 Monate", 3: "vierteljährlich", 6: "halbjährlich", 12: "jährlich" };
 
-let konten = [], sparziel = null, aktMonat = null, bearbeite = null, wBearbeite = null, wListe = [];
+let konten = [], sparziel = null, aktMonat = null, buchMonat = null, bearbeite = null, wBearbeite = null, wListe = [];
 
 async function api(pfad, opt = {}) {
   const r = await fetch(pfad, opt);
@@ -373,8 +366,8 @@ function zeige(name) {
   $$("[data-seite]").forEach((s) => s.hidden = s.dataset.seite !== name);
   $$(".reiter button").forEach((b) => b.setAttribute("aria-selected", b.dataset.t === name));
   if (name === "wiederkehrend") wLaden();
-  if (name === "berichte") berichteLaden();
-  if (name === "uebersicht" && uFluss) flussZeichnen(uFluss, "#uFluss", "#uFlussHinweis", true);
+  if (name === "uebersicht" && bAktuell) berichtZeichnen(bAktuell);
+  if (name === "buchungen") ladeBuchungen();
   if (name === "depot") depotLaden();
   if (name === "einstellungen") einstellungenLaden();
   if (name === "bank") bankLaden();
@@ -392,11 +385,12 @@ async function ladeAlles() {
   sparziel = s.ziel;
   konten = (await api("api/konten")).konten;
   const monate = [...new Set([...s.monate, heute().slice(0, 7)])].sort().reverse();
-  if (!aktMonat || !monate.includes(aktMonat)) aktMonat = monate[0];
-  for (const sel of [$("#monat"), $("#monat2")]) {
-    sel.innerHTML = monate.map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
-    sel.value = aktMonat;
-  }
+  if (!aktMonat || (aktMonat !== "gesamt" && !monate.includes(aktMonat))) aktMonat = monate[0];
+  if (!buchMonat || !monate.includes(buchMonat)) buchMonat = monate[0];
+  $("#monat").innerHTML = '<option value="gesamt">Gesamt</option>' + monate.map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
+  $("#monat").value = aktMonat;
+  $("#monat2").innerHTML = monate.map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
+  $("#monat2").value = buchMonat;
   $("#konten").innerHTML = s.konten.map((k) => `<tr><td>${esc(kurz(k.pfad))}</td><td class="zahl">${eur(k.saldo)}</td></tr>`).join("")
     + `<tr><td><b>Gesamt</b></td><td class="zahl"><b>${eur(s.vermoegen)}</b></td></tr>`;
   // Oben je Bank eine Kachel: Konten unter „Aktiva:Bank:…“ werden zusammengezählt.
@@ -416,59 +410,61 @@ async function ladeAlles() {
   const gesamt = { frei: 0, alles: s.vermoegen, extra: new Set() };
   for (const b of banken.values()) { gesamt.frei += b.frei; b.extra.forEach((x) => gesamt.extra.add(x)); }
   $("#kontoKacheln").innerHTML = [...banken].map(([n, b]) => kachel(n, b)).join("")
-    + (banken.size > 1 ? kachel("Gesamt", gesamt) : "");
+    + (banken.size > 1 ? kachel("Gesamt", gesamt) : "")
+    + `<div class="kachel"><span>Erspartes (Depot)</span><b class="ab">${esc(eur(s.erspartes))}</b></div>`;
   zeichneZiel(s);
-  $("#uSparenKarte").hidden = !s.vorschlaege.length;
-  if (s.vorschlaege.length) {
-    $("#uSparenTitel").textContent = `Sparpotenzial: rund ${eur0(s.vorschlaege.reduce((a, v) => a + v.betrag, 0))} pro Monat`;
-    waagerecht("#uSparen", s.vorschlaege.map((v) => ({ name: v.titel, betrag: v.betrag })), "var(--s3)");
-    $("#uSparenQuelle").textContent = `Aus dem Bericht für ${mName(s.vorschlaege_aus)}.`;
-  }
   formKonten(); wKonten();
   optionenEltern();
-  await Promise.all([ladeMonat(), ladeVorschlaege()]);
+  await Promise.all([ladeMonat(), ladeBuchungen(), ladeVorschlaege()]);
 }
 
 function zeichneZiel(s) {
   const k = $("#zielKarte");
   k.hidden = !s.ziel;
   if (!s.ziel) return;
-  const anteil = Math.min(100, s.vermoegen / s.ziel.betrag * 100);
+  const anteil = Math.min(100, s.erspartes / s.ziel.betrag * 100);
   k.innerHTML = `<h2>Sparziel: ${eur(s.ziel.betrag)} bis ${dmy(s.ziel.datum)}</h2>
     <div class="meter" role="img" aria-label="${anteil.toFixed(0)} Prozent erreicht"><div style="width:${anteil}%"></div></div>
-    <div>${eur(s.vermoegen)} erreicht, ${anteil.toFixed(0)} %. ${s.ziel.fehlt ? `Es fehlen ${eur(s.ziel.fehlt)}, also rund ${eur(s.ziel.pro_monat)} pro Monat über ${s.ziel.monate} Monate.` : "Ziel erreicht."}</div>
-    <div class="gedaempft">${s.konten.some((k) => k.aktuell) ? "Das Depot zählt mit aktuellen Kursen, soweit eingetragen." : "Das Depot zählt mit dem zuletzt gebuchten Wert."}</div>`;
+    <div>${eur(s.erspartes)} im Depot erspart, ${anteil.toFixed(0)} %. ${s.ziel.fehlt ? `Es fehlen ${eur(s.ziel.fehlt)}, also rund ${eur(s.ziel.pro_monat)} pro Monat über ${s.ziel.monate} Monate.` : "Ziel erreicht."}</div>
+    <div class="gedaempft">Als erspart zählt, was im Depot liegt, ${s.konten.some((k) => k.aktuell) ? "mit aktuellen Kursen, soweit eingetragen." : "mit dem zuletzt gebuchten Wert."}</div>`;
 }
 
-let uFluss = null;
 async function ladeMonat() {
-  const [d, fluss] = await Promise.all([api(`api/monat?m=${aktMonat}`), api(`api/bericht?k=${aktMonat}`)]);
-  uFluss = fluss;
-  flussZeichnen(fluss, "#uFluss", "#uFlussHinweis", true);
-  $("#monatTitel").textContent = mName(aktMonat);
+  const [d, b] = await Promise.all([api(`api/monat?m=${aktMonat}`), api(`api/bericht?k=${aktMonat}`)]);
+  const gesamt = aktMonat === "gesamt";
+  $("#monatTitel").textContent = gesamt ? `Gesamt seit ${mName(d.von)}` : mName(aktMonat);
   const rest = d.einnahmen - d.ausgaben;
   const quote = d.einnahmen > 0 ? `${Math.round(rest / d.einnahmen * 100)} %` : "–";
-  const schnittText = d.schnitt_monate.length ? `Ø ${eur(d.ausgaben_schnitt)} pro Monat` : "";
-  $("#kacheln").innerHTML = [
-    ["Einnahmen", eur(d.einnahmen)], ["Ausgaben", eur(d.ausgaben), schnittText], ["Übrig", eur(rest), "", rest < 0 ? "auf" : "ab"], ["Sparquote", quote],
-  ].map(([l, v, unten, farbe]) => `<div class="kachel"><span>${l}</span><b class="${farbe || ""}">${v}</b>${unten ? `<span>${esc(unten)}</span>` : ""}</div>`).join("");
-  // Vergleich: Durchschnitt je Monat über die ganze bisherige Messzeit ohne diesen und ohne den laufenden Monat.
   const sm = d.schnitt_monate, mit = sm.length > 0;
+  const schnittText = mit ? `Ø ${eur(d.ausgaben_schnitt)} pro Monat` : "";
+  const diff = b.gesamt - b.vergleich;
+  const kacheln = [["Einnahmen", eur(d.einnahmen)], ["Ausgaben", eur(d.ausgaben), schnittText],
+    gesamt ? ["Ø Ausgaben pro Monat", mit ? eur(d.ausgaben_schnitt) : "–", `${sm.length} volle Monate`]
+      : [`Zu ${mName(b.vergleich_titel).split(" ")[0]}`, b.vergleich ? `${diff > 0 ? "+" : ""}${eur(diff)}` : "–", "", diff > 0 ? "auf" : "ab"],
+    ["Übrig", eur(rest), "", rest < 0 ? "auf" : "ab"], ["Ins Depot", eur(b.ins_depot), "zählt als gespart", b.ins_depot > 0 ? "ab" : ""], ["Sparquote", quote]];
+  $("#kacheln").innerHTML = kacheln.map(([l, v, unten, farbe]) => `<div class="kachel"><span>${esc(l)}</span><b class="${farbe || ""}">${esc(v)}</b>${unten ? `<span>${esc(unten)}</span>` : ""}</div>`).join("");
+  // Vergleich: Durchschnitt je Monat über die ganze bisherige Messzeit ohne diesen und ohne den laufenden Monat.
+  // In der Gesamtansicht steht links die Summe, rechts der Ø pro vollem Monat (ohne Vergleichsbalken).
   const kurzM = (m) => `${MONATE[+m.slice(5) - 1].slice(0, 3)} ${m.slice(0, 4)}`;
   const spanne = !mit ? "" : sm.length === 1 ? mName(sm[0]) : `${kurzM(sm[0])} bis ${kurzM(sm[sm.length - 1])}, ${sm.length} Monate`;
-  $("#legende").innerHTML = `<span><i style="background:var(--accent)"></i>${mName(d.monat)}</span>`
-    + (mit ? `<span><i style="background:var(--vor)"></i>Ø pro Monat (${esc(spanne)}${sm.length > 1 && sm.length < monateZwischen(sm[0], sm[sm.length - 1]) ? `, ohne ${esc(mName(d.monat))}` : ""})</span>` : "<span>Noch kein Vergleich: erst ein Monat gemessen.</span>");
-  const max = Math.max(1, ...d.kategorien.flatMap((k) => [k.betrag, k.schnitt]));
+  const balken = mit && !gesamt;
+  $("#legende").innerHTML = (gesamt ? `<span><i style="background:var(--accent)"></i>Summe seit ${esc(mName(d.von))}</span>` : `<span><i style="background:var(--accent)"></i>${mName(d.monat)}</span>`)
+    + (mit ? `<span><i style="background:${balken ? "var(--vor)" : "transparent"}"></i>Ø pro Monat (${esc(spanne)}${!gesamt && sm.length > 1 && sm.length < monateZwischen(sm[0], sm[sm.length - 1]) ? `, ohne ${esc(mName(d.monat))}` : ""})</span>` : "<span>Noch kein Vergleich: erst ein Monat gemessen.</span>");
+  const max = Math.max(1, ...d.kategorien.flatMap((k) => balken ? [k.betrag, k.schnitt] : [k.betrag]));
   // Rot über, grün unter dem Durchschnitt (ab 10 % und 1 € Abstand); im laufenden Monat nur rot, der Rest kommt ja noch.
   const laeuft = d.monat === heute().slice(0, 7);
-  const abw = (k) => !mit || Math.abs(k.betrag - k.schnitt) < 100 ? "" : k.betrag > k.schnitt * 1.1 ? "auf" : !laeuft && k.betrag < k.schnitt * 0.9 ? "ab" : "";
+  const abw = (k) => !balken || Math.abs(k.betrag - k.schnitt) < 100 ? "" : k.betrag > k.schnitt * 1.1 ? "auf" : !laeuft && k.betrag < k.schnitt * 0.9 ? "ab" : "";
   $("#kategorien").innerHTML = d.kategorien.map((k) => `<div class="kat" title="${esc(kurz(k.pfad))}: ${eur(k.betrag)}${mit ? `, Ø ${eur(k.schnitt)}` : ""}">
       <span>${esc(kurz(k.pfad))}</span>
-      <div class="balken"><div class="b" style="width:${Math.max(0, k.betrag) / max * 100}%"></div>${mit ? `<div class="v" style="width:${Math.max(0, k.schnitt) / max * 100}%"></div>` : ""}</div>
+      <div class="balken"><div class="b" style="width:${Math.max(0, k.betrag) / max * 100}%"></div>${balken ? `<div class="v" style="width:${Math.max(0, k.schnitt) / max * 100}%"></div>` : ""}</div>
       <span class="zahl ${abw(k)}">${abw(k) ? `<small>${abw(k) === "auf" ? "▲" : "▼"}</small>` : ""}${eur(k.betrag)}</span><span class="zahl schnitt">${mit ? `Ø ${eur(k.schnitt)}` : ""}</span></div>`).join("")
     + (d.kategorien.length && mit ? `<div class="kat"><span><b>Zusammen</b></span><span></span><span class="zahl"><b>${eur(d.ausgaben)}</b></span><span class="zahl schnitt">Ø ${eur(d.ausgaben_schnitt)}</span></div>` : "")
-    || '<p class="gedaempft">Noch keine Ausgaben in diesem Monat.</p>';
-  zeichneBuchungen(d.buchungen);
+    || '<p class="gedaempft">Noch keine Ausgaben in diesem Zeitraum.</p>';
+  berichtZeichnen(b);
+}
+
+async function ladeBuchungen() {
+  zeichneBuchungen((await api(`api/monat?m=${buchMonat}`)).buchungen);
 }
 
 function monateZwischen(a, b) {
@@ -528,7 +524,11 @@ function formKonten(wert) {
   if (!$("#positionen").children.length) positionNeu();
   $$("#positionen .pKonto").forEach((s) => optionen(s, artTypen(art), s.dataset.wert));
   $("#plus").hidden = art === "umbuchung";
+  $("#fGebuehr").hidden = art !== "umbuchung" || !!bearbeite;
+  if ($("#fGebuehr").hidden) $("#fGebuehr").setAttribute("aria-pressed", "false");
 }
+const umschalten = (b) => b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+$("#fGebuehr").onclick = () => umschalten($("#fGebuehr"));
 function positionNeu(p = {}) {
   const art = $("#fArt").value;
   const z = document.createElement("div");
@@ -544,6 +544,7 @@ function positionNeu(p = {}) {
 function formLeeren() {
   bearbeite = null;
   $("#form").reset();
+  $("#fGebuehr").setAttribute("aria-pressed", "false");
   $("#fDatum").value = heute();
   $("#positionen").innerHTML = "";
   $("#formTitel").textContent = "Neue Buchung";
@@ -571,9 +572,11 @@ $("#form").onsubmit = sicher(async (e) => {
     art: $("#fArt").value, datum: $("#fDatum").value, beschreibung: $("#fBeschreibung").value, konto: $("#fKonto").value,
     positionen: $$("#positionen .position").map((z) => ({ konto: z.querySelector(".pKonto").value, betrag: z.querySelector(".pBetrag").value, memo: z.querySelector(".pMemo").value })),
   };
+  if (!bearbeite && $("#fGebuehr").getAttribute("aria-pressed") === "true") body.gebuehr = "1,00";
   await api(bearbeite ? `api/buchungen/${bearbeite}` : "api/buchungen", json(bearbeite ? "PUT" : "POST", body));
   toast("Gespeichert");
-  aktMonat = body.datum.slice(0, 7);
+  if (aktMonat !== "gesamt") aktMonat = body.datum.slice(0, 7);
+  buchMonat = body.datum.slice(0, 7);
   formLeeren();
   await ladeAlles();
 });
@@ -683,6 +686,9 @@ function tabelle(kopf, zeilen) {
   return `<details class="tabelle"><summary>Als Tabelle</summary><table><tr>${kopf.map((k, i) => `<th${i ? ' class="zahl"' : ""}>${esc(k)}</th>`).join("")}</tr>`
     + zeilen.map((z) => `<tr>${z.map((w, i) => `<td${i ? ' class="zahl"' : ""}>${esc(w)}</td>`).join("")}</tr>`).join("") + "</table></details>";
 }
+const BOARD = () => matchMedia("(min-width: 1500px) and (min-height: 760px)").matches;
+// Diagrammhöhe: im Board so hoch wie die Karte (minus „Als Tabelle“), sonst fest.
+const hoeheFuer = (ziel, standard) => BOARD() && $(ziel).clientHeight > 120 ? Math.max(120, $(ziel).clientHeight - 30) : standard;
 function flaeche(ziel, hoehe) {
   const box = $(ziel);
   const breite = Math.max(280, box.clientWidth || 640);
@@ -705,7 +711,7 @@ function saeule(x, y0, y1, w, farbe) {
 }
 // Säulen je Gruppe mit einer Achse; die ganze Gruppe ist die Trefferfläche.
 function saeulen(ziel, gruppen, reihen) {
-  const hoehe = 230, L = 52, R = 8, T = 10, B = 24;
+  const hoehe = hoeheFuer(ziel, 230), L = 52, R = 8, T = 10, B = 24;
   const [svg, breite] = flaeche(ziel, hoehe);
   const oben = schoeneObergrenze(Math.max(100, ...gruppen.flatMap((g) => reihen.map((r) => g[r.feld] || 0))) / 4) * 4;
   const y = raster(svg, breite, hoehe, oben, L, R, T, B);
@@ -726,7 +732,7 @@ function saeulen(ziel, gruppen, reihen) {
 function linien(ziel, jetzt, davor, nameJetzt, nameDavor) {
   const summiert = (l) => { let s = 0; return l.map((v) => (s += v)); };
   const a = summiert(jetzt), b = summiert(davor);
-  const hoehe = 240, L = 52, R = 12, T = 10, B = 24, tage = Math.max(a.length, b.length, 28);
+  const hoehe = hoeheFuer(ziel, 240), L = 52, R = 12, T = 10, B = 24, tage = Math.max(a.length, b.length, 28);
   const [svg, breite] = flaeche(ziel, hoehe);
   const oben = schoeneObergrenze(Math.max(100, ...a, ...b) / 4) * 4;
   const y = raster(svg, breite, hoehe, oben, L, R, T, B);
@@ -861,8 +867,8 @@ function kuchenZeichnen(d) {
 }
 
 // Sankey: Einnahmen -> Topf -> Fest/Alltag/große Posten/Übrig -> Kategorie bzw. Sparziel.
-// Die Übersicht zeigt ihn kleiner (klein = true), die Gesamtansicht ohne Sparvorschläge und Sparziel (beides gilt je Monat).
-function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis", klein = false) {
+// Die Gesamtansicht zeigt ihn ohne Sparvorschläge und Sparziel (beides gilt je Monat).
+function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis") {
   const FARBEN = { Fest: "var(--s1)", Alltag: "var(--s2)", "Große Posten": "var(--s3)" };
   const box = $(ziel);
   box.replaceChildren();
@@ -874,7 +880,8 @@ function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis", klein = 
   $(hinweis).textContent = (gesamt
     ? `Alle Einnahmen und Ausgaben seit ${mName(d.titel)}.`
     : "Von den Einnahmen über Fest, Alltag und große Posten bis zur Kategorie. Gestreift: was sich laut Monatsbericht sparen ließe.")
-    + (spz ? ` Sparziel: ${eur0(spz)} pro Monat bis ${dmy(sparziel.datum)}.` : "");
+    + " Was ins Depot geht, zählt als gespart."
+    + (spz ? ` Sparziel: ${eur0(spz)} pro Monat ins Depot bis ${dmy(sparziel.datum)}.` : "");
   if (!aus && !ein) { box.innerHTML = '<p class="gedaempft">Keine Buchungen in diesem Zeitraum.</p>'; return; }
 
   // Knoten je Spalte, Kanten in Zeichenreihenfolge (so kreuzen sich die Bänder nicht).
@@ -925,22 +932,20 @@ function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis", klein = 
   // so viel mehr bliebe pro Monat, wenn die Vorschläge umgesetzt würden.
   const sparGesamt = sparen.reduce((a, v) => a + v.betrag, 0);
   const laufend = gesamt || d.kennung === heute().slice(0, 7), uebrig = Math.max(0, ein - aus);
+  // Erspartes = was ins Depot geht. „Übrig“ teilt sich in „Ins Depot“ und was auf dem Konto bleibt;
+  // am Depot-Anteil misst sich das Sparziel, eine Lücke steht rot gestrichelt darunter.
+  const insDepot = Math.max(0, d.ins_depot || 0), dep = Math.min(uebrig, insDepot);
+  const zielZeile = spz ? [[eur(spz), `Sparziel pro Monat, bis ${dmy(sparziel.datum)}`, "var(--gut)"]] : [];
   if (uebrig > 0) {
-    const zeilen = [[eur(uebrig), anteil(uebrig)]];
-    if (spz) zeilen.push([eur(spz), "pro Monat fürs Sparziel", "var(--gut)"]);
-    const u = knoten(s + 1, laufend ? "Bisher übrig" : "Übrig", uebrig, "var(--gut)", zeilen);
+    const u = knoten(s + 1, laufend ? "Bisher übrig" : "Übrig", uebrig, "var(--gut)",
+      [[eur(uebrig), anteil(uebrig)], ...(insDepot ? [[eur(insDepot), "davon ins Depot", "var(--gut)"]] : [])]);
     kante(topf, u, uebrig, "var(--gut)");
-    // Sparziel: „Übrig“ teilt sich in den Teil fürs Ziel und den Rest, der frei bleibt.
-    if (spz) {
-      const fuers = Math.min(uebrig, spz);
-      kante(u, knoten(s + 2, "Sparziel", fuers, "var(--gut)", [[eur(fuers), `von ${eur(spz)} pro Monat`, "var(--gut)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]), fuers, "var(--gut)");
-      if (uebrig > spz) kante(u, knoten(s + 2, "Frei übrig", uebrig - spz, "var(--gut)", [[eur(uebrig - spz), "über das Sparziel hinaus"]]), uebrig - spz, "var(--gut)");
-    }
+    if (dep > 0) kante(u, knoten(s + 2, "Ins Depot", dep, "var(--gut)", [[eur(insDepot), "ins Depot, zählt als gespart", "var(--gut)"], ...zielZeile]), dep, "var(--gut)");
+    if (uebrig > dep) kante(u, knoten(s + 2, "Auf dem Konto", uebrig - dep, "var(--muted)", [[eur(uebrig - dep), "übrig, aber nicht im Depot"]]), uebrig - dep, "var(--muted)");
   }
-  if (spz > uebrig) {
-    // Rechts unter „Sparziel“: dort hat die Beschriftung Platz.
-    const f = knoten(s + 2, laufend ? "Fehlt noch zum Sparziel" : "Fehlt zum Sparziel", spz - uebrig, "var(--danger)",
-      [[eur(spz - uebrig), `von ${eur(spz)} pro Monat`, "var(--danger)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]);
+  if (spz > insDepot) {
+    const f = knoten(s + 2, laufend ? "Fehlt noch zum Sparziel" : "Fehlt zum Sparziel", spz - insDepot, "var(--danger)",
+      [[eur(spz - insDepot), `noch ins Depot, von ${eur(spz)} pro Monat`, "var(--danger)"], ["", `${eur(sparziel.betrag)} bis ${dmy(sparziel.datum)}`]]);
     f.geist = "fehlt";
     f.zusatz = "";
   }
@@ -952,13 +957,22 @@ function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis", klein = 
   }
 
   // Höhen: ein Maßstab für alle Spalten, kleine Knoten bekommen Platz für ihre Beschriftung.
-  const NB = 10, LUECKE = klein ? 6 : 8, MIN = schmal || klein ? 18 : 22, BASIS = klein ? (schmal ? 220 : 260) : schmal ? 300 : 380;
-  const voll = Math.max(...spalten.map((sp) => sp.reduce((a, k) => a + k.wert, 0)));
+  // Im Board füllt der Fluss seine Karte, sonst feste Höhe.
+  const NB = 10, LUECKE = 6, MIN = 18, ZIEL = BOARD() && box.clientHeight > 150 ? box.clientHeight - 30 : schmal ? 264 : 324;
+  // Gestrichelte Knoten (Sparpotenzial, Lücke zum Sparziel) bestimmen den Maßstab nicht und bleiben flach.
+  const voll = Math.max(...spalten.map((sp) => sp.reduce((a, k) => a + (k.geist ? 0 : k.wert), 0)));
   const nMax = Math.max(...spalten.map((sp) => sp.length));
-  const m = Math.max(0.0001, (BASIS - LUECKE * (nMax - 1)) / voll);
-  const platz = (k) => Math.max(k.wert * m, MIN);
-  const hoehen = spalten.map((sp) => sp.reduce((a, k) => a + platz(k) + LUECKE, -LUECKE));
-  const H = Math.ceil(Math.max(...hoehen)) + 4;
+  // Mindesthöhen und Lücken kommen zum Maßstab dazu; so lange verkleinern, bis alles in die Zielhöhe passt.
+  let BASIS = ZIEL - 4, m, hoehen, H;
+  const hoch = (k) => k.geist ? Math.min(k.wert * m, BASIS * 0.15) : k.wert * m;
+  const platz = (k) => Math.max(hoch(k), MIN);
+  for (let i = 0; i < 6; i++) {
+    m = Math.max(0.0001, (BASIS - LUECKE * (nMax - 1)) / voll);
+    hoehen = spalten.map((sp) => sp.reduce((a, k) => a + platz(k) + LUECKE, -LUECKE));
+    H = Math.ceil(Math.max(...hoehen)) + 4;
+    if (H <= ZIEL || BASIS < 120) break;
+    BASIS -= H - ZIEL;
+  }
   const letzte = spalten.length - 1;
 
   // Beschriftungen: erste Spalte links neben dem Balken, letzte rechts daneben, jeweils mit eigenem Rand,
@@ -982,7 +996,7 @@ function flussZeichnen(d, ziel = "#bFluss", hinweis = "#bFlussHinweis", klein = 
     let y = (H - hoehen[i]) / 2;
     for (const k of sp) {
       if (k.geist) y -= LUECKE - 3;
-      k.x = xVon(i); k.h = Math.max(2, k.wert * m);
+      k.x = xVon(i); k.h = Math.max(2, hoch(k));
       k.y = y + (platz(k) - k.h) / 2;
       k.baender = [];
       y += platz(k) + LUECKE;
@@ -1073,21 +1087,6 @@ function berichtZeichnen(d) {
   bAktuell = d;
   const gesamt = d.kennung === "gesamt";
   const kurzM = (m) => MONATE[+m.slice(5) - 1].slice(0, 3);
-  const quote = d.einnahmen > 0 ? `${Math.round((d.einnahmen - d.gesamt) / d.einnahmen * 100)} %` : "–";
-  let kacheln;
-  if (gesamt) {
-    // Ø nur über abgeschlossene Monate, der laufende zählt erst, wenn er vorbei ist.
-    const voll = d.trend.filter((t) => t.titel !== heute().slice(0, 7));
-    const schnitt = voll.length ? voll.reduce((a, t) => a + t.ausgaben, 0) / voll.length : d.gesamt;
-    $("#bTitel").textContent = `Gesamt seit ${mName(d.titel)}`;
-    kacheln = [["Ausgaben", eur(d.gesamt)], ["Ø Ausgaben pro Monat", eur(schnitt)], ["Übrig", eur(d.einnahmen - d.gesamt)], ["Sparquote", quote]];
-  } else {
-    const name = mName(d.kennung), vergleich = mName(d.vergleich_titel);
-    const diff = d.gesamt - d.vergleich;
-    $("#bTitel").textContent = name;
-    kacheln = [["Ausgaben", eur(d.gesamt)], [`Zu ${vergleich}`, d.vergleich ? `${diff > 0 ? "+" : ""}${eur(diff)}` : "–"], ["Alltag", eur(d.alltag)], ["Sparquote", quote]];
-  }
-  $("#bKacheln").innerHTML = kacheln.map(([l, v]) => `<div class="kachel"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join("");
   $("#bFazit").hidden = !d.text;
   $("#bFazit p").textContent = d.text;
 
@@ -1120,26 +1119,11 @@ function berichtZeichnen(d) {
   $("#bPosten").innerHTML = d.posten.map((p) => `<tr><td class="gedaempft">${dmy(p.datum).slice(0, 6)}</td><td>${esc(p.beschreibung)}</td><td class="zahl">${eur(p.betrag)}</td></tr>`).join("");
   $("#bSparenKarte").hidden = !d.vorschlaege.length;
   $("#bSparenTitel").textContent = `Sparpotenzial: rund ${eur0(d.vorschlaege.reduce((a, v) => a + v.betrag, 0))} pro Monat`;
-  $("#bSparenQuelle").hidden = !gesamt;
-  if (gesamt && d.vorschlaege_aus) $("#bSparenQuelle").textContent = `Aus dem Bericht für ${mName(d.vorschlaege_aus)}.`;
+  $("#bSparenQuelle").textContent = d.vorschlaege_aus ? `Aus dem Bericht für ${mName(d.vorschlaege_aus)}.` : "";
   waagerecht("#bSparen", d.vorschlaege.map((v) => ({ name: v.titel, betrag: v.betrag })), "var(--s3)");
 }
-const berichtLaden = sicher(async () => {
-  berichtZeichnen(await api(`api/bericht?k=${encodeURIComponent($("#bZeit").value)}`));
-});
-const berichteLaden = sicher(async () => {
-  const { monate, ziel } = await api("api/stand");
-  sparziel = ziel;
-  const alt = $("#bZeit").value || "gesamt";
-  $("#bZeit").innerHTML = '<option value="gesamt">Gesamt</option>' + [...monate].reverse().map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
-  $("#bZeit").value = alt;
-  if (!$("#bZeit").value) $("#bZeit").value = "gesamt";
-  await berichtLaden();
-});
-$("#bZeit").onchange = berichtLaden;
 let bUhr;
-addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="berichte"]').hidden) berichtZeichnen(bAktuell);
-  if (uFluss && !$('[data-seite="uebersicht"]').hidden) flussZeichnen(uFluss, "#uFluss", "#uFlussHinweis", true); }, 150); });
+addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="uebersicht"]').hidden) berichtZeichnen(bAktuell); }, 150); });
 // ---------- Depot ----------
 const prozent = (p) => `${p > 0 ? "+" : ""}${p.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 const plus = (c) => `${c > 0 ? "+" : ""}${eur(c)}`;
@@ -1243,8 +1227,8 @@ const hochladen = sicher(async (e) => {
 });
 $("#importErst").onchange = hochladen;
 $("#importNeu").onchange = hochladen;
-$("#monat").onchange = sicher(async (e) => { aktMonat = e.target.value; $("#monat2").value = aktMonat; await ladeMonat(); });
-$("#monat2").onchange = sicher(async (e) => { aktMonat = e.target.value; $("#monat").value = aktMonat; await ladeMonat(); });
+$("#monat").onchange = sicher(async (e) => { aktMonat = e.target.value; await ladeMonat(); });
+$("#monat2").onchange = sicher(async (e) => { buchMonat = e.target.value; await ladeBuchungen(); });
 $$(".reiter button").forEach((b) => b.onclick = () => zeige(b.dataset.t));
 
 // ---------- Bank ----------
@@ -1262,7 +1246,7 @@ const bankLaden = sicher(async () => {
         ${u.duplikat ? `<div class="gedaempft">Steht wohl schon im Buch: ${esc(u.duplikat.beschreibung)} (${dmy(u.duplikat.datum).slice(0, 6)})</div>` : ""}</div>
       <div class="zahl"${u.betrag > 0 ? ' style="color:var(--accent)"' : ""}>${eur(u.betrag)}</div>
       <div class="wahl"><select class="gKat" aria-label="Kategorie">${auswahl(u.duplikat ? "" : u.vorschlag, g.konten[u.bank])}</select>
-        <button class="klein" data-buchen="1">Buchen</button><button class="klein" data-weg="1">${u.duplikat ? "Schon drin" : "Ignorieren"}</button></div>
+        ${u.betrag < 0 && u.bank === "tr" ? `<button class="klein" data-gebuehr="1" aria-pressed="false" title="Normaler Kauf: 1 € davon ist Ordergebühr (bei Sparplänen nicht). Nur zusammen mit einem Depot- oder anderen Konto als Ziel.">1 € Gebühr</button>` : ""}<button class="klein" data-buchen="1">Buchen</button><button class="klein" data-weg="1">${u.duplikat ? "Schon drin" : "Ignorieren"}</button></div>
     </div>`).join("");
   $("#gForm").innerHTML = Object.entries(g.banken).map(([b, n]) => `<label>${esc(n)}<select data-bank="${b}"></select></label>`).join("")
     + `<div style="align-self:end"><button class="primaer">Speichern</button></div>`;
@@ -1274,11 +1258,13 @@ $("#gForm").onsubmit = sicher(async (e) => {
   toast("Gespeichert");
   await bankLaden();
 });
-const umsatzBuchen = (zeile) => api(`api/bank/umsaetze/${zeile.dataset.id}/buchen`, json("POST", { gegenkonto: zeile.querySelector(".gKat").value }));
+const umsatzBuchen = (zeile) => api(`api/bank/umsaetze/${zeile.dataset.id}/buchen`, json("POST", {
+  gegenkonto: zeile.querySelector(".gKat").value, gebuehr: zeile.querySelector('[data-gebuehr][aria-pressed="true"]') ? "1,00" : 0 }));
 $("#gUmsaetze").onclick = sicher(async (e) => {
   const b = e.target.closest("button");
   if (!b) return;
   const zeile = b.closest(".umsatz");
+  if (b.dataset.gebuehr) return umschalten(b);
   if (b.dataset.buchen) await umsatzBuchen(zeile);
   else await api(`api/bank/umsaetze/${zeile.dataset.id}/ignorieren`, json("POST", {}));
   await Promise.all([bankLaden(), ladeAlles()]);

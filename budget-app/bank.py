@@ -150,7 +150,8 @@ def offene():
     return [u for u in json_laden(BANK, {}).get("umsaetze", []) if u["status"] == "offen"]
 
 
-def umsatz_buchen(kennung, gegenkonto, beschreibung=None):
+def umsatz_buchen(kennung, gegenkonto, beschreibung=None, gebuehr=0):
+    """gebuehr (Cent): Teil des Abgangs, der als Ordergebühr eigene Ausgabe wird (nur bei Umbuchung, z. B. Aktienkauf)."""
     with lock:
         daten = json_laden(BANK, {})
         u = next((x for x in daten.get("umsaetze", []) if x["id"] == kennung), None)
@@ -165,6 +166,12 @@ def umsatz_buchen(kennung, gegenkonto, beschreibung=None):
             raise BuchFehler("Bitte eine Kategorie wählen")
         text = _text(beschreibung) or u["name"]
         memo = u["zweck"][:120]
+        if gebuehr and not (g["typ"] in buch.VERMOEGEN_TYPEN and u["betrag"] < 0):
+            raise BuchFehler("Die Ordergebühr gibt es nur bei Abgängen aufs Depot oder ein anderes Konto")
+        if gebuehr and gebuehr >= -u["betrag"]:
+            raise BuchFehler("Die Gebühr ist größer als der Umsatz")
+        if gebuehr:
+            buch.gebuehrenkonto(konten)
         if g["typ"] == "EXPENSE":
             art, konto, pos = "ausgabe", kontoid, [{"konto": g["id"], "betrag": -u["betrag"], "memo": memo}]
         elif g["typ"] == "INCOME":
@@ -172,12 +179,14 @@ def umsatz_buchen(kennung, gegenkonto, beschreibung=None):
         elif g["typ"] in buch.VERMOEGEN_TYPEN:
             # Geht Geld ab, fließt es vom Buchkonto aufs andere; kommt Geld an, umgekehrt.
             if u["betrag"] < 0:
-                art, konto, pos = "umbuchung", kontoid, [{"konto": g["id"], "betrag": -u["betrag"], "memo": memo}]
+                art, konto, pos = "umbuchung", kontoid, [{"konto": g["id"], "betrag": -u["betrag"] - gebuehr, "memo": memo}]
             else:
                 art, konto, pos = "umbuchung", g["id"], [{"konto": kontoid, "betrag": u["betrag"], "memo": memo}]
         else:
             raise BuchFehler("Diese Kategorie passt nicht")
         u["buchung_id"] = buch.buchen(art, u["datum"], text, konto, pos)
+        if gebuehr:
+            u["gebuehr_id"] = buch.gebuehr_buchen(u["datum"], kontoid, gebuehr, text)
         u["status"] = "gebucht"
         json_speichern(BANK, daten)
     return u["buchung_id"]

@@ -4,14 +4,20 @@ Haushaltsbuch im GnuCash-Format. Alles läuft im Panel „Budget“ (Seitenleist
 Eintragen von Hand, wiederkehrende Buchungen, Sparziel und Monatsberichte. Claude trägt Kassenbons über
 Skripte in Home Assistant als Ausgaben ein und kennt nur Ausgaben.
 
-## Berichte
+## Ordergebühr
 
-Der Reiter „Berichte“ zeichnet alle Grafiken selbst aus dem Buch, für jeden Monat und als Gesamtübersicht über die ganze
-Messzeit. Ganz oben zeigt ein Geldfluss (Sankey), wie die Einnahmen in Fest, Alltag, große Posten und Übrig und weiter in die
-Kategorien fließen; die Übersicht zeigt ihn etwas kleiner für den gewählten Monat. Ist ein Sparziel eingestellt, teilt sich
-„Übrig“ in den Teil fürs Sparziel (nötiger Betrag pro Monat) und den Rest; reicht es nicht, steht die Lücke rot gestrichelt
-darunter. In der Übersicht vergleicht „Ausgaben nach Kategorie“ mit dem Durchschnitt je Monat über die ganze bisherige
-Messzeit, ohne den gezeigten und ohne den laufenden Monat. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;
+Bei Umbuchungen (Eintragen) und bei Abgängen von Trade Republic (Reiter Bank) gibt es einen Knopf „1 € Gebühr“:
+normale Käufe kosten dort 1 €, Sparpläne nicht. Die Gebühr wird als eigene Ausgabe vom selben Konto gebucht, in die
+erste Ausgabenkategorie mit „Gebühr“ im Namen (am liebsten „…Ordergebühr…“).
+
+## Übersicht (Board)
+
+Übersicht und Berichte sind ein Reiter: auf großen Bildschirmen (ab 1500 × 760) ein Board ohne Seiten-Scrollen,
+Karten scrollen bei Bedarf in sich; schmal stapelt sich alles. Oben Konten (mit „Erspartes“ = alles im Depot) und
+der Zeitraum („Gesamt“ oder ein Monat) mit Kacheln, darunter Geldfluss (Sankey), Kategorien gegen den Ø aller
+bisherigen Monate (ohne gezeigten und laufenden Monat), Kuchen, Verlauf, Trend, Sparziel und größte Posten.
+Was ins Depot geht oder dort liegt, zählt als erspart: Im Geldfluss teilt sich „Übrig“ in „Ins Depot“ und „Auf dem
+Konto“, das Sparziel misst sich am Depot, eine Lücke steht rot gestrichelt darunter. Das Sparpotenzial aus dem Monatsbericht steht gestrichelt unter „Übrig“;
 haben Vorschläge eine Kategorie, ist der Teil dort gestreift markiert. Ein Kuchendiagramm zeigt von innen nach außen
 Fest, Alltag und große Posten, dann Kategorie, dann Händler. Claude liefert
 nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.

@@ -429,6 +429,9 @@ class Panel(Basis):
         self.assertEqual([t["titel"] for t in g["trend"]], monate)
         self.assertEqual((g["gesamt"], g["einnahmen"], g["vergleich"], g["verlauf"]), (38800 + 500, 85500, 0, []))
         self.assertEqual({k: g["trend"][1][k] for k in ("Fest", "Alltag", "Große Posten")}, {"Fest": 20000, "Alltag": 800, "Große Posten": 18000})
+        buch.buchen("umbuchung", "2026-10-15", "Kauf", GIRO, [{"konto": DEPOT, "betrag": 5000}])
+        self.assertEqual(budget.bericht("2026-10")["ins_depot"], 5000)
+        self.assertEqual(budget.stand()["erspartes"], 123456 + 5000)
         self.assertEqual((g["vorschlaege"][0]["titel"], g["vorschlaege_aus"], g["text"]), ("A", "2026-10", ""))
         self.assertEqual([q["betrag"] for q in g["einnahmequellen"]], [85500])
         with self.assertRaises(buch.BuchFehler):
@@ -448,6 +451,9 @@ class Panel(Basis):
         n = len(m["schnitt_monate"])
         self.assertEqual(m["kategorien"][0]["schnitt"], round(3000 / n))
         self.assertEqual(m["kategorien"][0]["betrag"], 7000)
+        g = budget.monat("gesamt")
+        self.assertEqual((g["ausgaben"], g["von"], g["buchungen"]), (3000 + 7000 + 99900, "2026-08", []))
+        self.assertEqual(g["kategorien"][0]["schnitt"], round(10000 / len(g["schnitt_monate"])))
         aktuell = budget.monat(laufend)
         self.assertEqual(aktuell["kategorien"][0]["schnitt"], round(10000 / len(aktuell["schnitt_monate"])))
 
@@ -510,6 +516,34 @@ class Bankumsaetze(Basis):
         self.assertEqual(len(bank.offene()), 1)
         # Für Claude bleiben Einnahmen unsichtbar.
         self.assertNotIn("GEHEIMAMT", anfrage(f"{url}/werkzeug/ausgaben_lesen", {})[1])
+
+    def test_ordergebuehr(self):
+        def salden():
+            werte = {}
+            for b in buch.lesen()[1]:
+                for sp in b["splits"]:
+                    werte[sp["konto"]] = werte.get(sp["konto"], 0) + sp["betrag"]
+            return werte
+        url = starten(budget.Handler)
+        kauf = {"art": "umbuchung", "datum": "2026-11-03", "beschreibung": "Kauf Apple", "konto": VERR,
+                "positionen": [{"konto": DEPOT, "betrag": "100,00"}], "gebuehr": "1,00"}
+        vorher = salden()
+        code, roh = anfrage(f"{url}/api/buchungen", kauf)
+        self.assertEqual(code, 400, roh)  # noch keine Gebühren-Kategorie: gar nichts buchen
+        self.assertEqual(salden(), vorher)
+        geb = buch.konto_anlegen("Ordergebühren", AUSG)
+        self.assertEqual(anfrage(f"{url}/api/buchungen", kauf)[0], 200)
+        jetzt = salden()
+        self.assertEqual((jetzt[DEPOT] - vorher[DEPOT], jetzt[geb], jetzt[VERR] - vorher.get(VERR, 0)), (10000, 100, -10100))
+        self.assertEqual(anfrage(f"{url}/api/buchungen", {**kauf, "art": "ausgabe", "positionen": [{"konto": LEB, "betrag": "1"}]})[0], 400)
+        bank.einstellungen_speichern({"konten": {"gls": GIRO}})
+        bank.einreichen("gls", self.umsaetze())
+        u = bank.offene()
+        with self.assertRaises(buch.BuchFehler):
+            bank.umsatz_buchen(u[0]["id"], LEB, gebuehr=100)
+        bank.umsatz_buchen(u[0]["id"], DEPOT, gebuehr=100)
+        danach = salden()
+        self.assertEqual((danach[DEPOT] - jetzt[DEPOT], danach[geb] - jetzt[geb]), (1150, 100))
 
     def test_kennung_der_bank_und_kontowahl(self):
         mit_id = [{"id": "tr-1", "datum": "2026-11-03", "betrag": -5, "name": "A"}]

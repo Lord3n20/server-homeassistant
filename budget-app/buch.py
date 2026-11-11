@@ -247,6 +247,25 @@ def splits_bauen(konten, art, konto_id, positionen):
     return splits
 
 
+def gebuehrenkonto(konten):
+    """Ausgabenkategorie für Ordergebühren: am liebsten „…Ordergebühr…“, sonst irgendwas mit „Gebühr“."""
+    kandidaten = [k for k in konten.values() if k["typ"] == "EXPENSE" and not k["platzhalter"] and "gebühr" in k["pfad"].lower()]
+    for test in (lambda k: "ordergebühr" in k["name"].lower(), lambda k: "gebühr" in k["name"].lower(), lambda k: True):
+        treffer = sorted((k for k in kandidaten if test(k)), key=lambda k: k["pfad"])
+        if treffer:
+            return treffer[0]["id"]
+    raise BuchFehler("Für die Ordergebühr fehlt eine Ausgaben-Kategorie mit „Gebühr“ im Namen")
+
+
+def gebuehr_buchen(datum, konto_id, betrag, anlass):
+    """Ordergebühr (z. B. 1 € bei Trade Republic, nicht bei Sparplänen) als eigene Ausgabe vom selben Konto."""
+    if betrag <= 0:
+        raise BuchFehler("Die Gebühr muss über 0 liegen")
+    konten, _ = lesen()
+    return buchen("ausgabe", datum, f"Ordergebühr {anlass}".strip(), konto_id,
+                  [{"konto": gebuehrenkonto(konten), "betrag": betrag, "memo": "Ordergebühr"}])
+
+
 def buchen(art, datum, beschreibung, konto_id, positionen, ersetzt=None):
     beschreibung = (beschreibung or "").strip()
     if not beschreibung:
