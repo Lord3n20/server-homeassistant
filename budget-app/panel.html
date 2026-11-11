@@ -19,7 +19,16 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  main { max-width: 1680px; margin: 0 auto; padding: 16px; }
+  /* Formulare und Listen bleiben schmal, Übersicht, Berichte und Depot nutzen breite Bildschirme wie ein Dashboard. */
+  [data-seite]:not([data-seite="uebersicht"]):not([data-seite="berichte"]):not([data-seite="depot"]) { max-width: 980px; margin-inline: auto; }
+  nav.reiter, main > h1 { max-width: 100%; }
+  .reihe { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
+  .reihe > * { flex: 1 1 440px; min-width: 0; margin-bottom: 0; }
+  .reihe > .breit { flex: 1.7 1 600px; }
+  .reihe > .spalte { display: flex; flex-direction: column; gap: 16px; }
+  .reihe > .spalte > .card, .reihe .kacheln, .reihe .kopf { margin-bottom: 0; }
+  .reihe > .drittel { flex: 1 1 420px; }
   h1 { font-size: 1.5rem; margin: 4px 0 12px; }
   h2 { font-size: 1.05rem; margin: 0 0 12px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
@@ -76,8 +85,7 @@
   .zwei .card { margin-bottom: 0; }
   .zwei { margin-bottom: 16px; }
   .kat:hover .b, .kat:focus .b { filter: brightness(1.15); }
-  .kuchen { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr); gap: 16px; align-items: center; }
-  @media (max-width: 720px) { .kuchen { grid-template-columns: minmax(0, 1fr); } }
+  .kuchen { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; align-items: center; }
   .kuchen path { stroke: var(--card); stroke-width: 2; cursor: default; outline: none; }
   .kuchen path:hover, .kuchen path:focus { filter: brightness(1.15); }
   .kuchen svg text { fill: var(--text); font-size: 13px; }
@@ -132,22 +140,30 @@
     </nav>
 
     <div data-seite="uebersicht">
-      <section class="card" id="kontenKarte"><h2>Konten</h2><div class="kacheln" id="kontoKacheln" style="margin-bottom:8px"></div>
-        <details class="tabelle"><summary>Alle Konten einzeln</summary><table id="konten"></table></details></section>
       <section class="card" id="vorschlaege" hidden></section>
-      <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
-      <div class="kopf"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
-      <div class="kacheln" id="kacheln"></div>
-      <section class="card fluss"><h2>Geldfluss</h2>
-        <p class="gedaempft" style="margin:0 0 8px" id="uFlussHinweis"></p>
-        <div id="uFluss"></div>
-      </section>
-      <section class="card">
-        <h2>Ausgaben nach Kategorie</h2>
-        <div class="legende" id="legende"></div>
-        <div id="kategorien"></div>
-      </section>
-      <section class="card" id="zielKarte" hidden></section>
+      <div class="reihe">
+        <section class="card" id="kontenKarte"><h2>Konten</h2><div class="kacheln" id="kontoKacheln" style="margin-bottom:8px"></div>
+          <details class="tabelle"><summary>Alle Konten einzeln</summary><table id="konten"></table></details></section>
+        <div class="spalte">
+          <div class="kopf"><h2 id="monatTitel"></h2><select id="monat" aria-label="Monat"></select></div>
+          <div class="kacheln" id="kacheln"></div>
+        </div>
+      </div>
+      <div class="reihe">
+        <section class="card fluss breit"><h2>Geldfluss</h2>
+          <p class="gedaempft" style="margin:0 0 8px" id="uFlussHinweis"></p>
+          <div id="uFluss"></div>
+        </section>
+        <div class="spalte">
+          <section class="card">
+            <h2>Ausgaben nach Kategorie</h2>
+            <div class="legende" id="legende"></div>
+            <div id="kategorien"></div>
+          </section>
+          <section class="card" id="zielKarte" hidden></section>
+          <section class="card" id="uSparenKarte" hidden><h2 id="uSparenTitel"></h2><div id="uSparen"></div><p class="gedaempft" id="uSparenQuelle"></p></section>
+        </div>
+      </div>
     </div>
 
     <div data-seite="buchungen">
@@ -201,26 +217,34 @@
     <div data-seite="berichte">
       <div class="kopf"><h2 id="bTitel"></h2><select id="bZeit" aria-label="Zeitraum"></select></div>
       <div class="kacheln" id="bKacheln"></div>
-      <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" hidden></p></section>
-      <section class="card" id="bFazit" hidden><p class="fazit"></p></section>
-      <section class="card fluss"><h2>Geldfluss</h2>
-        <p class="gedaempft" style="margin:0 0 8px" id="bFlussHinweis"></p>
-        <div id="bFluss"></div>
-      </section>
-      <section class="card"><h2>Wofür und wo das Geld hinging</h2>
-        <p class="gedaempft" style="margin:0 0 8px">Von innen nach außen: Fest, Alltag, große Posten ab 50 €, dann Kategorie, dann Händler.</p>
-        <div class="kuchen"><div id="bKuchen"></div><div id="bKuchenListe"></div></div>
-      </section>
-      <section class="card"><h2 id="bVerlaufTitel"></h2><div class="legende" id="bVerlaufLegende"></div><div id="bVerlauf"></div></section>
-      <section class="card"><h2 id="bTrendTitel"></h2><div class="legende" id="bTrendLegende"></div><div id="bTrend"></div></section>
-      <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
+      <div class="reihe">
+        <section class="card fluss breit"><h2>Geldfluss</h2>
+          <p class="gedaempft" style="margin:0 0 8px" id="bFlussHinweis"></p>
+          <div id="bFluss"></div>
+        </section>
+        <div class="spalte">
+          <section class="card" id="bFazit" hidden><p class="fazit"></p></section>
+          <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" hidden></p></section>
+          <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
+        </div>
+      </div>
+      <div class="reihe">
+        <section class="card drittel"><h2>Wofür und wo das Geld hinging</h2>
+          <p class="gedaempft" style="margin:0 0 8px">Von innen nach außen: Fest, Alltag, große Posten ab 50 €, dann Kategorie, dann Händler.</p>
+          <div class="kuchen"><div id="bKuchen"></div><div id="bKuchenListe"></div></div>
+        </section>
+        <section class="card drittel"><h2 id="bVerlaufTitel"></h2><div class="legende" id="bVerlaufLegende"></div><div id="bVerlauf"></div></section>
+        <section class="card drittel"><h2 id="bTrendTitel"></h2><div class="legende" id="bTrendLegende"></div><div id="bTrend"></div></section>
+      </div>
     </div>
 
     <div data-seite="depot">
       <div class="kopf"><h2>Depot</h2><span class="gedaempft" id="dStand"></span></div>
       <div class="kacheln" id="dKacheln" hidden></div>
-      <section class="card" id="dVergleich" hidden><h2>Wert und Kaufpreis je Position</h2><div class="legende" id="dLegende"></div><div id="dBalken"></div></section>
-      <section class="card" id="dAnteil" hidden><h2>Verteilung</h2><div id="dStapel"></div></section>
+      <div class="reihe">
+        <section class="card" id="dVergleich" hidden><h2>Wert und Kaufpreis je Position</h2><div class="legende" id="dLegende"></div><div id="dBalken"></div></section>
+        <section class="card" id="dAnteil" hidden><h2>Verteilung</h2><div id="dStapel"></div></section>
+      </div>
       <section class="card"><h2>Positionen</h2><div id="dPositionen"></div></section>
     </div>
 
