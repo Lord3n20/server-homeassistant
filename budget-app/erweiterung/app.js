@@ -321,8 +321,26 @@ function zeigeErgebnis(liste) {
   status("Bitte prüfen und senden. In der Budget-App ordnest du sie danach ein.");
 }
 
+function seiteAbmelden() {
+  const knopf = [...document.querySelectorAll("a, button")].find((e) => e.offsetParent && /^\s*(Abmelden|Ausloggen|Log ?out)\s*$/i.test(e.innerText || e.getAttribute("aria-label") || ""));
+  if (knopf) knopf.click();
+  return !!knopf;
+}
+
+// Nach jedem Abruf abmelden: erst über die Seite (beendet die Sitzung bei der Bank), dann die Cookies der Bank löschen,
+// damit Chromium nicht angemeldet bleibt. Danach den Tab schließen, wenn gewünscht.
 async function tabZu() {
-  if (bankTab && $("#schliessen").checked) { try { await chrome.tabs.remove(bankTab); } catch (e) {} }
+  if (bankTab) {
+    try { if (await inSeite(seiteAbmelden)) await pause(2500); } catch (e) {}
+    if ($("#schliessen").checked) { try { await chrome.tabs.remove(bankTab); } catch (e) {} }
+  }
+  const domains = bank === "tr" ? ["traderepublic.com"] : ["gls-online-filiale.de"];
+  for (const domain of domains) {
+    for (const c of await chrome.cookies.getAll({ domain })) {
+      const host = c.domain.replace(/^\./, "");
+      try { await chrome.cookies.remove({ url: `https://${host}${c.path}`, name: c.name, storeId: c.storeId }); } catch (e) {}
+    }
+  }
   bankTab = null;
 }
 
@@ -339,7 +357,7 @@ $("#anmelden").onsubmit = async (e) => {
     await tabZu();
   } catch (ex) {
     status(ex.message, true);
-    if (bank === "tr") await tabZu();
+    if (bank === "tr" || $("#hilfe").hidden) await tabZu();
   } finally {
     $("#los").disabled = false; $("#codeZeile").hidden = true;
   }
@@ -350,8 +368,10 @@ $("#nochmal").onclick = async () => {
   try { zeigeErgebnis(await glsLesen(await zeitraum())); $("#hilfe").hidden = true; await tabZu(); }
   catch (ex) { status(ex.message, true); }
 };
+$("#abmelden").onclick = async () => { await tabZu(); $("#hilfe").hidden = true; status("Abgemeldet."); };
 $("#zeigen").onclick = () => bankTab && chrome.tabs.update(bankTab, { active: true });
-$("#verwerfen").onclick = () => { gefunden = []; $("#ergebnis").hidden = true; status(""); };
+$("#verwerfen").onclick = async () => {
+  if (bankTab) await tabZu(); gefunden = []; $("#ergebnis").hidden = true; status(""); };
 
 $("#senden").onclick = async () => {
   const url = $("#webhook").value.trim();
