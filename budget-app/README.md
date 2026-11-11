@@ -62,8 +62,8 @@ rutscht in kürzeren Monaten auf den letzten Tag. Pausieren oder Entfernen läss
 ## Bankumsätze (Trade Republic, GLS)
 
 Die Chromium-Erweiterung in `erweiterung/` (entpackt laden) meldet sich auf Knopfdruck selbst bei
-Trade Republic bzw. im GLS-Onlinebanking an: Telefonnummer/VR-NetKey und PIN gibst du dort jedes Mal ein,
-gespeichert wird nichts davon. Bestätigt wird in der TR-App bzw. in SecureGo plus. Die Erweiterung liest
+Trade Republic bzw. im GLS-Onlinebanking an: Telefonnummer/VR-NetKey und PIN gibst du dort ein und kannst sie
+merken lassen (nur im Chromium-Profil, unverschlüsselt in chrome.storage.local). Bestätigt wird in der TR-App bzw. in SecureGo plus. Die Erweiterung liest
 die Umsätze, zeigt sie an und schickt sie nach deinem OK an einen Home-Assistant-Webhook
 (Automation „Budget: Bankumsätze aus der Erweiterung“), der sie an das Werkzeug `bank_einreichen` gibt.
 Im Panel (Reiter „Bank“) ordnest du sie ein; die Kategorie ist nach dem letzten gleichen Empfänger
