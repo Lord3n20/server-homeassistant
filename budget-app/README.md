@@ -13,7 +13,8 @@ erste Ausgabenkategorie mit „Gebühr“ im Namen (am liebsten „…Ordergebü
 ## Übersicht (Board)
 
 Übersicht und Berichte sind ein Reiter: auf großen Bildschirmen (ab 1500 × 760) ein Board ohne Seiten-Scrollen,
-Karten scrollen bei Bedarf in sich; schmal stapelt sich alles. Oben Konten (mit Kachel „Depot“; alles im Depot zählt als erspart) und
+Karten scrollen bei Bedarf in sich; schmal stapelt sich alles. Bis 700 px Breite (Handy) ist alles dichter: Reiter
+umbrechend statt abgeschnitten, Kacheln zweispaltig, Kategorien mit Betrag und Ø in einer Zeile und dem Balken darunter. Oben Konten (mit Kachel „Depot“; alles im Depot zählt als erspart) und
 der Zeitraum („Gesamt“ oder ein Monat) mit Kacheln, darunter Geldfluss (Sankey), Kategorien gegen den Ø aller
 bisherigen Monate (ohne gezeigten und laufenden Monat), Feldkarte (je Kategorie ein Feld, rot über / grün unter Ø),
 Monatsverlauf als eine Kurslinie (Einnahmen − Ausgaben, aufsummiert, grün/rot um null, Ø gestrichelt), Trend, Sparziel und größte Posten (Festes zusammengefasst oben).
@@ -69,7 +70,21 @@ rutscht in kürzeren Monaten auf den letzten Tag. Pausieren oder Entfernen läss
 
 `python3 test_budget.py`
 
-## Bankumsätze (Trade Republic, GLS)
+## Kreditkarte (TF Bank Mastercard Gold)
+
+Die Karte ist ein eigenes Konto vom GnuCash-Typ CREDIT (`Aktiva:TF Bank:Mastercard Gold`; anlegen unter
+Einstellungen → Neues Konto, Art „Kreditkarte“). Sein Saldo ist das, was auf der Karte offen ist: negativ, rot in der
+Kontenkachel, und es geht vom frei Verfügbaren und vom Vermögen ab.
+
+- **Kauf mit der Karte:** Ausgabe mit „Bezahlt von“ = Karte. Sie zählt im Monat des Kaufs (nicht erst mit der Rechnung).
+- **Rechnung bezahlen:** Umbuchung vom Girokonto auf die Karte. Das ist keine Ausgabe, die Karte steht danach wieder bei 0.
+  Kommt die Zahlung später auch über die Karte herein, steht sie dort als „Schon drin“.
+- **Erstattung auf die Karte:** im Reiter Bank die Kategorie wählen; das wird eine negative Ausgabe.
+- Die TF Bank zieht ohne Auftrag nur einen Teilbetrag ein und berechnet auf den Rest Zinsen: die Rechnung immer ganz zahlen
+  (oder in „Meine TF Bank“ die volle Abbuchung einstellen).
+- Claude sieht die Karte nur als Name eines Zahlkontos und kann Bons darauf buchen, aber keinen Saldo.
+
+## Bankumsätze (Trade Republic, GLS, TF Bank)
 
 Die Chromium-Erweiterung in `erweiterung/` (entpackt laden) meldet sich auf Knopfdruck selbst bei
 Trade Republic bzw. im GLS-Onlinebanking an: Telefonnummer/VR-NetKey und PIN gibst du dort ein und kannst sie
@@ -81,6 +96,11 @@ vorausgefüllt, Umsätze, die schon im Buch stehen, kommen als „Schon drin“.
 
 - Trade Republic: Umsätze über die Timeline der Web-App (dieselbe Schnittstelle, die die Seite nutzt).
 - GLS: liest die JSON-Antworten der Umsatzseite; erkennt die Felder selbst und zeigt sie unter Einstellungen an.
+- TF Bank (Kreditkarte, „Meine TF Bank“): Kundennummer der Karte und Geburtsdatum, dann den SMS-Code in der Erweiterung
+  (oder direkt im Bank-Tab) eingeben. Gelesen werden die Antworten von `/api/creditcard/transactions`; vorgemerkte
+  Zahlungen kommen erst, wenn sie gebucht sind. Ob die Bank Käufe positiv oder negativ liefert, ist nicht dokumentiert:
+  Käufe werden als Abgang gezeigt (die Mehrheit), sonst vor dem Senden „Vorzeichen tauschen“. Die Erweiterung liegt
+  entpackt in `~/.local/share/chromium-ext/budget-bank` (mit `konfig.js`).
 - Die Webhook-Adresse steht in `erweiterung/konfig.js` (nicht im Repo, siehe `konfig.beispiel.js`).
 - Doppelt kommt nichts: Schon geschickte Umsätze (auch gebuchte/ignorierte) werden übergangen, und was älter ist als der letzte Abruf dieser Bank minus 5 Tage, nimmt die App gar nicht mehr an. Die Erweiterung holt standardmäßig „seit dem letzten Abruf“.
 - Claude kommt nicht an die Umsätze: Für `bank_einreichen` gibt es kein Skript, die Antwort ist nur die Anzahl.

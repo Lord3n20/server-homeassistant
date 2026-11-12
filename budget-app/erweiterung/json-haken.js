@@ -1,8 +1,8 @@
-// Läuft in der Seite der GLS: hebt JSON-Antworten des Online-Bankings kurz auf,
+// Läuft in der Seite der GLS und der TF Bank: hebt JSON-Antworten des Online-Bankings kurz auf,
 // damit die Erweiterung die Umsätze daraus lesen kann. Nichts davon verlässt die Seite,
 // bis du in der Erweiterung auf Senden drückst.
 (() => {
-  const ablage = (window.__budgetGlsAntworten = []);
+  const ablage = (window.__budgetAntworten = []);
   const merken = (url, text) => {
     try {
       const daten = JSON.parse(text);

@@ -579,6 +579,61 @@ class Bankumsaetze(Basis):
         self.assertEqual(g["konten"]["tr"], VERR)
 
 
+class Kreditkarte(Basis):
+    """TF Bank Mastercard Gold: Kreditkartenkonto (CREDIT), Käufe als Ausgabe, Rechnung als Umbuchung vom Giro."""
+
+    def test_karte_anlegen_kaufen_und_zahlen(self):
+        tf = buch.konto_anlegen("TF Bank", AKTIVA, "ordner")
+        karte = buch.konto_anlegen("Mastercard Gold", tf, "kreditkarte")
+        konten, _ = buch.lesen()
+        self.assertEqual((konten[tf]["typ"], konten[tf]["platzhalter"], konten[karte]["typ"]), ("ASSET", True, "CREDIT"))
+        with self.assertRaises(buch.BuchFehler):
+            buch.konto_anlegen("Karte", AUSG, "kreditkarte")
+        with self.assertRaises(buch.BuchFehler):
+            buch.konto_anlegen("x", AKTIVA, "quatsch")
+        vorher = budget.stand()["vermoegen"]
+        buch.buchen("ausgabe", "2026-11-03", "Hotel Wien", karte, [{"konto": LEB, "betrag": 12000}])
+        stand = budget.stand()
+        salden = {k["pfad"]: k["saldo"] for k in stand["konten"]}
+        self.assertEqual(salden["Aktiva:TF Bank:Mastercard Gold"], -12000)
+        self.assertEqual(stand["vermoegen"], vorher - 12000)
+        self.assertEqual(budget.monat("2026-11")["ausgaben"], 12000)
+        # Die Rechnung vom Giro ausgleichen: keine neue Ausgabe, Karte wieder bei null.
+        buch.buchen("umbuchung", "2026-11-20", "TF Bank Kartenrechnung", GIRO, [{"konto": karte, "betrag": 12000}])
+        stand = budget.stand()
+        self.assertEqual({k["pfad"]: k["saldo"] for k in stand["konten"]}["Aktiva:TF Bank:Mastercard Gold"], 0)
+        self.assertEqual(stand["vermoegen"], vorher - 12000)
+        self.assertEqual(budget.monat("2026-11")["ausgaben"], 12000)
+        # Claude kann die Karte als Zahlkonto nehmen, sieht aber keinen Saldo.
+        url = starten(ausgaben.Handler)
+        roh = anfrage(f"{url}/werkzeug/kategorien_und_zahlkonten", {})[1]
+        self.assertIn("Aktiva:TF Bank:Mastercard Gold", json.loads(roh)["zahlkonten"])
+        self.assertNotIn("12000", roh)
+
+    def test_tf_umsaetze_einreichen_und_doppelte_zahlung(self):
+        tf = buch.konto_anlegen("TF Bank", AKTIVA, "ordner")
+        karte = buch.konto_anlegen("Mastercard Gold", tf, "kreditkarte")
+        self.assertEqual(bank.buchkonten()["tf"], karte)  # automatisch über den Namen
+        self.assertEqual(bank.buchkonten()["gls"], "")
+        # Zahlung schon vom Giro aus gebucht: kommt bei der Karte als „Schon drin“.
+        buch.buchen("umbuchung", "2026-11-20", "TF Bank", GIRO, [{"konto": karte, "betrag": 5000}])
+        self.assertEqual(bank.einreichen("tf", [
+            {"id": "tf-1", "datum": "2026-11-03", "betrag": "-50.00", "name": "Hotel", "zweck": "Kauf"},
+            {"id": "tf-2", "datum": "2026-11-21", "betrag": "50.00", "name": "Zahlung", "zweck": ""}]), 2)
+        kauf, zahlung = bank.offene()
+        self.assertEqual(zahlung["duplikat"]["beschreibung"], "TF Bank")
+        bank.umsatz_buchen(kauf["id"], LEB)
+        bank.umsatz_ignorieren(zahlung["id"])
+        self.assertEqual({k["pfad"]: k["saldo"] for k in budget.stand()["konten"]}["Aktiva:TF Bank:Mastercard Gold"], 0)
+
+    def test_konto_art_ueber_die_api(self):
+        url = starten(budget.Handler)
+        code, roh = anfrage(f"{url}/api/konten", {"name": "TF Bank Mastercard Gold", "eltern": AKTIVA, "art": "kreditkarte"})
+        self.assertEqual(code, 200, roh)
+        konten, _ = buch.lesen()
+        self.assertEqual(konten[json.loads(roh)["id"]]["typ"], "CREDIT")
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=1, exit=False)

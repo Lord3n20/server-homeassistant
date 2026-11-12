@@ -501,7 +501,7 @@ class Handler(BaseHTTPRequestHandler):
                 buch.gebuehr_buchen(daten.get("datum"), daten.get("konto"), gebuehr, daten.get("beschreibung") or "")
             return self.antwort(200, {"id": kennung})
         if pfad == "/api/konten":
-            return self.antwort(200, {"id": buch.konto_anlegen(daten.get("name"), daten.get("eltern"))})
+            return self.antwort(200, {"id": buch.konto_anlegen(daten.get("name"), daten.get("eltern"), daten.get("art") or "konto")})
         if pfad == "/api/wiederkehrend":
             with lock:
                 liste = json_laden(ausgaben.WIEDERKEHREND, [])

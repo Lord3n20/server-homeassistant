@@ -1,4 +1,4 @@
-"""Bankumsätze aus der Chromium-Erweiterung (Trade Republic, GLS) zum Einordnen im Panel.
+"""Bankumsätze aus der Chromium-Erweiterung (Trade Republic, GLS, TF Bank) zum Einordnen im Panel.
 
 Die Erweiterung liest die Umsätze aus dem angemeldeten Online-Banking und schickt sie
 über einen Home-Assistant-Webhook an das Werkzeug bank_einreichen (ausgaben.py). Dort
@@ -15,7 +15,9 @@ from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
 BANK = DATA / "bank.json"
 ALT_ZUGANG = DATA / "bank-zugang.json"  # vom FinTS-Abruf (0.11.0), wird entfernt
-BANKEN = {"tr": "Trade Republic", "gls": "GLS Bank"}
+BANKEN = {"tr": "Trade Republic", "gls": "GLS Bank", "tf": "TF Bank"}
+# Woran das Buchkonto ohne eigene Wahl erkannt wird (Teil des Kontopfads, klein geschrieben).
+ERKENNUNG = {"tr": "trade republic", "gls": "gls", "tf": "tf bank"}
 MAX_UMSAETZE = 3000
 MAX_EINREICHEN = 2000
 UEBERLAPPUNG = 5  # Tage vor dem letzten Abruf, die noch angenommen werden (spät gebuchte Kartenzahlungen)
@@ -30,11 +32,11 @@ def buchkonten(konten=None):
     konten = konten or buch.lesen()[0]
     gewaehlt = json_laden(BANK, {}).get("konten", {})
     ergebnis = {}
-    for kuerzel, name in BANKEN.items():
+    for kuerzel in BANKEN:
         kid = gewaehlt.get(kuerzel)
         if not kid or kid not in konten:
             passend = [k for k in konten.values() if k["typ"] in buch.ZAHLKONTO_TYPEN and not k["platzhalter"]
-                       and name.split()[0].lower() in k["pfad"].lower()]
+                       and ERKENNUNG[kuerzel] in k["pfad"].lower()]
             kid = passend[0]["id"] if len(passend) == 1 else ""
         ergebnis[kuerzel] = kid
     return ergebnis

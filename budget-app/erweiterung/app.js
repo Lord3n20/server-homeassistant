@@ -9,6 +9,7 @@ let bank = "tr", bankTab = null, gefunden = [], codeWartet = null;
 const BANKEN = {
   tr: { name: "Trade Republic", start: "https://app.traderepublic.com/login", kennung: "Telefonnummer" },
   gls: { name: "GLS Bank", start: "https://www.gls-online-filiale.de/services_cloud/portal", kennung: "VR-NetKey oder Alias" },
+  tf: { name: "TF Bank", start: "https://meine.tfbank.de/login", kennung: "Kundennummer (Kreditkarte)", pin: "Geburtsdatum (TT.MM.JJJJ)", domains: ["tfbank.de", "tfbank.se"] },
 };
 
 function status(text, fehler = false) {
@@ -186,7 +187,7 @@ function seiteGlsUmsaetze() {
       x.forEach((e) => sammeln(e, tiefe + 1));
     } else Object.values(x).forEach((v) => sammeln(v, tiefe + 1));
   };
-  for (const a of window.__budgetGlsAntworten || []) sammeln(a.daten);
+  for (const a of window.__budgetAntworten || []) sammeln(a.daten);
   let beste = null;
   for (const liste of listen) {
     const f = flach(liste[0]);
@@ -209,6 +210,83 @@ function seiteGlsUmsaetze() {
     return { datum: isoDatum(f[k.datum]), betrag: betrag.toFixed(2), name: k.name ? f[k.name] : "", zweck: k.zweck ? f[k.zweck] : "" };
   }).filter((p) => p.datum && Number(p.betrag) !== 0);
   return { posten, felder: [Object.keys(flach(liste[0]))], zuordnung: k };
+}
+
+// TF Bank („Meine TF Bank“, React-App): Anmeldung mit Kundennummer, Geburtsdatum und SMS-Code.
+function seiteTfZustand() {
+  const sichtbar = [...document.querySelectorAll("input")].filter((i) => i.offsetParent && !["hidden", "checkbox", "radio"].includes(i.type));
+  const login = location.pathname.startsWith("/login") || location.pathname.startsWith("/auth");
+  const fehler = [...document.querySelectorAll('[role="alert"], .invalid-feedback, .error, [class*="error"]')].map((e) => e.innerText.trim()).filter(Boolean).join(" ").slice(0, 200);
+  return { login, drin: !login && !!document.querySelector("#root")?.children.length && !sichtbar.length, felder: sichtbar.length, fehler };
+}
+
+function seiteTfAnmelden(kundennummer, geburtsdatum) {
+  const felder = [...document.querySelectorAll("input")].filter((i) => i.offsetParent && !["hidden", "checkbox", "radio", "password"].includes(i.type));
+  if (felder.length < 2) return false;
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  const setze = (el, wert) => { el.focus(); setter.call(el, wert); el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); el.dispatchEvent(new Event("blur", { bubbles: true })); };
+  const m = geburtsdatum.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  const datumFeld = felder.find((f) => f.type === "date" || /geburt|birth|date/i.test(f.name + f.id + f.placeholder + (f.getAttribute("aria-label") || ""))) || felder[1];
+  const nummerFeld = felder.find((f) => f !== datumFeld);
+  setze(nummerFeld, kundennummer);
+  setze(datumFeld, datumFeld.type === "date" && m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : geburtsdatum);
+  const knopf = [...document.querySelectorAll("button")].find((b) => b.offsetParent && !b.disabled && /anmelden|einloggen|login|weiter|code|sms/i.test(b.innerText || ""));
+  if (knopf) setTimeout(() => knopf.click(), 200);
+  return true;
+}
+
+function seiteTfCode(code) {
+  const felder = [...document.querySelectorAll("input")].filter((i) => i.offsetParent && !["hidden", "checkbox", "radio"].includes(i.type));
+  if (!felder.length) return false;
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  const eins = (el, wert) => { el.focus(); setter.call(el, wert); el.dispatchEvent(new InputEvent("input", { bubbles: true, data: wert, inputType: "insertText" })); el.dispatchEvent(new Event("change", { bubbles: true })); };
+  if (felder.length >= code.length && felder.every((f) => f.maxLength === 1)) code.split("").forEach((z, i) => eins(felder[i], z));
+  else eins(felder[felder.length - 1], code);
+  const knopf = [...document.querySelectorAll("button")].find((b) => b.offsetParent && /bestätigen|anmelden|einloggen|login|weiter|senden|verify|confirm/i.test(b.innerText || ""));
+  if (knopf) setTimeout(() => knopf.click(), 200);
+  return true;
+}
+
+function seiteTfUmsatzseite() {
+  const ziel = [...document.querySelectorAll("a, button")].find((e) => e.offsetParent && /^(\s*)(Umsätze|Transaktionen|Alle Transaktionen|Kreditkarte|Mastercard)/i.test(e.innerText || ""));
+  if (ziel) ziel.click();
+  return !!ziel;
+}
+
+// Liest die Kartenumsätze aus den mitgeschnittenen Antworten von /api/creditcard/transactions.
+// Vorgemerkte Zahlungen (isBlockedAuthorization) kommen erst, wenn sie gebucht sind.
+function seiteTfUmsaetze() {
+  const posten = [], gesehen = new Set();
+  const sammeln = (x, tiefe = 0) => {
+    if (!x || typeof x !== "object" || tiefe > 6) return;
+    if (Array.isArray(x)) return x.forEach((e) => sammeln(e, tiefe + 1));
+    if ("transactionDate" in x && ("amount" in x || "billingAmount" in x)) { posten.push(x); return; }
+    Object.values(x).forEach((v) => sammeln(v, tiefe + 1));
+  };
+  for (const a of window.__budgetAntworten || []) if (/creditcard\/(paged\/)?transactions/i.test(a.pfad)) sammeln(a.daten);
+  const tag = (t) => {
+    const s = String(t || "");
+    if (!/(Z|[+-]\d\d:?\d\d)$/.test(s)) return s.slice(0, 10);
+    const d = new Date(s);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const liste = [];
+  for (const p of posten) {
+    if (p.isBlockedAuthorization) continue;
+    const roh = typeof p.billingAmount === "number" && (!p.billingCurrency || p.billingCurrency === "EUR") ? p.billingAmount : Number(p.amount);
+    if (!roh || Number.isNaN(roh)) continue;
+    const id = p.id ?? p.transactionId ?? p.transactionNumber ?? p.archiveNumber ?? null;
+    const schluessel = id ?? `${p.transactionDate}|${roh}|${p.description}|${p.bookingDate}`;
+    if (gesehen.has(schluessel)) continue;
+    gesehen.add(schluessel);
+    const name = p.consumerClarity?.merchantResult?.merchantName || p.vendor || p.description || p.transactionTypeUiString || "";
+    liste.push({ id: id != null ? `tf-${id}` : undefined, datum: tag(p.transactionDate), roh, name: String(name), zweck: String(p.description && p.description !== name ? p.description : p.transactionTypeUiString || p.transactionType || "") });
+  }
+  // Ob Käufe positiv oder negativ kommen, ist nicht dokumentiert: Käufe sind fast immer in der Mehrheit,
+  // also werden sie negativ (Abgang von der Karte). Falls es doch falsch herum ist: „Vorzeichen tauschen“.
+  const positiv = liste.filter((p) => p.roh > 0).length;
+  const drehen = positiv > liste.length / 2;
+  return { posten: liste.map(({ roh, ...p }) => ({ ...p, betrag: (drehen ? -roh : roh).toFixed(2) })), antworten: (window.__budgetAntworten || []).length };
 }
 
 // ---------- Abläufe ----------
@@ -292,6 +370,51 @@ async function glsLesen(tage) {
   return r.posten.filter((p) => p.datum >= grenze);
 }
 
+async function tfAblauf(kennung, geburtsdatum, tage) {
+  status("Öffne Meine TF Bank …");
+  await tabOeffnen();
+  const z = await warteAuf(seiteTfZustand, [], 40);
+  if (!z) throw new Error("Die TF-Bank-Seite lädt nicht");
+  if (!z.drin) {
+    const ausgefuellt = await warteAuf(seiteTfAnmelden, [kennung, geburtsdatum], 25);
+    $("#hilfe").hidden = false;
+    status(ausgefuellt
+      ? "Kundennummer und Geburtsdatum eingetragen. Den SMS-Code unten eingeben (oder direkt im Bank-Tab)."
+      : "Anmeldefelder nicht erkannt: bitte im Bank-Tab selbst anmelden („Bank-Tab zeigen“), danach geht es hier weiter.");
+    $("#codeZeile").hidden = false;
+    const ende = Date.now() + 300000;
+    let s;
+    while (Date.now() < ende) {
+      s = await inSeite(seiteTfZustand);
+      if (s?.drin) break;
+      if (codeWartet) { await inSeite(seiteTfCode, codeWartet); codeWartet = null; }
+      await pause(1000);
+    }
+    $("#codeZeile").hidden = true;
+    if (!s?.drin) throw new Error("Anmeldung bei der TF Bank nicht abgeschlossen" + (s?.fehler ? ": " + s.fehler : ""));
+  }
+  status("Angemeldet, lese die Kartenumsätze …");
+  return tfLesen(tage, true);
+}
+
+async function tfLesen(tage, umsehen = false) {
+  let r = null;
+  const ende = Date.now() + 25000;
+  let geklickt = false;
+  while (Date.now() < ende) {
+    r = await inSeite(seiteTfUmsaetze);
+    if (r?.posten?.length) break;
+    if (umsehen && !geklickt && Date.now() > ende - 17000) geklickt = await inSeite(seiteTfUmsatzseite);
+    await pause(1500);
+  }
+  if (!r?.posten?.length) {
+    $("#hilfe").hidden = false;
+    throw new Error(`Keine Kartenumsätze erkannt (${r?.antworten ?? 0} Antworten mitgelesen). Bitte im Bank-Tab die Umsätze der Kreditkarte öffnen und dann „Nochmal lesen“.`);
+  }
+  const grenze = new Date(Date.now() - tage * 86400000).toISOString().slice(0, 10);
+  return r.posten.filter((p) => p.datum >= grenze);
+}
+
 // Gemerkte Anmeldedaten der gewählten Bank eintragen.
 async function loginZeigen() {
   const login = (await chrome.storage.local.get("login_" + bank))["login_" + bank];
@@ -317,6 +440,7 @@ function zeigeErgebnis(liste) {
   gefunden = liste;
   $("#ergebnis").hidden = false;
   $("#ergebnisTitel").textContent = `${liste.length} Umsätze von ${BANKEN[bank].name}`;
+  $("#drehen").hidden = bank !== "tf";
   $("#liste").innerHTML = liste.map((p) => `<tr><td class="gedaempft">${esc(p.datum.slice(8))}.${esc(p.datum.slice(5, 7))}.</td><td>${esc(p.name)}<div class="gedaempft">${esc(String(p.zweck).slice(0, 80))}</div></td><td class="zahl">${eur(p.betrag)}</td></tr>`).join("");
   status("Bitte prüfen und senden. In der Budget-App ordnest du sie danach ein.");
 }
@@ -332,9 +456,11 @@ function seiteAbmelden() {
 async function tabZu() {
   if (bankTab) {
     try { if (await inSeite(seiteAbmelden)) await pause(2500); } catch (e) {}
+    // Die TF-App hält ihre Anmeldung im Speicher der Seite, nicht nur in Cookies.
+    if (bank === "tf") { try { await inSeite(() => { try { sessionStorage.clear(); localStorage.clear(); } catch (e) {} return true; }); } catch (e) {} }
     if ($("#schliessen").checked) { try { await chrome.tabs.remove(bankTab); } catch (e) {} }
   }
-  const domains = bank === "tr" ? ["traderepublic.com"] : ["gls-online-filiale.de"];
+  const domains = BANKEN[bank].domains || (bank === "tr" ? ["traderepublic.com"] : ["gls-online-filiale.de"]);
   for (const domain of domains) {
     for (const c of await chrome.cookies.getAll({ domain })) {
       const host = c.domain.replace(/^\./, "");
@@ -352,7 +478,7 @@ $("#anmelden").onsubmit = async (e) => {
   await loginZeigen();
   $("#los").disabled = true; $("#hilfe").hidden = true; $("#ergebnis").hidden = true;
   try {
-    const liste = bank === "tr" ? await trAblauf(kennung, pin, tage) : await glsAblauf(kennung, pin, tage);
+    const liste = bank === "tr" ? await trAblauf(kennung, pin, tage) : bank === "tf" ? await tfAblauf(kennung, pin, tage) : await glsAblauf(kennung, pin, tage);
     zeigeErgebnis(liste);
     await tabZu();
   } catch (ex) {
@@ -365,11 +491,12 @@ $("#anmelden").onsubmit = async (e) => {
 
 $("#codeSenden").onclick = () => { codeWartet = $("#code").value.trim(); $("#code").value = ""; };
 $("#nochmal").onclick = async () => {
-  try { zeigeErgebnis(await glsLesen(await zeitraum())); $("#hilfe").hidden = true; await tabZu(); }
+  try { zeigeErgebnis(bank === "tf" ? await tfLesen(await zeitraum()) : await glsLesen(await zeitraum())); $("#hilfe").hidden = true; await tabZu(); }
   catch (ex) { status(ex.message, true); }
 };
 $("#abmelden").onclick = async () => { await tabZu(); $("#hilfe").hidden = true; status("Abgemeldet."); };
 $("#zeigen").onclick = () => bankTab && chrome.tabs.update(bankTab, { active: true });
+$("#drehen").onclick = () => zeigeErgebnis(gefunden.map((p) => ({ ...p, betrag: (-Number(p.betrag)).toFixed(2) })));
 $("#verwerfen").onclick = async () => {
   if (bankTab) await tabZu(); gefunden = []; $("#ergebnis").hidden = true; status(""); };
 
@@ -396,6 +523,9 @@ for (const b of document.querySelectorAll(".reiter button")) {
     document.querySelectorAll(".reiter button").forEach((x) => x.setAttribute("aria-pressed", x === b));
     $("#kennungText").textContent = BANKEN[bank].kennung;
     $("#kennung").type = bank === "tr" ? "tel" : "text";
+    $("#pinText").textContent = BANKEN[bank].pin || "PIN";
+    $("#pin").type = bank === "tf" ? "text" : "password";
+    $("#pin").placeholder = bank === "tf" ? "TT.MM.JJJJ" : "";
     loginZeigen();
     zuletztZeigen();
   };

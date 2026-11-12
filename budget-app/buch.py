@@ -290,8 +290,17 @@ def loeschen(buchung_id):
         schreiben(zaehler(text_ohne(text, buchung_id), "transaction", -1))
 
 
-def konto_anlegen(name, eltern_id):
+KONTOARTEN = ("konto", "kreditkarte", "ordner")
+AKTIVA_PASSIVA = ("ASSET", "BANK", "CASH", "CREDIT", "LIABILITY")
+
+
+def konto_anlegen(name, eltern_id, art="konto"):
+    """art: „konto“ (wie das Oberkonto, unter Aktiva ein Bankkonto), „kreditkarte“ (GnuCash-Typ CREDIT, der Saldo
+    ist dann das, was auf der Karte offen ist) oder „ordner“ (Platzhalter unter Aktiva, z. B. für eine Bank)."""
     name = (name or "").strip()
+    art = art or "konto"
+    if art not in KONTOARTEN:
+        raise BuchFehler("Unbekannte Kontoart")
     if not name or ":" in name:
         raise BuchFehler("Kontoname fehlt oder enthält einen Doppelpunkt")
     with lock:
@@ -301,13 +310,22 @@ def konto_anlegen(name, eltern_id):
             raise BuchFehler("Oberkonto nicht gefunden")
         if any(k["eltern"] == eltern_id and k["name"] == name for k in konten.values()):
             raise BuchFehler("Dieses Konto gibt es dort schon")
-        # Unter einem Vermögens-Sammelkonto entsteht ein Bankkonto (außer im Depot), sonst derselbe Typ.
-        typ = "BANK" if eltern["typ"] == "ASSET" and eltern["name"] != "Depot" else eltern["typ"]
+        if art != "konto" and eltern["typ"] not in AKTIVA_PASSIVA:
+            raise BuchFehler("Kreditkarten und Ordner gehören unter Aktiva (oder Fremdkapital)")
+        if art == "kreditkarte":
+            typ = "CREDIT"
+        elif art == "ordner":
+            typ = "ASSET" if eltern["typ"] in ("ASSET", "BANK", "CASH") else "LIABILITY"
+        else:
+            # Unter einem Vermögens-Sammelkonto entsteht ein Bankkonto (außer im Depot), sonst derselbe Typ.
+            typ = "BANK" if eltern["typ"] == "ASSET" and eltern["name"] != "Depot" else eltern["typ"]
         neu = uuid.uuid4().hex
+        slots = ('<act:slots><slot><slot:key>placeholder</slot:key><slot:value type="string">true</slot:value></slot></act:slots>'
+                 if art == "ordner" else "")
         xml = (f'<gnc:account version="2.0.0"><act:name>{escape(name)}</act:name>'
                f'<act:id type="guid">{neu}</act:id><act:type>{typ}</act:type>'
                f"<act:commodity><cmdty:space>CURRENCY</cmdty:space><cmdty:id>EUR</cmdty:id></act:commodity>"
-               f"<act:commodity-scu>100</act:commodity-scu>"
+               f"<act:commodity-scu>100</act:commodity-scu>{slots}"
                f'<act:parent type="guid">{eltern_id}</act:parent></gnc:account>\n')
         text = BUCH.read_text(encoding="utf-8")
         stelle = text.find("<gnc:transaction")
