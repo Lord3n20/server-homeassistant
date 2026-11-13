@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -690,6 +691,96 @@ class Desktop(Basis):
         req = urllib.request.Request(f"{self.url}/api/stand", headers={"Cookie": "budget_sitzung=falsch"})
         with self.assertRaises(urllib.error.HTTPError):
             urllib.request.urlopen(req)
+
+
+class ClaudeDesktop(Basis):
+    def setUp(self):
+        super().setUp()
+        sys.path.insert(0, str(Path(__file__).with_name("desktop")))
+        import claude_mcp
+        self.c = claude_mcp
+        self.konfig = TMP / "Claude" / "claude_desktop_config.json"
+        self.konfig.parent.mkdir()
+        self.konfig.write_text(json.dumps({"mcpServers": {"anderer": {"command": "x"}}, "sonst": 1}))
+        self.alt = claude_mcp.claude_konfigurationen
+        claude_mcp.claude_konfigurationen = lambda: [self.konfig]
+
+    def tearDown(self):
+        self.c.claude_konfigurationen = self.alt
+
+    def rpc(self, schluessel, methode, params=None, kennung=1):
+        return self.c.bearbeiten({"jsonrpc": "2.0", "id": kennung, "method": methode, "params": params or {}}, schluessel)
+
+    def aufruf(self, schluessel, name, argumente=None):
+        r = self.rpc(schluessel, "tools/call", {"name": name, "arguments": argumente or {}})["result"]
+        return r["isError"], r["content"][0]["text"]
+
+    def test_ohne_anmeldung_nur_hinweis(self):
+        init = self.rpc("", "initialize", {"protocolVersion": "2025-06-18"})["result"]
+        self.assertEqual(init["protocolVersion"], "2025-06-18")
+        namen = {w["name"] for w in self.rpc("", "tools/list")["result"]["tools"]}
+        self.assertIn("ausgabe_vorschlagen", namen)
+        self.assertNotIn("bank_einreichen", namen)
+        fehler, text = self.aufruf("irgendwas", "kategorien_und_zahlkonten")
+        self.assertTrue(fehler)
+        self.assertIn("nicht mit Claude verbunden", text)
+        self.assertIsNone(self.c.bearbeiten({"jsonrpc": "2.0", "method": "notifications/initialized"}, ""))
+
+    def test_anmelden_buchen_abmelden(self):
+        s = self.c.anmelden()
+        eintrag = json.loads(self.konfig.read_text())
+        self.assertEqual(eintrag["sonst"], 1)
+        self.assertIn("anderer", eintrag["mcpServers"])
+        args = eintrag["mcpServers"]["budget"]["args"]
+        schluessel = args[args.index("--schluessel") + 1]
+        self.assertTrue(s["angemeldet"])
+        fehler, text = self.aufruf(schluessel, "kategorien_und_zahlkonten")
+        self.assertFalse(fehler, text)
+        self.assertNotIn("GEHEIMDEPOT", text)  # Einnahmekategorien dürfen mit Namen drin sein, das Depot nicht
+        fehler, text = self.aufruf(schluessel, "ausgabe_vorschlagen", {
+            "datum": "2026-11-02", "beschreibung": "Rewe", "zahlkonto": "Girokonto", "bonsumme": 4.5,
+            "positionen": [{"kategorie": "Lebensmittel", "betrag": "4,50", "memo": "Brot"}]})
+        self.assertFalse(fehler, text)
+        vid = json.loads(text)["vorschlag_id"]
+        self.assertEqual(buch.ausgabezeilen("2026-11-02", "2026-11-02"), [])
+        fehler, text = self.aufruf(schluessel, "ausgabe_bestaetigen", {"vorschlag_id": vid})
+        self.assertFalse(fehler, text)
+        self.assertEqual(buch.ausgabezeilen("2026-11-02", "2026-11-02")[0]["gesamt"], 450)
+        fehler, text = self.aufruf(schluessel, "ausgabe_vorschlagen", {"datum": "2026-11-02", "beschreibung": "x",
+                                                                       "zahlkonto": "Girokonto", "positionen": []})
+        self.assertTrue(fehler)
+        self.c.abmelden()
+        self.assertNotIn("budget", json.loads(self.konfig.read_text())["mcpServers"])
+        self.assertTrue(self.aufruf(schluessel, "kategorien_und_zahlkonten")[0])
+
+    def test_stdio_dienst(self):
+        import subprocess
+        self.c.anmelden()
+        args = json.loads(self.konfig.read_text())["mcpServers"]["budget"]["args"]
+        befehl = [sys.executable, str(Path(__file__).with_name("desktop") / "budget_desktop.py"), *args[1:]]
+        eingabe = "\n".join(json.dumps(n) for n in (
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-11-25"}},
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "monatsauswertung", "arguments": {"monat": "2026-10"}}})) + "\n"
+        r = subprocess.run(befehl, input=eingabe.encode(), capture_output=True, timeout=30,
+                           env={**os.environ, "BUDGET_DATA": str(TMP)})
+        zeilen = [json.loads(z) for z in r.stdout.decode().splitlines()]
+        self.assertEqual([z["id"] for z in zeilen], [1, 2], r.stderr.decode())
+        self.assertFalse(zeilen[1]["result"]["isError"], zeilen[1])
+
+    def test_sperre_ueber_prozesse(self):
+        import subprocess
+        code = ("import os,sys,time; sys.path.insert(0, sys.argv[1]); import buch\n"
+                "with buch.lock:\n    print('drin', flush=True); time.sleep(1.5)")
+        p = subprocess.Popen([sys.executable, "-c", code, str(Path(__file__).parent)], stdout=subprocess.PIPE,
+                             env={**os.environ, "BUDGET_DATA": str(TMP)})
+        self.assertEqual(p.stdout.readline().strip(), b"drin")
+        start = time.monotonic()
+        with buch.lock:
+            gewartet = time.monotonic() - start
+        p.wait()
+        p.stdout.close()
+        self.assertGreater(gewartet, 0.8)
 
 
 if __name__ == "__main__":
