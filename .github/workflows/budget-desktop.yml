@@ -46,8 +46,15 @@ jobs:
             --osx-bundle-identifier io.github.lord3n20.budget \
             --add-data panel.html:. --paths . desktop/budget_desktop.py
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" dist/Budget.app/Contents/Info.plist
+          # Nach der Plist-Änderung neu (ad hoc) signieren, sonst gilt die App als beschädigt.
+          codesign --force --deep --sign - dist/Budget.app && codesign --verify --deep --strict dist/Budget.app
           mkdir dmg && cp -R dist/Budget.app dmg/ && ln -s /Applications dmg/Applications
-          hdiutil create -volname Budget -srcfolder dmg -ov -format UDZO "Budget-$VERSION-${{ matrix.ziel }}.dmg"
+          # hdiutil meldet auf den Runnern gelegentlich „Resource busy“: ein paar Versuche.
+          for i in 1 2 3 4 5; do
+            hdiutil create -volname Budget -srcfolder dmg -ov -format UDZO "Budget-$VERSION-${{ matrix.ziel }}.dmg" && break
+            sleep 10
+          done
+          test -f "Budget-$VERSION-${{ matrix.ziel }}.dmg"
 
       - name: Windows (eine EXE)
         if: runner.os == 'Windows'
