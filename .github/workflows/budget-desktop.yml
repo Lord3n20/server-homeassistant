@@ -38,13 +38,15 @@ jobs:
       - run: python -m pip install -r desktop/requirements.txt
       - run: python test_budget.py
       - run: python desktop/icon.py desktop/icon.png
+      - run: |
+          printf '{"version": "%s"}' "$VERSION" > desktop/version.json
 
       - name: macOS (.app im DMG)
         if: runner.os == 'macOS'
         run: |
           pyinstaller --noconfirm --windowed --name Budget --icon desktop/icon.png \
             --osx-bundle-identifier io.github.lord3n20.budget \
-            --add-data panel.html:. --paths . desktop/budget_desktop.py
+            --add-data panel.html:. --add-data desktop/version.json:. --paths . desktop/budget_desktop.py
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" dist/Budget.app/Contents/Info.plist
           # Nach der Plist-Änderung neu (ad hoc) signieren, sonst gilt die App als beschädigt.
           codesign --force --deep --sign - dist/Budget.app && codesign --verify --deep --strict dist/Budget.app
@@ -60,13 +62,13 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           pyinstaller --noconfirm --onefile --windowed --name Budget --icon desktop/icon.png \
-            --add-data panel.html:. --paths . desktop/budget_desktop.py
+            --add-data panel.html:. --add-data desktop/version.json:. --paths . desktop/budget_desktop.py
           mv dist/Budget.exe "Budget-$VERSION-windows.exe"
 
       - name: Linux (AppImage)
         if: runner.os == 'Linux'
         run: |
-          pyinstaller --noconfirm --name budget --add-data panel.html:. --paths . desktop/budget_desktop.py
+          pyinstaller --noconfirm --name budget --add-data panel.html:. --add-data desktop/version.json:. --paths . desktop/budget_desktop.py
           mkdir -p AppDir/usr/bin && cp -R dist/budget/. AppDir/usr/bin/
           printf '#!/bin/sh\nexec "$APPDIR/usr/bin/budget" "$@"\n' > AppDir/AppRun && chmod +x AppDir/AppRun
           printf '[Desktop Entry]\nType=Application\nName=Budget\nComment=Haushaltsbuch\nExec=budget\nIcon=budget\nCategories=Office;Finance;\nTerminal=false\n' > AppDir/budget.desktop
@@ -107,7 +109,9 @@ jobs:
           - **Windows:** `…-windows.exe` starten. Windows SmartScreen warnt, weil das Programm nicht signiert ist: „Weitere Informationen“ → „Trotzdem ausführen“.
           - **Linux:** `…-x86_64.AppImage` ausführbar machen und starten; das Panel öffnet sich im Browser und das Programm endet ein paar Minuten nach dem Schließen des Tabs.
 
-          Ohne Claude-Anbindung und ohne Bank-Erweiterung; alles andere wie im Home-Assistant-Add-on.
+          **Claude:** In Budget unter Einstellungen → Claude „Mit Claude Desktop verbinden“, dann Claude Desktop ganz beenden und neu öffnen. Claude sieht nur Ausgaben, Kategorien und Kontonamen und bucht erst nach deinem OK. Bons vom Handy: in Claude ein Projekt mit der Anweisung aus derselben Karte anlegen, Bons dort hochladen und den Chat später am Rechner in Claude Desktop mit „eintragen“ fortsetzen.
+
+          Ohne Bank-Erweiterung; alles andere wie im Home-Assistant-Add-on. Gespeichert wird weiter als GnuCash-Datei.
           TEXT
           sed -i 's/^          //' notizen.md
           gh release create "$GITHUB_REF_NAME" dateien/* --repo "$GITHUB_REPOSITORY" \

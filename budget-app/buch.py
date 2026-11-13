@@ -34,7 +34,66 @@ ZAHLKONTO_TYPEN = ("BANK", "CASH", "CREDIT")
 VERMOEGEN_TYPEN = ("ASSET", "BANK", "CASH", "STOCK", "MUTUAL", "CREDIT", "LIABILITY", "RECEIVABLE", "PAYABLE")
 ARTEN = ("ausgabe", "einnahme", "umbuchung")
 
-lock = threading.RLock()
+class Sperre:
+    """Wie ein RLock, sperrt beim äußersten Betreten zusätzlich die Datei .sperre im Datenordner.
+
+    So schreiben auch zwei Prozesse nicht gleichzeitig: im Desktop-Programm das Panel und der MCP-Dienst,
+    den Claude Desktop selbst startet.
+    """
+
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._tiefe = 0
+        self._datei = None
+
+    def __enter__(self):
+        self._lock.acquire()
+        self._tiefe += 1
+        if self._tiefe == 1:
+            try:
+                self._datei_sperren()
+            except BaseException:
+                self._tiefe -= 1
+                self._lock.release()
+                raise
+        return self
+
+    def __exit__(self, *_):
+        self._tiefe -= 1
+        if self._tiefe == 0:
+            self._datei_freigeben()
+        self._lock.release()
+
+    def _datei_sperren(self):
+        DATA.mkdir(parents=True, exist_ok=True)
+        self._datei = open(DATA / ".sperre", "a+b")
+        if os.name == "nt":
+            import msvcrt
+            while True:
+                try:
+                    self._datei.seek(0)
+                    msvcrt.locking(self._datei.fileno(), msvcrt.LK_LOCK, 1)
+                    return
+                except OSError:  # LK_LOCK gibt nach etwa zehn Sekunden auf
+                    continue
+        import fcntl
+        fcntl.flock(self._datei.fileno(), fcntl.LOCK_EX)
+
+    def _datei_freigeben(self):
+        try:
+            if os.name == "nt":
+                import msvcrt
+                self._datei.seek(0)
+                msvcrt.locking(self._datei.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self._datei.fileno(), fcntl.LOCK_UN)
+        finally:
+            self._datei.close()
+            self._datei = None
+
+
+lock = Sperre()
 
 
 class BuchFehler(ValueError):

@@ -55,11 +55,20 @@ an. Sie hat keinen Weg zu den Daten des Panels. Claude erreicht sie über den MC
 ## Ohne Home Assistant (Programm für macOS, Windows, Linux)
 
 `desktop/budget_desktop.py` startet denselben Server als Programm: nur auf 127.0.0.1 mit zufälligem Port, geschützt
-durch ein Sitzungs-Cookie, das nur das Programm kennt. Es fehlen die Schnittstelle für Claude und der Reiter Bank.
+durch ein Sitzungs-Cookie, das nur das Programm kennt. Es fehlt der Reiter Bank.
 macOS und Windows zeigen das Panel in einem eigenen Fenster (pywebview, unter Windows mit WebView2); das
 Linux-AppImage öffnet den Browser und beendet sich fünf Minuten, nachdem das Panel zuletzt gefragt hat. Ein zweiter
 Start öffnet das laufende Budget. Daten: macOS `~/Library/Application Support/Budget`, Windows `%APPDATA%\Budget`,
 Linux `~/.local/share/budget` (oder `BUDGET_DATA`).
+
+**Claude** (`desktop/claude_mcp.py`): Unter Einstellungen → Claude meldet „Mit Claude Desktop verbinden“ das Programm
+als lokalen MCP-Dienst in der `claude_desktop_config.json` an (Eintrag `budget`: das Programm selbst mit
+`--mcp --schluessel …`). Claude Desktop startet es dann selbst und spricht über stdin/stdout. Die Werkzeuge sind
+dieselben wie im Add-on (ohne `bank_einreichen`), also nur Ausgaben, Kategorien und Kontonamen. Ohne gültigen
+Schlüssel antwortet jedes Werkzeug nur mit einem Hinweis; „Abmelden“ löscht Schlüssel und Eintrag. Programm und
+MCP-Dienst sind zwei Prozesse; `buch.lock` sperrt darum zusätzlich die Datei `.sperre` im Datenordner. Vom Handy
+aus geht es über ein Claude-Projekt: Bons dort hochladen, den Chat später in Claude Desktop mit „eintragen“
+fortsetzen (Anweisung zum Kopieren steht in der Karte).
 
 Beim ersten Start lässt sich statt einer GnuCash-Datei auch ein leeres Buch anlegen (Girokonto, Bargeld, Depot,
 übliche Kategorien, Anfangsbestand; geht auch im Add-on).

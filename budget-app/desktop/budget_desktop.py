@@ -1,8 +1,9 @@
 """Budget als Programm für macOS, Windows und Linux, ohne Home Assistant.
 
 Derselbe Server wie im Add-on, aber nur auf 127.0.0.1 mit zufälligem Port und einem Sitzungs-Cookie, das nur
-dieses Programm kennt (andere Webseiten im Browser kommen so nicht an die Daten). Ohne die Schnittstelle für
-Claude und ohne den Reiter Bank. Das Fenster kommt von pywebview (macOS/Windows); fehlt es, öffnet sich der
+dieses Programm kennt (andere Webseiten im Browser kommen so nicht an die Daten). Ohne den Reiter Bank.
+Claude kommt über Claude Desktop dran: das startet dieses Programm mit --mcp als MCP-Dienst (claude_mcp.py),
+angemeldet wird unter Einstellungen → Claude. Das Fenster kommt von pywebview (macOS/Windows); fehlt es, öffnet sich der
 Browser, und das Programm beendet sich, wenn das Panel ein paar Minuten nicht mehr gefragt hat.
 
 Daten: macOS ~/Library/Application Support/Budget, Windows %APPDATA%\\Budget, Linux ~/.local/share/budget
@@ -41,6 +42,7 @@ except ImportError:
 import bank  # noqa: E402
 import buch  # noqa: E402
 import budget  # noqa: E402
+import claude_mcp  # noqa: E402
 
 KEKS = "budget_sitzung"
 LEERLAUF = 300  # Sekunden ohne Anfrage, nach denen das Programm im Browser-Betrieb endet
@@ -80,18 +82,78 @@ class DesktopHandler(budget.Handler):
         self.end_headers()
 
     def lesen(self):
-        if urllib.parse.urlsplit(self.path).path == "/api/puls":
+        pfad = urllib.parse.urlsplit(self.path).path
+        if pfad == "/api/puls":
             return self.antwort(200, {"ok": True})
+        if pfad == "/api/claude":
+            return self.antwort(200, claude_mcp.status())
         return super().lesen()
+
+    def anlegen(self):
+        pfad = urllib.parse.urlsplit(self.path).path
+        if pfad == "/api/claude/anmelden":
+            return self.antwort(200, claude_mcp.anmelden())
+        if pfad == "/api/claude/abmelden":
+            return self.antwort(200, claude_mcp.abmelden())
+        return super().anlegen()
 
     def panel(self):
         text = budget.PANEL.read_text(encoding="utf-8")
         text = text.replace("Sie bleibt auf diesem Server, Claude bekommt nur Ausgaben zu sehen.",
                             "Sie bleibt auf diesem Rechner.")
-        zusatz = "<style>#bankReiter { display: none; }</style>"
+        text = text.replace('<div data-seite="einstellungen">', '<div data-seite="einstellungen">' + CLAUDE_KARTE, 1)
+        text = text.replace("</body>", CLAUDE_SKRIPT + "\n</body>", 1)
+        zusatz = "<style>#bankReiter { display: none; } #clJson { white-space: pre-wrap; word-break: break-all; font-size: 0.8rem; }"
+        zusatz += " #clAnweisung { width: 100%; min-height: 7em; font: inherit; }</style>"
         if self.browser:
             zusatz += '<script>setInterval(() => fetch("api/puls").catch(() => {}), 30000);</script>'
         return text.replace("</head>", zusatz + "\n</head>", 1).encode()
+
+
+PROJEKT_ANWEISUNG = (
+    "Kassenbons: Lies jeden Bon (Datum, Händler, Positionen, Summe, wie bezahlt). Hast du die Budget-Werkzeuge "
+    "(Claude Desktop am Rechner), ordne die Kategorien zu, leg einen Vorschlag an und buche nach meinem OK. Hast du "
+    "sie nicht (Handy, Web), schreib den Bon kurz als Liste und vermerke „noch nicht eingetragen“. Sage ich später am "
+    "Rechner „eintragen“, trägst du alle Bons aus diesem Chat ein, die noch nicht eingetragen sind; meldet ein "
+    "Vorschlag ein mögliches Duplikat, frag nach.")
+
+CLAUDE_KARTE = f"""
+      <section class="card" id="claudeKarte">
+        <h2>Claude</h2>
+        <p class="gedaempft" id="clStatus"></p>
+        <p class="gedaempft" id="clWarn"></p>
+        <div><button class="primaer" id="clAn">Mit Claude Desktop verbinden</button> <button id="clAb" hidden>Abmelden</button></div>
+        <details style="margin-top:10px"><summary>Kassenbons vom Handy</summary>
+          <p class="gedaempft">Claude auf dem Handy kommt nicht an Budget. Leg in Claude ein Projekt „Budget“ an, gib ihm diese
+          Anweisung und lad die Bons dort im Chat hoch. Am Rechner denselben Chat in Claude Desktop öffnen und „eintragen“ schreiben.</p>
+          <textarea id="clAnweisung" readonly>{PROJEKT_ANWEISUNG}</textarea></details>
+        <details id="clJsonBox" hidden><summary>Für andere MCP-Programme</summary><pre id="clJson"></pre></details>
+      </section>"""
+
+CLAUDE_SKRIPT = """<script>
+const claudeLaden = sicher(async () => {
+  const s = await api("api/claude");
+  $("#clStatus").textContent = s.angemeldet
+    ? `Verbunden seit ${s.seit}${s.zuletzt ? `, zuletzt benutzt ${s.zuletzt}` : ""}. Fehlt Budget in Claude Desktop, Claude Desktop einmal ganz beenden und neu öffnen.`
+    : "Nicht verbunden. Claude sieht danach nur Ausgaben, Kategorien und Kontonamen, keine Salden und keine Einnahmen. Gebucht wird erst nach deinem OK.";
+  $("#clAn").textContent = s.angemeldet ? "Neu verbinden" : "Mit Claude Desktop verbinden";
+  $("#clAb").hidden = !s.angemeldet;
+  $("#clWarn").textContent = s.warnung || "";
+  $("#clJsonBox").hidden = !s.eintrag;
+  $("#clJson").textContent = s.eintrag ? JSON.stringify(s.eintrag, null, 2) : "";
+});
+$("#clAn").onclick = sicher(async () => {
+  await api("api/claude/anmelden", json("POST", {}));
+  toast("Verbunden. Claude Desktop jetzt ganz beenden und neu öffnen.");
+  await claudeLaden();
+});
+$("#clAb").onclick = sicher(async () => {
+  await api("api/claude/abmelden", json("POST", {}));
+  toast("Abgemeldet");
+  await claudeLaden();
+});
+claudeLaden();
+</script>"""
 
 
 def laufende_instanz():
@@ -145,6 +207,9 @@ def fenster(url):
 
 def main():
     buch.DATA.mkdir(parents=True, exist_ok=True)
+    if "--mcp" in sys.argv:
+        i = sys.argv.index("--schluessel") + 1 if "--schluessel" in sys.argv else 0
+        return claude_mcp.dienst(sys.argv[i] if 0 < i < len(sys.argv) else "")
     schon = laufende_instanz()
     if schon:
         browser_oeffnen(schon)
