@@ -221,6 +221,13 @@
     <h2>Haushaltsbuch importieren</h2>
     <p>Lade deine GnuCash-Datei hoch. Sie bleibt auf diesem Server, Claude bekommt nur Ausgaben zu sehen.</p>
     <input type="file" id="importErst" accept=".gnucash,.xml,.gz" aria-label="GnuCash-Datei">
+    <h2 style="margin-top:18px">Oder neu anfangen</h2>
+    <p class="gedaempft">Ein leeres Buch mit Girokonto, Bargeld und üblichen Kategorien. Trag ein, was heute auf dem Konto und im Portemonnaie ist; alles Weitere legst du später unter Einstellungen an.</p>
+    <form id="neuForm" class="raster">
+      <label>Girokonto heute (€)<input id="neuGiro" inputmode="decimal" placeholder="0,00"></label>
+      <label>Bargeld heute (€)<input id="neuBar" inputmode="decimal" placeholder="0,00"></label>
+      <div style="align-self:end"><button class="primaer">Leeres Buch anlegen</button></div>
+    </form>
   </section>
 
   <div id="app" hidden>
@@ -1281,6 +1288,12 @@ const hochladen = sicher(async (e) => {
   await start();
 });
 $("#importErst").onchange = hochladen;
+$("#neuForm").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  await api("api/neu", json("POST", { giro: $("#neuGiro").value, bargeld: $("#neuBar").value }));
+  toast("Buch angelegt");
+  await start();
+});
 $("#importNeu").onchange = hochladen;
 $("#monat").onchange = sicher(async (e) => { aktMonat = e.target.value; await ladeMonat(); });
 $("#monat2").onchange = sicher(async (e) => { buchMonat = e.target.value; await ladeBuchungen(); });

@@ -6,6 +6,7 @@ import gzip
 import json
 import os
 import shutil
+import sys
 import tempfile
 import threading
 import unittest
@@ -632,6 +633,63 @@ class Kreditkarte(Basis):
         self.assertEqual(code, 200, roh)
         konten, _ = buch.lesen()
         self.assertEqual(konten[json.loads(roh)["id"]]["typ"], "CREDIT")
+
+
+class NeuesBuch(unittest.TestCase):
+    def setUp(self):
+        for f in TMP.iterdir():
+            shutil.rmtree(f) if f.is_dir() else f.unlink()
+
+    def test_leeres_buch_mit_startwerten(self):
+        url = starten(budget.Handler)
+        code, text = anfrage(f"{url}/api/neu", {"giro": "1.234,56", "bargeld": "40"})
+        self.assertEqual(code, 200, text)
+        konten, buchungen = buch.lesen()
+        pfade = {k["pfad"]: k for k in konten.values()}
+        for p in ("Aktiva:Girokonto", "Aktiva:Bargeld", "Ausgaben:Lebensmittel", "Einnahmen:Gehalt", "Eigenkapital:Anfangsbestand"):
+            self.assertIn(p, pfade)
+        stand = budget.stand()
+        salden = {k["pfad"]: k["saldo"] for k in stand["konten"]}
+        self.assertEqual(salden["Aktiva:Girokonto"], 123456)
+        self.assertEqual(salden["Aktiva:Bargeld"], 4000)
+        self.assertEqual(len(buchungen), 1)
+        # Danach läuft alles wie gewohnt; ein zweites Anlegen überschreibt nichts.
+        self.assertEqual(anfrage(f"{url}/api/neu", {})[0], 400)
+        buch.buchen("ausgabe", "2026-11-01", "Bäcker", pfade["Aktiva:Bargeld"]["id"],
+                    [{"konto": pfade["Ausgaben:Lebensmittel"]["id"], "betrag": 350}])
+        self.assertEqual(budget.bericht("2026-11")["gesamt"], 350)
+
+    def test_leeres_buch_ohne_startwerte(self):
+        buch.neu_anlegen()
+        self.assertEqual(buch.lesen()[1], [])
+
+
+class Desktop(Basis):
+    def setUp(self):
+        super().setUp()
+        sys.path.insert(0, str(Path(__file__).with_name("desktop")))
+        import budget_desktop
+        self.d = budget_desktop
+        self.d.DesktopHandler.token = "t" * 40
+        self.url = starten(self.d.DesktopHandler)
+
+    def test_ohne_keks_kein_zugriff(self):
+        self.assertEqual(anfrage(f"{self.url}/api/stand")[0], 403)
+        self.assertEqual(anfrage(f"{self.url}/")[0], 403)
+        self.assertEqual(anfrage(f"{self.url}/start?t=falsch")[0], 403)
+
+    def test_start_setzt_keks_und_panel_ohne_bank(self):
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor())
+        with opener.open(f"{self.url}/start?t={'t' * 40}") as r:
+            panel = r.read().decode()
+        self.assertIn("#bankReiter { display: none; }", panel)
+        self.assertIn("Sie bleibt auf diesem Rechner.", panel)
+        self.assertNotIn("Claude bekommt", panel)
+        with opener.open(f"{self.url}/api/stand") as r:
+            self.assertEqual(r.status, 200)
+        req = urllib.request.Request(f"{self.url}/api/stand", headers={"Cookie": "budget_sitzung=falsch"})
+        with self.assertRaises(urllib.error.HTTPError):
+            urllib.request.urlopen(req)
 
 
 if __name__ == "__main__":

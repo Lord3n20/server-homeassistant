@@ -1,0 +1,107 @@
+# Baut Budget als Programm ohne Home Assistant (macOS-DMG, Windows-EXE, Linux-AppImage).
+# Ein Tag budget-desktop-vX.Y.Z legt daraus ein Release an; von Hand gestartet entstehen nur Artefakte.
+name: Budget Desktop
+
+on:
+  push:
+    tags: ["budget-desktop-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bauen:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, ziel: macos-apple-silicon }
+          - { os: macos-15-intel, ziel: macos-intel }
+          - { os: windows-2025, ziel: windows }
+          - { os: ubuntu-22.04, ziel: linux }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: budget-app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF_NAME" == budget-desktop-v* ]]; then v="${GITHUB_REF_NAME#budget-desktop-v}"
+          else v="$(sed -n 's/^version: "\(.*\)"/\1/p' config.yaml)"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+      - run: python -m pip install -r desktop/requirements.txt
+      - run: python test_budget.py
+      - run: python desktop/icon.py desktop/icon.png
+
+      - name: macOS (.app im DMG)
+        if: runner.os == 'macOS'
+        run: |
+          pyinstaller --noconfirm --windowed --name Budget --icon desktop/icon.png \
+            --osx-bundle-identifier io.github.lord3n20.budget \
+            --add-data panel.html:. --paths . desktop/budget_desktop.py
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" dist/Budget.app/Contents/Info.plist
+          mkdir dmg && cp -R dist/Budget.app dmg/ && ln -s /Applications dmg/Applications
+          hdiutil create -volname Budget -srcfolder dmg -ov -format UDZO "Budget-$VERSION-${{ matrix.ziel }}.dmg"
+
+      - name: Windows (eine EXE)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --name Budget --icon desktop/icon.png \
+            --add-data panel.html:. --paths . desktop/budget_desktop.py
+          mv dist/Budget.exe "Budget-$VERSION-windows.exe"
+
+      - name: Linux (AppImage)
+        if: runner.os == 'Linux'
+        run: |
+          pyinstaller --noconfirm --name budget --add-data panel.html:. --paths . desktop/budget_desktop.py
+          mkdir -p AppDir/usr/bin && cp -R dist/budget/. AppDir/usr/bin/
+          printf '#!/bin/sh\nexec "$APPDIR/usr/bin/budget" "$@"\n' > AppDir/AppRun && chmod +x AppDir/AppRun
+          printf '[Desktop Entry]\nType=Application\nName=Budget\nComment=Haushaltsbuch\nExec=budget\nIcon=budget\nCategories=Office;Finance;\nTerminal=false\n' > AppDir/budget.desktop
+          python -c "from PIL import Image; Image.open('desktop/icon.png').resize((256, 256)).save('AppDir/budget.png')"
+          curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir "Budget-$VERSION-x86_64.AppImage"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.ziel }}
+          path: |
+            budget-app/*.dmg
+            budget-app/*.exe
+            budget-app/*.AppImage
+          if-no-files-found: error
+
+  release:
+    needs: bauen
+    if: startsWith(github.ref, 'refs/tags/budget-desktop-v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dateien
+          merge-multiple: true
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notizen.md <<'TEXT'
+          Budget als Programm, ohne Home Assistant. Die Daten bleiben auf dem Rechner (macOS: `~/Library/Application Support/Budget`, Windows: `%APPDATA%\Budget`, Linux: `~/.local/share/budget`).
+          Beim ersten Start eine GnuCash-Datei hochladen oder ein leeres Buch anlegen.
+
+          - **macOS:** `…-macos-apple-silicon.dmg` (M1 und neuer) oder `…-macos-intel.dmg` öffnen, Budget in „Programme“ ziehen. Die App ist nicht von Apple beglaubigt: beim ersten Öffnen kommt eine Warnung, dann unter Systemeinstellungen → Datenschutz & Sicherheit „Dennoch öffnen“ wählen.
+          - **Windows:** `…-windows.exe` starten. Windows SmartScreen warnt, weil das Programm nicht signiert ist: „Weitere Informationen“ → „Trotzdem ausführen“.
+          - **Linux:** `…-x86_64.AppImage` ausführbar machen und starten; das Panel öffnet sich im Browser und das Programm endet ein paar Minuten nach dem Schließen des Tabs.
+
+          Ohne Claude-Anbindung und ohne Bank-Erweiterung; alles andere wie im Home-Assistant-Add-on.
+          TEXT
+          sed -i 's/^          //' notizen.md
+          gh release create "$GITHUB_REF_NAME" dateien/* --repo "$GITHUB_REPOSITORY" \
+            --title "Budget Desktop ${GITHUB_REF_NAME#budget-desktop-v}" --notes-file notizen.md
