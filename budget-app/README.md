@@ -52,6 +52,23 @@ an. Sie hat keinen Weg zu den Daten des Panels. Claude erreicht sie über den MC
 2. `ha-beispiel.yaml` übernehmen: `rest_command` in die `configuration.yaml`, die Skripte in die `scripts.yaml`.
 3. Die Skripte für Assist freigeben (nichts sonst von dieser App), damit sie im MCP-Server auftauchen.
 
+## Ohne Home Assistant (Programm für macOS, Windows, Linux)
+
+`desktop/budget_desktop.py` startet denselben Server als Programm: nur auf 127.0.0.1 mit zufälligem Port, geschützt
+durch ein Sitzungs-Cookie, das nur das Programm kennt. Es fehlen die Schnittstelle für Claude und der Reiter Bank.
+macOS und Windows zeigen das Panel in einem eigenen Fenster (pywebview, unter Windows mit WebView2); das
+Linux-AppImage öffnet den Browser und beendet sich fünf Minuten, nachdem das Panel zuletzt gefragt hat. Ein zweiter
+Start öffnet das laufende Budget. Daten: macOS `~/Library/Application Support/Budget`, Windows `%APPDATA%\Budget`,
+Linux `~/.local/share/budget` (oder `BUDGET_DATA`).
+
+Beim ersten Start lässt sich statt einer GnuCash-Datei auch ein leeres Buch anlegen (Girokonto, Bargeld, Depot,
+übliche Kategorien, Anfangsbestand; geht auch im Add-on).
+
+Bauen: Tag `budget-desktop-vX.Y.Z` pushen; der Workflow „Budget Desktop“ baut DMG (Apple Silicon und Intel), EXE und
+AppImage mit PyInstaller und legt das Release an. Die Programme sind nicht signiert: macOS will einmal „Dennoch
+öffnen“ (Systemeinstellungen → Datenschutz & Sicherheit), Windows SmartScreen „Trotzdem ausführen“.
+Lokal ausprobieren: `python3 desktop/budget_desktop.py` (ohne pywebview im Browser).
+
 ## Daten
 
 - Buch: `/data/haushaltsbuch.gnucash`, immer unkomprimiert und über „Buch herunterladen“ in GnuCash zu öffnen.

@@ -351,6 +351,52 @@ def importieren(roh):
     return len(konten), len(buchungen)
 
 
+STARTKONTEN = (
+    ("Aktiva", "ASSET", None, True), ("Girokonto", "BANK", "Aktiva", False), ("Bargeld", "CASH", "Aktiva", False),
+    ("Depot", "ASSET", "Aktiva", True),
+    ("Ausgaben", "EXPENSE", None, True),
+    *((n, "EXPENSE", "Ausgaben", False) for n in (
+        "Lebensmittel", "Wohnen", "Strom & Internet", "Mobilität", "Restaurant & Café", "Freizeit", "Kleidung",
+        "Gesundheit", "Abos", "Versicherungen & Gebühren", "Geschenke", "Sonstiges")),
+    ("Einnahmen", "INCOME", None, True),
+    *((n, "INCOME", "Einnahmen", False) for n in ("Gehalt", "Unterstützung", "Sonstige Einnahmen")),
+    ("Eigenkapital", "EQUITY", None, True), ("Anfangsbestand", "EQUITY", "Eigenkapital", False),
+)
+
+
+def neu_anlegen(startwerte=None):
+    """Legt ein leeres Buch mit üblichen Konten an (für alle ohne GnuCash). startwerte: Kontoname -> Cent heute."""
+    slot = '<act:slots><slot><slot:key>placeholder</slot:key><slot:value type="string">true</slot:value></slot></act:slots>'
+    eur = "<act:commodity><cmdty:space>CURRENCY</cmdty:space><cmdty:id>EUR</cmdty:id></act:commodity><act:commodity-scu>100</act:commodity-scu>"
+    ids = {"": uuid.uuid4().hex}
+    konten = [f'<gnc:account version="2.0.0"><act:name>Root Account</act:name><act:id type="guid">{ids[""]}</act:id>'
+              f"<act:type>ROOT</act:type>{eur}</gnc:account>"]
+    for name, typ, eltern, platzhalter in STARTKONTEN:
+        ids[name] = uuid.uuid4().hex
+        konten.append(f'<gnc:account version="2.0.0"><act:name>{escape(name)}</act:name><act:id type="guid">{ids[name]}</act:id>'
+                      f"<act:type>{typ}</act:type>{eur}{slot if platzhalter else ''}"
+                      f'<act:parent type="guid">{ids[eltern or ""]}</act:parent></gnc:account>')
+    splits = [(ids[n], b, "") for n, b in (startwerte or {}).items() if b and n in ("Girokonto", "Bargeld")]
+    start = ""
+    if splits:
+        splits.append((ids["Anfangsbestand"], -sum(b for _, b, _ in splits), ""))
+        start = buchung_xml(uuid.uuid4().hex, date.today(), "Anfangsbestand", splits)
+    ns = " ".join(f'xmlns:{k}="http://www.gnucash.org/XML/{k}"'
+                  for k in ("gnc", "act", "book", "cd", "cmdty", "slot", "split", "trn", "ts"))
+    text = (f'<?xml version="1.0" encoding="utf-8" ?>\n<gnc-v2 {ns}>\n<gnc:count-data cd:type="book">1</gnc:count-data>\n'
+            f'<gnc:book version="2.0.0">\n<book:id type="guid">{uuid.uuid4().hex}</book:id>\n'
+            f'<gnc:count-data cd:type="commodity">1</gnc:count-data>\n<gnc:count-data cd:type="account">{len(konten)}</gnc:count-data>\n'
+            + (f'<gnc:count-data cd:type="transaction">1</gnc:count-data>\n' if start else "")
+            + "<gnc:commodity version=\"2.0.0\"><cmdty:space>CURRENCY</cmdty:space><cmdty:id>EUR</cmdty:id>"
+            "<cmdty:get_quotes/><cmdty:quote_source>currency</cmdty:quote_source><cmdty:quote_tz/></gnc:commodity>\n"
+            + "\n".join(konten) + "\n" + start + "</gnc:book>\n</gnc-v2>\n")
+    with lock:
+        if vorhanden():
+            raise BuchFehler("Es gibt schon ein Haushaltsbuch")
+        schreiben(text)
+    return len(konten), 1 if start else 0
+
+
 # ---------- Sicht aufs Buch ----------
 
 def einordnen(konten, b):

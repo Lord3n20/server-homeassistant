@@ -426,6 +426,9 @@ class Handler(BaseHTTPRequestHandler):
             raise BuchFehler("Die Datei ist zu groß")
         return self.rfile.read(laenge)
 
+    def panel(self):
+        return PANEL.read_bytes()
+
     def erlaubt(self):
         if self.client_address[0] in ERLAUBT:
             return True
@@ -456,7 +459,7 @@ class Handler(BaseHTTPRequestHandler):
         teile = urllib.parse.urlsplit(self.path)
         pfad, q = teile.path, urllib.parse.parse_qs(teile.query)
         if pfad == "/":
-            return self.antwort(200, typ="text/html; charset=utf-8", roh=PANEL.read_bytes())
+            return self.antwort(200, typ="text/html; charset=utf-8", roh=self.panel())
         if pfad == "/api/status":
             return self.antwort(200, {"buch": buch.vorhanden()})
         if pfad == "/api/stand":
@@ -489,6 +492,10 @@ class Handler(BaseHTTPRequestHandler):
             faellige_buchen()
             return self.antwort(200, {"konten": konten, "buchungen": buchungen})
         daten = json.loads(self.koerper() or b"{}")
+        if pfad == "/api/neu":
+            konten, buchungen = buch.neu_anlegen({"Girokonto": cent(daten.get("giro") or 0),
+                                                  "Bargeld": cent(daten.get("bargeld") or 0)})
+            return self.antwort(200, {"konten": konten, "buchungen": buchungen})
         if pfad == "/api/buchungen":
             gebuehr = cent(daten["gebuehr"]) if daten.get("gebuehr") not in (None, "", 0) else 0
             if gebuehr and daten.get("art") != "umbuchung":

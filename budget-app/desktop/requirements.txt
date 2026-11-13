@@ -1,0 +1,5 @@
+# Nur zum Bauen der Programme (das Add-on braucht nichts außer der Standardbibliothek).
+pyinstaller==6.22.3
+pillow==13.0.0
+certifi==2026.10.23
+pywebview==6.2.1; sys_platform != "linux"
