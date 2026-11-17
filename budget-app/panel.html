@@ -126,6 +126,32 @@
   #tip { position: fixed; pointer-events: none; background: var(--text); color: var(--bg); font-size: 0.8rem; padding: 6px 9px; border-radius: 6px; z-index: 6; max-width: 240px; }
   #tip b { font-size: 0.9rem; }
   #tip i { display: inline-block; width: 12px; height: 2px; margin-right: 6px; vertical-align: middle; }
+  /* ---------- Darstellung „Custom“ (Einstellungen → Darstellung): eigene Grundfarben, alles andere wird daraus abgeleitet.
+     Vorgabe ist ein dunkles Schema mit Cyan-Leuchtrahmen; die gewählten Farben setzt der Server als --c-* am <html>. ---------- */
+  :root[data-design="custom"] {
+    --c-bg: #05090d; --c-card: #0b141a; --c-text: #d6eeee; --c-akzent: #00ffff; --c-kontrast: #ff8a1f; --c-krit: #ff3b30;
+    --bg: var(--c-bg); --card: var(--c-card); --feld: color-mix(in srgb, var(--c-card) 88%, var(--c-akzent));
+    --text: var(--c-text); --line: color-mix(in srgb, var(--c-akzent) 22%, var(--c-bg));
+    --muted: color-mix(in srgb, var(--c-text) 50%, var(--line));
+    --accent: var(--c-akzent); --vor: color-mix(in srgb, var(--c-akzent) 37%, var(--c-bg)); --danger: var(--c-krit); --gut: var(--c-akzent);
+    --s1: var(--c-akzent); --s2: var(--c-kontrast); --s3: color-mix(in srgb, var(--c-akzent) 60%, #000);
+    --s4: color-mix(in srgb, var(--c-akzent) 50%, #fff);
+    --glow: color-mix(in srgb, var(--c-akzent) 28%, transparent);
+    color-scheme: dark;
+  }
+  [data-design="custom"] .card, [data-design="custom"] .kachel { border-radius: 12px; border-color: var(--glow);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--c-akzent) 8%, transparent); }
+  [data-design="custom"] .card .kachel { box-shadow: none; border-color: var(--line); }
+  [data-design="custom"] button { color: var(--text); border-color: var(--line); }
+  [data-design="custom"] button:hover { border-color: color-mix(in srgb, var(--c-akzent) 55%, transparent); }
+  [data-design="custom"] button.primaer, [data-design="custom"] button[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--c-akzent) 60%, #000); border-color: var(--accent); color: #000; }
+  [data-design="custom"] .reiter button[aria-selected="true"] { color: var(--accent); text-shadow: 0 0 8px var(--glow); }
+  [data-design="custom"] input, [data-design="custom"] select, [data-design="custom"] textarea { color: var(--text); }
+  [data-design="custom"] .feldkarte .feld { color: var(--text); }
+  [data-design="custom"] h1 { color: var(--accent); text-shadow: 0 0 10px var(--glow); }
+  #farbWahl { margin-top: 12px; }
+  #farbWahl input[type="color"] { padding: 2px; height: 36px; cursor: pointer; }
   [hidden] { display: none !important; }
 
   /* ---------- Board-Look (Vorbild Trading-Software): dicht, dunkel, Kacheln als eigene Felder ---------- */
@@ -349,6 +375,22 @@
     </div>
 
     <div data-seite="einstellungen">
+      <section class="card">
+        <h2>Darstellung</h2>
+        <div class="aktionen" id="designWahl">
+          <button type="button" data-design="standard">Standard</button>
+          <button type="button" data-design="custom">Custom</button>
+        </div>
+        <form id="farbWahl" class="raster" hidden>
+          <label>Hintergrund<input type="color" data-farbe="bg"></label>
+          <label>Flächen<input type="color" data-farbe="card"></label>
+          <label>Text<input type="color" data-farbe="text"></label>
+          <label>Akzent<input type="color" data-farbe="akzent"></label>
+          <label>Kontrast<input type="color" data-farbe="kontrast"></label>
+          <label>Kritisch<input type="color" data-farbe="krit"></label>
+          <div style="align-self:end"><button type="button" id="farbZurueck">Zurücksetzen</button></div>
+        </form>
+      </section>
       <section class="card">
         <h2>Sparziel</h2>
         <form id="zielForm" class="raster">
@@ -1258,6 +1300,7 @@ setInterval(() => { if (!$('[data-seite="depot"]').hidden && !dOffen && !$("#dPo
 
 const einstellungenLaden = sicher(async () => {
   const e = await api("api/einstellungen");
+  designZeigen(e.design, e.farben);
   $("#zBetrag").value = e.sparziel ? eingabe(e.sparziel) : "";
   $("#zDatum").value = e.sparziel_datum || "";
 });
@@ -1265,6 +1308,33 @@ function optionenEltern() {
   $("#kEltern").innerHTML = konten.filter((k) => ["ASSET", "LIABILITY", "EXPENSE", "INCOME"].includes(k.typ))
     .map((k) => `<option value="${k.id}">${esc(k.pfad)}</option>`).join("");
 }
+function designZeigen(d, farben) {
+  const html = document.documentElement;
+  html.dataset.design = d;
+  if (farben) for (const k of FARBNAMEN) html.style.setProperty(`--c-${k}`, farben[k]);
+  $$("#designWahl button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.design === d)));
+  $("#farbWahl").hidden = d !== "custom";
+  const stil = getComputedStyle(html);
+  $$("#farbWahl input").forEach((i) => (i.value = stil.getPropertyValue(`--c-${i.dataset.farbe}`).trim() || "#000000"));
+}
+const FARBNAMEN = ["bg", "card", "text", "akzent", "kontrast", "krit"];
+$$("#designWahl button").forEach((b) => (b.onclick = sicher(async () => {
+  const e = await api("api/einstellungen", json("PUT", { design: b.dataset.design }));
+  designZeigen(e.design, e.farben);
+})));
+let farbTimer;
+$$("#farbWahl input").forEach((i) => (i.oninput = () => {
+  document.documentElement.style.setProperty(`--c-${i.dataset.farbe}`, i.value);
+  clearTimeout(farbTimer);
+  farbTimer = setTimeout(sicher(async () => {
+    await api("api/einstellungen", json("PUT", { farben: Object.fromEntries($$("#farbWahl input").map((x) => [x.dataset.farbe, x.value])) }));
+  }), 400);
+}));
+$("#farbZurueck").onclick = sicher(async () => {
+  const e = await api("api/einstellungen", json("PUT", { farben: null }));
+  for (const k of FARBNAMEN) document.documentElement.style.removeProperty(`--c-${k}`);
+  designZeigen(e.design, e.farben);
+});
 $("#zielForm").onsubmit = sicher(async (e) => {
   e.preventDefault();
   await api("api/einstellungen", json("PUT", { sparziel: $("#zBetrag").value, sparziel_datum: $("#zDatum").value }));

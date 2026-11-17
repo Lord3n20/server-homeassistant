@@ -399,6 +399,30 @@ class Depot(Basis):
         self.assertNotIn("depot", Path(ausgaben.__file__).read_text().replace("Depot", ""))
 
 
+class Darstellung(Basis):
+    def setUp(self):
+        super().setUp()
+        self.url = starten(budget.Handler)
+
+    def test_design_und_farben(self):
+        code, roh = anfrage(f"{self.url}/api/einstellungen")
+        self.assertEqual(json.loads(roh)["design"], "custom")
+        self.assertEqual(anfrage(f"{self.url}/api/einstellungen", {"sparziel": "10", "sparziel_datum": ""}, "PUT")[0], 200)
+        self.assertEqual(anfrage(f"{self.url}/api/einstellungen", {"design": "standard"}, "PUT")[0], 200)
+        self.assertEqual(anfrage(f"{self.url}/api/einstellungen", {"farben": {"akzent": "#123456"}}, "PUT")[0], 200)
+        self.assertEqual(anfrage(f"{self.url}/api/einstellungen", {"design": "bunt"}, "PUT")[0], 400)
+        self.assertEqual(anfrage(f"{self.url}/api/einstellungen", {"farben": {"akzent": "red;x"}}, "PUT")[0], 400)
+        self.assertEqual(anfrage(f"{self.url}/api/einstellungen", {"farben": {"fremd": "#000000"}}, "PUT")[0], 400)
+        e = json.loads(anfrage(f"{self.url}/api/einstellungen")[1])
+        self.assertEqual((e["design"], e["farben"], e["sparziel"]), ("standard", {"akzent": "#123456"}, 1000))
+        seite = anfrage(f"{self.url}/")[1]
+        self.assertIn('data-design="standard" style="--c-akzent: #123456;"', seite)
+        anfrage(f"{self.url}/api/einstellungen", {"sparziel": "", "sparziel_datum": ""}, "PUT")
+        self.assertEqual(json.loads(anfrage(f"{self.url}/api/einstellungen")[1])["farben"], {"akzent": "#123456"})
+        anfrage(f"{self.url}/api/einstellungen", {"farben": None}, "PUT")
+        self.assertIsNone(json.loads(anfrage(f"{self.url}/api/einstellungen")[1])["farben"])
+
+
 class Panel(Basis):
     def test_bericht_zahlen(self):
         buch.json_speichern(ausgaben.WIEDERKEHREND, [

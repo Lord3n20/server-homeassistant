@@ -24,6 +24,13 @@ Konto“, das Sparziel misst sich am Gesamtvermögen bzw. am ganzen „Übrig“
 haben Vorschläge eine Kategorie, ist der Teil dort gestreift markiert. Claude liefert
 nur ein kurzes Fazit und die Sparvorschläge, die Sparquote und der Vergleich mit den Einnahmen entstehen nur im Panel.
 
+## Darstellung
+
+Einstellungen → Darstellung: „Standard“ (hell/dunkel nach System) oder „Custom“ mit eigenen Grundfarben (Hintergrund,
+Flächen, Text, Akzent, Kontrast, Kritisch); Linien, gedämpfter Text und Leuchtrahmen werden daraus abgeleitet.
+Vorgabe für Custom ist ein dunkles Schema mit Cyan-Akzent. Das Add-on startet mit „Custom“, das Desktop-Programm mit
+„Standard“. Gespeichert in `einstellungen.json` (`design`, `farben`), der Server setzt beides schon beim Ausliefern.
+
 ## Depot
 
 Im Reiter „Depot“ trägst du je Position ISIN, Stückzahl und durchschnittlichen Kaufkurs ein. Das Panel zeigt dann den

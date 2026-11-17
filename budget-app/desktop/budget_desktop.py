@@ -42,6 +42,8 @@ except ImportError:
 import bank  # noqa: E402
 import buch  # noqa: E402
 import budget  # noqa: E402
+
+budget.DESIGN_STANDARD = "standard"  # eigene Farben nur auf Wunsch (Einstellungen → Darstellung)
 import claude_mcp  # noqa: E402
 
 KEKS = "budget_sitzung"
@@ -98,7 +100,7 @@ class DesktopHandler(budget.Handler):
         return super().anlegen()
 
     def panel(self):
-        text = budget.PANEL.read_text(encoding="utf-8")
+        text = budget.mit_design(budget.PANEL.read_text(encoding="utf-8"))
         text = text.replace("Sie bleibt auf diesem Server, Claude bekommt nur Ausgaben zu sehen.",
                             "Sie bleibt auf diesem Rechner.")
         text = text.replace('<div data-seite="einstellungen">', '<div data-seite="einstellungen">' + CLAUDE_KARTE, 1)

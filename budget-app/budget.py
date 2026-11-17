@@ -23,6 +23,9 @@ import depot
 from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
 PANEL = Path(__file__).with_name("panel.html")
+DESIGNS = ("custom", "standard")
+DESIGN_STANDARD = "custom"  # Darstellung ohne gespeicherte Wahl; das Desktop-Programm setzt "standard"
+FARBNAMEN = ("bg", "card", "text", "akzent", "kontrast", "krit")  # eigene Farben für „Custom“ (Vorgaben im Panel-CSS)
 PORT = int(os.environ.get("BUDGET_PORT", "8099"))
 AUSGABEN_PORT = int(os.environ.get("BUDGET_AUSGABEN_PORT", "8098"))
 # Nur das Ingress-Gateway des Supervisors darf zugreifen (lokal zum Testen auch 127.0.0.1).
@@ -402,6 +405,20 @@ def positionen_lesen(daten):
 
 # ---------- HTTP ----------
 
+
+def design():
+    e = json_laden(EINSTELLUNGEN, {})
+    d = e.get("design")
+    return {"design": d if d in DESIGNS else DESIGN_STANDARD, "farben": e.get("farben") or None}
+
+
+def mit_design(text):
+    """Setzt Darstellung und eigene Farben schon beim Ausliefern, damit nichts aufblitzt."""
+    d = design()
+    stil = "".join(f"--c-{k}: {v}; " for k, v in (d["farben"] or {}).items())
+    return text.replace('<html lang="de">', f'<html lang="de" data-design="{d["design"]}" style="{stil.strip()}">', 1)
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
@@ -427,7 +444,7 @@ class Handler(BaseHTTPRequestHandler):
         return self.rfile.read(laenge)
 
     def panel(self):
-        return PANEL.read_bytes()
+        return mit_design(PANEL.read_text(encoding="utf-8")).encode()
 
     def erlaubt(self):
         if self.client_address[0] in ERLAUBT:
@@ -479,7 +496,7 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "/api/bericht":
             return self.antwort(200, bericht(q.get("k", ["gesamt"])[0]))
         if pfad == "/api/einstellungen":
-            return self.antwort(200, json_laden(EINSTELLUNGEN, {}))
+            return self.antwort(200, {**json_laden(EINSTELLUNGEN, {}), **design()})
         if pfad == "/api/export":
             return self.antwort(200, typ="application/octet-stream", roh=buch.BUCH.read_bytes(), kopf={
                 "Content-Disposition": 'attachment; filename="haushaltsbuch.gnucash"'})
@@ -556,10 +573,24 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "/api/bank/einstellungen":
             bank.einstellungen_speichern(daten)
             return self.antwort(200, {"ok": True})
+        if pfad == "/api/einstellungen" and ("design" in daten or "farben" in daten):
+            e = json_laden(EINSTELLUNGEN, {})
+            if "design" in daten:
+                if daten["design"] not in DESIGNS:
+                    return self.fehler(400, "Unbekannte Darstellung")
+                e["design"] = daten["design"]
+            if "farben" in daten:
+                f = daten["farben"] or {}
+                if not isinstance(f, dict) or any(k not in FARBNAMEN or not re.fullmatch(r"#[0-9a-fA-F]{6}", str(v))
+                                                  for k, v in f.items()):
+                    return self.fehler(400, "Ungültige Farben")
+                e["farben"] = f or None
+            json_speichern(EINSTELLUNGEN, e)
+            return self.antwort(200, design())
         if pfad == "/api/einstellungen":
             ziel = cent(daten["sparziel"]) if daten.get("sparziel") not in (None, "") else 0
             termin = buch.tag(daten["sparziel_datum"]).isoformat() if daten.get("sparziel_datum") else ""
-            json_speichern(EINSTELLUNGEN, {"sparziel": ziel, "sparziel_datum": termin})
+            json_speichern(EINSTELLUNGEN, {**json_laden(EINSTELLUNGEN, {}), "sparziel": ziel, "sparziel_datum": termin})
             return self.antwort(200, {"ok": True})
         self.fehler(404, "Nicht gefunden")
 
