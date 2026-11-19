@@ -80,6 +80,7 @@ Echtzeit (gtfs.de, CC BY-SA 4.0) wird nur abgerufen, wenn Anfragen kommen, höch
 | 0.1.53 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.53` @sha256:cbceeaef098d097e39cb7bf001c21f09d41a8cf9572621c9110341a9eb091f35 — Tempo je Belag (`belag_kmh`) wählt die schnellste Route, `/v1/messung` für den Messgang, D-44 |
 | 0.1.54 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.54` @sha256:51ead6d2ad59a2c6f82451a463b2e97c7e23838a13e3238decb602bf0ecc24d7 — Fahrt-Erkennung am Fahrplan (`/v1/fahrten`), D-46 |
 | 0.1.56 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.56` @sha256:28b605fb891c1c1f17b8d8f0e79965d6f02b243493669b0379b584a5bad59e61 — /v1/app gibt den Update-Hinweis weiter, D-49 |
+| 0.1.57 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.57` @sha256:cc3c7fff5badf6aead589b64cc8bec3edf91e99d6d7f55e08ce468b1062edeb4 — Bummelrunde: Bewertungen der Studentenverbindungen (`/v1/bummel`, `/data/bummel.json`), D-51 |
 | 0.1.55 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.55` @sha256:e5cbf3de5522fe9557247b82c81c8c65726b05e5f9171bb4171f95767e1064d4 — Fahrt-Erkennung rechnet die Streckenlänge nur einmal, D-48 |
 | 0.1.45 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.45` @sha256:0920ad46579cf9c3fdf861b1c8c2602bc7f0fcb81a729652b1d45a522a898066 — Selbstupdate der App: `/v1/app`, `/v1/app/apk` (Option `app`, Ablage im Add-on-Ordner) |
 | 0.1.38 | `ghcr.io/lord3n20/schnellweg-routing-core:0.1.38` @sha256:1cf4345bb9b6d8ccea930291af3d7c4803656fd515c9e9ec8752377b025c2891 — Manövertyp und Stau-Verlauf für die Fahransicht (D-40) |
