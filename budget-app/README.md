@@ -57,8 +57,9 @@ Läuft auf dem Server, nichts verlässt ihn. Ohne die App (oder im Desktop-Progr
 - **Monatsbericht:** ab der Nacht zum 1. (bis zum 7. nachgeholt, neuer Versuch nach 6 Stunden) für den Vormonat. Anders als
   Claude bekommt die lokale KI auch Einnahmen, Kontostände, Sparziel und die Depotpositionen (Wert, Anteil,
   Gewinn seit Kauf) und darf Depot-Tipps geben (Enzo 20.11.). Mit der App „Suche (SearXNG)“
-  holt die App vorher aktuelle Fakten aus dem Netz (Tagesgeldzinsen, EZB-Leitzins, Inflation, je Depotposition Kosten
-  zur ISIN); in die Suche gehen nur diese allgemeinen Fragen und die ISINs, nie Beträge. Er darf Stunden brauchen: erst ein Entwurf, dann prüft die KI ihn in einem zweiten Durchgang gegen die
+  holt die App vorher aktuelle Fakten aus dem Netz (Tagesgeldzinsen, EZB-Leitzins, Inflation, je Depotposition Kennzahlen
+  und die Nachrichten des Monats); in die Suche gehen nur diese allgemeinen Fragen, Namen und ISINs, nie Beträge. Daraus
+  schreibt die KI ein kurzes Depot-Update, im Fazit unter „Depot & Nachrichten“. Er darf Stunden brauchen: erst ein Entwurf, dann prüft die KI ihn in einem zweiten Durchgang gegen die
   Daten und die Regeln. Sie bekommt dafür auch die Händler je Kategorie, die Sparvorschläge des Vormonats, einen Rückblick über
   12 Monate und die letzten drei Fazits (damit sich Tipps und Rezepte nicht wiederholen). Bessere Tipps über Rückmeldung: 👍/👎 an jedem
   Sparvorschlag im Board und „Hinweise an die lokale KI“ unter Einstellungen (Ziele, was gesetzt ist) gehen in jeden

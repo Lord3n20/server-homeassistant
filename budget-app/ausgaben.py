@@ -302,7 +302,7 @@ def w_bericht(a):
     return {"ok": True}
 
 
-def bericht_speichern(monat, text, roh, lokal=False):
+def bericht_speichern(monat, text, roh, lokal=False, zusatz=None):
     """Bericht von Claude oder (lokal=True) von der lokalen KI; der jeweils andere bleibt erhalten."""
     text = text.strip()
     if not re.fullmatch(r"\d{4}-((0[1-9]|1[0-2])|W(0[1-9]|[1-4]\d|5[0-3]))", monat) or not text:
@@ -330,6 +330,8 @@ def bericht_speichern(monat, text, roh, lokal=False):
             berichte = {k: v for k, v in berichte.items() if "W" not in k}
         alt = berichte.get(monat) or {}
         neu = {"text": text, "vorschlaege": vorschlaege, "erstellt": time.strftime("%Y-%m-%d %H:%M")}
+        if lokal:
+            neu.update(zusatz or {})  # weitere Teile, die nur die lokale KI schreibt
         if lokal:
             berichte[monat] = {**alt, "lokal": neu}
         else:

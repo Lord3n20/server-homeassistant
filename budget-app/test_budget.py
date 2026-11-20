@@ -686,7 +686,8 @@ class FalscheKI:
                                       for i, z in enumerate(nutzer.splitlines()))
                 else:
                     text = ('<think>rechnen …</think>{"fazit": "GEHEIMFAZIT lokal", "vorschlaege": '
-                            '[{"titel": "Weniger Snacks", "betrag": 15, "kategorie": "Lebensmittel"}]}')
+                            '[{"titel": "Weniger Snacks", "betrag": 15, "kategorie": "Lebensmittel"}], '
+                            '"depot": "Nichts Wichtiges."}')
                 roh = json.dumps({"choices": [{"message": {"content": text}}]}).encode()
                 self.send_response(200)
                 self.send_header("Content-Length", str(len(roh)))
@@ -806,7 +807,7 @@ class BankAutomatik(Basis):
         self.assertIn("Vermögen:", FalscheKI.anfragen[-1][1])
         self.assertEqual(budget.stand()["vorschlaege"][0]["titel"], "Weniger Snacks")
         d = budget.bericht("2026-11")
-        self.assertEqual((d["text"], d["text_lokal"]), ("GEHEIMFAZIT lokal", ""))
+        self.assertEqual((d["text"], d["text_lokal"], d["depot_text"]), ("GEHEIMFAZIT lokal", "", "Nichts Wichtiges."))
         self.assertEqual(d["vorschlaege"][0]["kategorie"], "Ausgaben:Lebensmittel")
         # Claudes Bericht kommt dazu, der lokale bleibt daneben.
         ausgaben.w_bericht({"monat": "2026-11", "text": "Von Claude", "vorschlaege": []})
