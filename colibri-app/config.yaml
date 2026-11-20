@@ -1,6 +1,6 @@
 name: "KI (colibri)"
 description: "Lokale KI für die Budget-App: Qwen3.6-35B über colibri, stark gedrosselt, nur im App-Netz erreichbar"
-version: "0.1.0"
+version: "0.1.1"
 slug: "colibri"
 arch:
   - amd64
@@ -13,7 +13,7 @@ map:
 environment:
   TZ: "Europe/Berlin"
 options:
-  ram_reserve_gb: 2.0
+  ram_reserve_gb: 1.5
   threads: 2
   experten_je_schicht: 4
   leerlauf_minuten: 10

@@ -15,7 +15,7 @@ Qwen3.6-35B-A3B (Apache-2.0) als GGUF `UD-IQ3_XXS` von unsloth (13,2 GB). Erreic
 
 | Option | Vorgabe | Wirkung |
 |---|---|---|
-| `ram_reserve_gb` | 2.0 | Start nur, wenn danach noch so viel frei bleibt (Bedarf ≈ 2,8 GB). Fällt der freie RAM während des Laufs unter 60 % davon, wird die Engine sofort beendet und die Anfrage scheitert. |
+| `ram_reserve_gb` | 1.5 | Start nur, wenn danach noch so viel frei bleibt (Bedarf ≈ 2,8 GB). Fällt der freie RAM während des Laufs unter 60 % davon, wird die Engine sofort beendet und die Anfrage scheitert. |
 | `threads` | 2 | CPU-Threads der Engine (dazu `nice 19`, `ionice idle`). |
 | `experten_je_schicht` | 4 | Experten pro Schicht im RAM; der Rest kommt bei Bedarf von der SSD (nur Lesen). Mehr = schneller, aber mehr RAM (≈ 4,3 MB je Schritt über 40 Schichten). |
 | `leerlauf_minuten` | 10 | Danach wird die Engine beendet. |
