@@ -48,13 +48,15 @@ Läuft auf dem Server, nichts verlässt ihn. Ohne die App (oder im Desktop-Progr
   (abschaltbar mit „Sicheres automatisch buchen“): Umbuchungen zwischen den eigenen Banken (Ab- und Zugang mit
   gleichem Betrag, höchstens 5 Tage auseinander, Name oder Zweck nennt die andere Bank; sonst nur als „Gegenstück“
   angezeigt), Umsätze, die genau so schon im Buch stehen (höchstens 2 Tage daneben), und bekannte Empfänger, deren
-  letzte Buchungen alle dieselbe Kategorie hatten. Für neue Empfänger wählt die KI die Kategorie (wird dann ebenfalls
+  letzte Buchungen alle dieselbe Kategorie hatten (auch mit anderer Filial- oder Kassennummer, dann ab zwei Buchungen;
+  nie bei Zahldiensten wie PayPal oder Klarna, dort entscheidet die KI anhand des Zwecks). Für neue Empfänger wählt die KI die Kategorie (wird dann ebenfalls
   automatisch gebucht), und sie prüft, ob ein ähnlicher Eintrag im Buch (anderer Betrag wie Trinkgeld, anderes
   Zahlkonto, ein paar Tage daneben) derselbe Einkauf ist; dann bleibt der Umsatz zum Abhaken mit „Schon drin“ stehen.
   Bucht man eine Seite eines Gegenstücks als Umbuchung auf die andere Bank, ist das Gegenstück mit erledigt.
   Zurückgenommenes wird nicht noch einmal automatisch gebucht.
 - **Monatsbericht:** ab der Nacht zum 1. (bis zum 7. nachgeholt, neuer Versuch nach 6 Stunden) für den Vormonat. Anders als
-  Claude bekommt die lokale KI auch Einnahmen, Kontostände, Depot und Sparziel. Er darf Stunden brauchen. Gibt es auch einen Bericht von Claude, steht
+  Claude bekommt die lokale KI auch Einnahmen, Kontostände, Depot und Sparziel. Er darf Stunden brauchen: erst ein Entwurf, dann prüft die KI ihn in einem zweiten Durchgang gegen die
+  Daten und die Regeln. Sie bekommt dafür auch die Händler je Kategorie und die Sparvorschläge des Vormonats. Gibt es auch einen Bericht von Claude, steht
   der lokale im Fazit unter „Lokale KI“; die Sparvorschläge kommen dann von Claude. Die Anweisung steht in der
   Konfiguration der App (`bericht_anweisung`); das Antwortformat (JSON) hängt die App selbst an.
 - Beim Einordnen bekommt die KI Umsätze, Kategorien und frühere Zuordnungen, keine Salden; den Monatsbericht schreibt sie mit allen Zahlen. Nichts davon geht an Claude.
