@@ -681,6 +681,8 @@ class FalscheKI:
                 if "Buchstabe" in system:
                     text = "\n".join(f"{i + 1}: {'a' if 'EXTRABLATT' in z else 'keine'}"
                                       for i, z in enumerate(l for l in nutzer.splitlines() if "Umsatz:" in l))
+                elif "Depot-Update" in system:
+                    text = "<think>…</think>Ruhige Woche, nichts Wichtiges."
                 elif "Kategorie" in system and "Frühere" in system:
                     text = "\n".join(f"{i + 1}: {'Ausgaben:Lebensmittel' if 'Markt' in z else 'Erfunden'}"
                                       for i, z in enumerate(nutzer.splitlines()))
@@ -789,6 +791,23 @@ class BankAutomatik(Basis):
         self.ki.bank_einordnen()
         self.assertEqual(len(bank.offene()), 1)
         self.assertEqual(bank.automatisch_erledigt(), [])
+
+    def test_depot_update_sonntags(self):
+        sonntag = datetime(2026, 11, 22, 4)
+        self.assertFalse(self.ki.depot_update_faellig(datetime(2026, 11, 21, 4)))
+        self.assertTrue(self.ki.depot_update_faellig(sonntag))
+        self.assertFalse(self.ki.depot_update_erstellen())  # ohne Depot nichts
+        orig = self.ki.depot_zeilen
+        self.ki.depot_zeilen = lambda: ["Depot: Wert 100.00 EUR. Positionen:", "- Test ETF (IE00TEST): 100.00 EUR"]
+        try:
+            self.assertTrue(self.ki.depot_update_erstellen())
+        finally:
+            self.ki.depot_zeilen = orig
+        self.assertIn("Depot-Update", FalscheKI.anfragen[-1][0])
+        url = starten(budget.Handler)
+        self.assertTrue(json.loads(anfrage(f"{url}/api/depot")[1])["update"]["text"])
+        jahr, woche, _ = date.today().isocalendar()
+        self.assertEqual(json.loads(anfrage(f"{url}/api/depot")[1])["update"]["woche"], f"{jahr}-W{woche:02d}")
 
     def test_lokaler_monatsbericht(self):
         buch.buchen("ausgabe", "2026-11-03", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])

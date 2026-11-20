@@ -66,6 +66,8 @@ Läuft auf dem Server, nichts verlässt ihn. Ohne die App (oder im Desktop-Progr
   folgenden Bericht ein (`rueckmeldung.json`, `einstellungen.json`). Gibt es auch einen Bericht von Claude, steht
   der lokale im Fazit unter „Lokale KI“; die Sparvorschläge kommen dann von Claude. Die Anweisung steht in der
   Konfiguration der App (`bericht_anweisung`); das Antwortformat (JSON) hängt die App selbst an.
+- **Depot-Update jeden Sonntag** (ab 3 Uhr, einmal je Woche): Nachrichten der Woche und Kennzahlen je Position über die
+  Suche, daraus 3 bis 6 Sätze; steht oben im Reiter Depot (`depot_update.json`, nur das neueste).
 - Beim Einordnen bekommt die KI Umsätze, Kategorien und frühere Zuordnungen, keine Salden; den Monatsbericht schreibt sie mit allen Zahlen. Nichts davon geht an Claude.
 
 ## Was Claude sieht

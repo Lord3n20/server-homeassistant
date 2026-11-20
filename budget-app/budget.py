@@ -501,7 +501,7 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "/api/vorschlaege":
             return self.antwort(200, {"liste": [v for v in ausgaben.vorschlaege_laden() if v["status"] == "offen"]})
         if pfad == "/api/depot":
-            return self.antwort(200, depot.uebersicht())
+            return self.antwort(200, {**depot.uebersicht(), "update": json_laden(lokal_ki.DEPOT_UPDATE, {})})
         if pfad == "/api/bank":
             return self.antwort(200, {**bank.einstellungen_lesen(), "umsaetze": bank.offene(),
                                       "automatisch": bank.automatisch_erledigt(), "ki": lokal_ki.an(), "ki_status": lokal_ki.status()})
