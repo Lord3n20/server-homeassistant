@@ -117,10 +117,15 @@ def stand():
                 "fehlt": max(0, e["sparziel"] - vermoegen), "pro_monat": max(0, e["sparziel"] - vermoegen) // monate}
     monate = sorted({b["datum"][:7] for b in buchungen if any(konten[s["konto"]]["typ"] in ("EXPENSE", "INCOME") for s in b["splits"])})
     berichte = json_laden(ausgaben.BERICHTE, {})
-    mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and v.get("vorschlaege"))
+    mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and vorschlaege_von(v))
     quelle = mit_vorschlaegen[-1] if mit_vorschlaegen else ""
     return {"konten": liste, "vermoegen": vermoegen, "erspartes": erspartes, "ziel": ziel, "monate": monate,
-            "vorschlaege": berichte.get(quelle, {}).get("vorschlaege", []), "vorschlaege_aus": quelle}
+            "vorschlaege": vorschlaege_von(berichte.get(quelle, {})), "vorschlaege_aus": quelle}
+
+
+def vorschlaege_von(v):
+    """Sparvorschläge eines Berichts: die von Claude, sonst die der lokalen KI."""
+    return v.get("vorschlaege") or (v.get("lokal") or {}).get("vorschlaege") or []
 
 
 def kontenliste():
@@ -379,9 +384,6 @@ def bericht(kennung):
     text = {} if gesamt else berichte.get(kennung) or {}
     lokal = text.get("lokal") or {}
 
-    def vorschlaege_von(v):
-        # Claudes Vorschläge, sonst die der lokalen KI.
-        return v.get("vorschlaege") or (v.get("lokal") or {}).get("vorschlaege") or []
     # Die Gesamtübersicht zeigt die Sparvorschläge aus dem neuesten Monatsbericht.
     mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and vorschlaege_von(v))
     quelle = (mit_vorschlaegen[-1] if mit_vorschlaegen else "") if gesamt else kennung

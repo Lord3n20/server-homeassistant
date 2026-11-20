@@ -53,11 +53,11 @@ Läuft auf dem Server, nichts verlässt ihn. Ohne die App (oder im Desktop-Progr
   Zahlkonto, ein paar Tage daneben) derselbe Einkauf ist; dann bleibt der Umsatz zum Abhaken mit „Schon drin“ stehen.
   Bucht man eine Seite eines Gegenstücks als Umbuchung auf die andere Bank, ist das Gegenstück mit erledigt.
   Zurückgenommenes wird nicht noch einmal automatisch gebucht.
-- **Monatsbericht:** ab der Nacht zum 1. (bis zum 7. nachgeholt, neuer Versuch nach 6 Stunden) für den Vormonat, mit
-  denselben Daten wie Claude (nur Ausgaben). Er darf Stunden brauchen. Gibt es auch einen Bericht von Claude, steht
+- **Monatsbericht:** ab der Nacht zum 1. (bis zum 7. nachgeholt, neuer Versuch nach 6 Stunden) für den Vormonat. Anders als
+  Claude bekommt die lokale KI auch Einnahmen, Kontostände, Depot und Sparziel. Er darf Stunden brauchen. Gibt es auch einen Bericht von Claude, steht
   der lokale im Fazit unter „Lokale KI“; die Sparvorschläge kommen dann von Claude. Die Anweisung steht in der
   Konfiguration der App (`bericht_anweisung`); das Antwortformat (JSON) hängt die App selbst an.
-- Die KI bekommt Umsätze, Kategorien und frühere Zuordnungen (Beschreibung → Kategorie), keine Salden.
+- Beim Einordnen bekommt die KI Umsätze, Kategorien und frühere Zuordnungen, keine Salden; den Monatsbericht schreibt sie mit allen Zahlen. Nichts davon geht an Claude.
 
 ## Was Claude sieht
 

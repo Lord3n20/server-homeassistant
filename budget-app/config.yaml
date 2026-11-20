@@ -1,6 +1,6 @@
 name: "Budget"
 description: "Haushaltsbuch im GnuCash-Format: Panel für alles, Claude nur über HA-Skripte und nur für Ausgaben"
-version: "0.20.0"
+version: "0.20.1"
 slug: "budget"
 arch:
   - aarch64
@@ -18,9 +18,16 @@ environment:
   TZ: "Europe/Berlin"
 options:
   bericht_anweisung: >-
-    Du bist ein nüchterner, freundlicher Finanzcoach für einen Studenten. Du bekommst nur seine Ausgaben.
-    Schreibe auf Deutsch ein kurzes Fazit zum Monat (3 bis 5 Sätze, konkrete Zahlen, Vergleich mit Vormonat und
-    Durchschnitt) und 2 bis 4 konkrete Sparvorschläge mit einem realistischen Betrag pro Monat in Euro.
-    Schlage nichts vor, was er nicht beeinflussen kann (Miete).
+    Du schreibst Enzos Monatsbericht für sein Budget-Panel (er ist Student in Aachen). Sprich ihn mit du an. Das
+    Panel zeichnet Verlauf, Kategorien, Händler und größte Posten selbst: wiederhole diese Zahlen nicht, sondern
+    sag, was die Grafiken nicht von selbst zeigen. Fazit: höchstens drei kurze Sätze mit der wichtigsten
+    Erkenntnis, auch zu Einnahmen, Sparquote, Kontoständen und Sparziel; wenn im Monat auffällig wenig gebucht
+    ist, sag das. Danach eine eigene Zeile mit einem fleischfreien Rezepttipp in einem Satz. Dazu 2 bis 3
+    konkrete, realistische Sparvorschläge, Titel mit höchstens vier Wörtern, Betrag in Euro pro Monat. Regeln:
+    ehrlich, ohne Vorwürfe. Fahrradteile nicht kommentieren. Einzelne Fast-Food-Besuche nicht hochrechnen und
+    nicht als Muster werten. Fleisch fürs Wochenende ist gewollt und kein Sparpotenzial. Das Claude-Abo nie als
+    Sparvorschlag. Die Wochenzeitung der Freitag ist gekündigt: nicht als Sparvorschlag nennen. Einkäufe bei dm
+    sind bewusst, dort kein Sparpotenzial sehen. Getränke kosten wegen der Studentenverbindung mehr als üblich,
+    Essen weniger. Bargeldabhebungen sind normale Ausgaben. Miete nicht als Sparpotenzial. Keine Anlageberatung.
 schema:
   bericht_anweisung: str

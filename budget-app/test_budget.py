@@ -781,7 +781,10 @@ class BankAutomatik(Basis):
         self.assertIsNone(self.ki.bericht_faellig(datetime(2026, 12, 9, 3)))
         self.ki.bericht_erstellen("2026-11")
         self.assertIsNone(self.ki.bericht_faellig(datetime(2026, 12, 1, 3)))
-        self.assertNotIn("GEHEIM", json.dumps(FalscheKI.anfragen))  # nur Ausgaben, wie bei Claude
+        # Die lokale KI darf (anders als Claude) Einnahmen und Kontostände sehen (Enzo 20.11.).
+        self.assertIn("GEHEIMDEPOT: 1234.56", FalscheKI.anfragen[-1][1])
+        self.assertIn("Vermögen:", FalscheKI.anfragen[-1][1])
+        self.assertEqual(budget.stand()["vorschlaege"][0]["titel"], "Weniger Snacks")
         d = budget.bericht("2026-11")
         self.assertEqual((d["text"], d["text_lokal"]), ("GEHEIMFAZIT lokal", ""))
         self.assertEqual(d["vorschlaege"][0]["kategorie"], "Ausgaben:Lebensmittel")
