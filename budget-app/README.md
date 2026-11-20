@@ -40,6 +40,25 @@ solange das Panel offen ist. Von der Bewertung bei deinem Broker kann das leicht
 stehen. Käufe und Verkäufe, die danach im Buch landen, werden mit dem aktuellen Kurs geschätzt nachgezogen und markiert, bis du
 die Werte neu einträgst.
 
+## Lokale KI (App „KI (colibri)“)
+
+Läuft auf dem Server, nichts verlässt ihn. Ohne die App (oder im Desktop-Programm) fehlt nur dieser Teil.
+
+- **Reiter Bank:** Sicheres erledigt die App selbst und zeigt es unter „Automatisch erledigt“ mit „Rückgängig“
+  (abschaltbar mit „Sicheres automatisch buchen“): Umbuchungen zwischen den eigenen Banken (Ab- und Zugang mit
+  gleichem Betrag, höchstens 5 Tage auseinander, Name oder Zweck nennt die andere Bank; sonst nur als „Gegenstück“
+  angezeigt), Umsätze, die genau so schon im Buch stehen (höchstens 2 Tage daneben), und bekannte Empfänger, deren
+  letzte Buchungen alle dieselbe Kategorie hatten. Für neue Empfänger wählt die KI die Kategorie (wird dann ebenfalls
+  automatisch gebucht), und sie prüft, ob ein ähnlicher Eintrag im Buch (anderer Betrag wie Trinkgeld, anderes
+  Zahlkonto, ein paar Tage daneben) derselbe Einkauf ist; dann bleibt der Umsatz zum Abhaken mit „Schon drin“ stehen.
+  Bucht man eine Seite eines Gegenstücks als Umbuchung auf die andere Bank, ist das Gegenstück mit erledigt.
+  Zurückgenommenes wird nicht noch einmal automatisch gebucht.
+- **Monatsbericht:** ab der Nacht zum 1. (bis zum 7. nachgeholt, neuer Versuch nach 6 Stunden) für den Vormonat, mit
+  denselben Daten wie Claude (nur Ausgaben). Er darf Stunden brauchen. Gibt es auch einen Bericht von Claude, steht
+  der lokale im Fazit unter „Lokale KI“; die Sparvorschläge kommen dann von Claude. Die Anweisung steht in der
+  Konfiguration der App (`bericht_anweisung`); das Antwortformat (JSON) hängt die App selbst an.
+- Die KI bekommt Umsätze, Kategorien und frühere Zuordnungen (Beschreibung → Kategorie), keine Salden.
+
 ## Was Claude sieht
 
 Die Schnittstelle läuft auf einem internen Port ohne Freigabe nach außen und nimmt nur Anfragen von Home Assistant

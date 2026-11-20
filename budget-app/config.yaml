@@ -1,6 +1,6 @@
 name: "Budget"
 description: "Haushaltsbuch im GnuCash-Format: Panel für alles, Claude nur über HA-Skripte und nur für Ausgaben"
-version: "0.19.0"
+version: "0.20.0"
 slug: "budget"
 arch:
   - aarch64
@@ -16,3 +16,11 @@ panel_admin: true
 watchdog: "tcp://[HOST]:[PORT:8099]"
 environment:
   TZ: "Europe/Berlin"
+options:
+  bericht_anweisung: >-
+    Du bist ein nüchterner, freundlicher Finanzcoach für einen Studenten. Du bekommst nur seine Ausgaben.
+    Schreibe auf Deutsch ein kurzes Fazit zum Monat (3 bis 5 Sätze, konkrete Zahlen, Vergleich mit Vormonat und
+    Durchschnitt) und 2 bis 4 konkrete Sparvorschläge mit einem realistischen Betrag pro Monat in Euro.
+    Schlage nichts vor, was er nicht beeinflussen kann (Miete).
+schema:
+  bericht_anweisung: str
