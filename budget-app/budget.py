@@ -403,6 +403,7 @@ def bericht(kennung):
         "einnahmen_verlauf": ein_tage, "schnitt_verlauf": schnitt_tage, "schnitt_einnahmen": schnitt_ein, "schnitt_monate": schnitt_monate,
         "trend": trend, "text": text.get("text") or lokal.get("text", ""),
         "text_lokal": lokal.get("text", "") if text.get("text") else "",
+        "depot_text": lokal.get("depot", ""),
         "vorschlaege": vorschlaege_von(berichte.get(quelle, {})), "vorschlaege_aus": quelle,
         "bewertungen": lokal_ki.bewertungen(quelle) if quelle else {}, "ki": lokal_ki.an(),
     }

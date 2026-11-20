@@ -295,7 +295,7 @@
       <div class="spalte" style="grid-area:seite">
         <section class="card" id="zielKarte" hidden></section>
         <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" style="margin:6px 0 0"></p></section>
-        <section class="card" id="bFazit" hidden><h2>Fazit</h2><p class="fazit"></p><details id="bFazitLokal" hidden><summary class="gedaempft">Lokale KI</summary><p class="fazit"></p></details></section>
+        <section class="card" id="bFazit" hidden><h2>Fazit</h2><p class="fazit"></p><details id="bFazitLokal" hidden><summary class="gedaempft">Lokale KI</summary><p class="fazit"></p></details><details id="bDepotNews" hidden><summary class="gedaempft">Depot &amp; Nachrichten</summary><p class="fazit"></p></details></section>
         <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
       </div>
     </div>
@@ -1197,7 +1197,9 @@ function berichtZeichnen(d) {
   bAktuell = d;
   const gesamt = d.kennung === "gesamt";
   const kurzM = (m) => MONATE[+m.slice(5) - 1].slice(0, 3);
-  $("#bFazit").hidden = !d.text;
+  $("#bFazit").hidden = !d.text && !d.depot_text;
+  $("#bDepotNews").hidden = !d.depot_text;
+  $("#bDepotNews p").textContent = d.depot_text || "";
   $("#bFazit > p").textContent = d.text;
   $("#bFazitLokal").hidden = !d.text_lokal;
   $("#bFazitLokal p").textContent = d.text_lokal || "";

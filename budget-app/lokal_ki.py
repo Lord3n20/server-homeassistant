@@ -326,8 +326,10 @@ def bericht_eingabe(monat):
 ANWEISUNG = 'Du schreibst Enzos Monatsbericht für sein Budget-Panel (er ist Student in Aachen). Sprich ihn mit du an. Das Panel zeichnet Verlauf, Kategorien, Händler und größte Posten selbst: wiederhole diese Zahlen nicht, sondern sag, was die Grafiken nicht von selbst zeigen. Fazit: höchstens drei kurze Sätze mit der wichtigsten Erkenntnis, auch zu Einnahmen, Sparquote, Kontoständen, Depot und Sparziel; wenn im Monat auffällig wenig gebucht ist, sag das. Danach eine eigene Zeile mit einem fleischfreien Rezepttipp in einem Satz. Dazu 2 bis 3 konkrete, realistische Sparvorschläge, Titel mit höchstens vier Wörtern, Betrag in Euro pro Monat. Regeln: ehrlich, ohne Vorwürfe. Fahrradteile nicht kommentieren. Einzelne Fast-Food-Besuche nicht hochrechnen und nicht als Muster werten. Fleisch fürs Wochenende ist gewollt und kein Sparpotenzial. Das Claude-Abo nie als Sparvorschlag. Die Wochenzeitung der Freitag ist gekündigt: nicht als Sparvorschlag nennen. Einkäufe bei dm sind bewusst, dort kein Sparpotenzial sehen. Getränke kosten wegen der Studentenverbindung mehr als üblich, Essen weniger. Bargeldabhebungen sind normale Ausgaben. Miete nicht als Sparpotenzial. Zum Depot darfst du Tipps geben (Aufteilung, Kosten, Sparrate, Risiko, Notgroschen), sachlich begründet und ohne Kursprognosen.'
 # Fest angehängt, damit die App die Antwort lesen kann.
 FORMAT = ("Antworte nur mit JSON in dieser Form: "
-          '{"fazit": "...", "vorschlaege": [{"titel": "...", "betrag": 12.5, "kategorie": "Ausgaben:Lebensmittel"}]} '
-          "– Betrag in Euro pro Monat, die Kategorie exakt wie in den Daten oder leer.")
+          '{"fazit": "...", "vorschlaege": [{"titel": "...", "betrag": 12.5, "kategorie": "Ausgaben:Lebensmittel"}], '
+          '"depot": "..."} – Betrag in Euro pro Monat, die Kategorie exakt wie in den Daten oder leer. "depot": kurzes '
+          "Update zu den Depotpositionen (2 bis 5 Sätze): wichtige Nachrichten des Monats und Kennzahlen aus den "
+          "Suchergebnissen (mit Quelle), Einordnung für ihn; leer, wenn es nichts Wichtiges gibt oder kein Depot da ist.")
 OPTIONEN = DATA / "options.json"  # von Home Assistant geschrieben
 
 
@@ -342,11 +344,12 @@ def _bericht_lesen(antwort):
         text = str(roh["fazit"]).strip()
         vorschlaege = [{"titel": str(v["titel"]), "betrag": v["betrag"], "kategorie": str(v.get("kategorie") or "")}
                        for v in roh.get("vorschlaege") or [] if v.get("titel") and v.get("betrag") is not None]
+        depot_text = str(roh.get("depot") or "").strip()[:3000]
     except (ValueError, KeyError, TypeError, AttributeError):
         raise OSError("KI: Bericht nicht lesbar")
     if not text:
         raise OSError("KI: Bericht leer")
-    return text, vorschlaege
+    return text, vorschlaege, depot_text
 
 
 PRUEFUNG = ("Du prüfst den Entwurf eines Monatsberichts gegen die Daten und die Anweisung. Korrigiere jede Zahl, die "
@@ -355,11 +358,16 @@ PRUEFUNG = ("Du prüfst den Entwurf eines Monatsberichts gegen die Daten und die
             "Ist der Entwurf gut, gib ihn unverändert zurück.")
 
 
-def suchen(anfrage, anzahl=3):
-    """Die ersten Treffer (Titel, Auszug, Adresse) über die eigene SearXNG-App; ohne sie oder bei Fehlern leer."""
+def suchen(anfrage, anzahl=3, nachrichten=False):
+    """Die ersten Treffer (Titel, Auszug, Adresse) über die eigene SearXNG-App; ohne sie oder bei Fehlern leer.
+
+    nachrichten=True: nur News des letzten Monats, mit Datum."""
     if not SUCHE:
         return []
-    url = f"{SUCHE}/search?" + urllib.parse.urlencode({"q": anfrage, "format": "json", "language": "de-DE"})
+    parameter = {"q": anfrage, "format": "json", "language": "de-DE"}
+    if nachrichten:
+        parameter.update(categories="news", time_range="month")
+    url = f"{SUCHE}/search?" + urllib.parse.urlencode(parameter)
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
             treffer = json.load(r).get("results") or []
@@ -367,7 +375,8 @@ def suchen(anfrage, anzahl=3):
         return []
     def kurz(text, laenge):
         return " ".join(str(text or "").split())[:laenge]
-    return [f"{kurz(t.get('title'), 120)}: {kurz(t.get('content'), 300)} ({kurz(t.get('url'), 100)})"
+    return [(f"{kurz(t.get('publishedDate'), 10)} " if nachrichten and t.get("publishedDate") else "")
+            + f"{kurz(t.get('title'), 120)}: {kurz(t.get('content'), 300)} ({kurz(t.get('url'), 100)})"
             for t in treffer[:anzahl] if t.get("content")]
 
 
@@ -381,12 +390,15 @@ def netz_fakten():
         positionen = [z for z in depot.uebersicht(warten=False)["positionen"] if z.get("isin")]
     except (OSError, BuchFehler, ValueError, KeyError):
         positionen = []
-    fragen += [f"{z['isin']} {z['name']} TER Fondsgröße" for z in positionen[:8]]
+    fragen = [(f, False) for f in fragen]
+    for z in positionen[:8]:
+        # Je Position Kennzahlen (bei ETFs Kosten und Größe, bei Aktien Bewertung und Dividende) und die News des Monats.
+        fragen += [(f"{z['isin']} {z['name']} Kennzahlen TER KGV Dividendenrendite", False), (z["name"], True)]
     teile = []
-    for f in fragen:
-        treffer = suchen(f)
+    for f, news in fragen:
+        treffer = suchen(f, 4 if news else 3, news)
         if treffer:
-            teile.append(f"Suche „{f}“:")
+            teile.append(f"{'Nachrichten' if news else 'Suche'} „{f}“:")
             teile += [f"- {t}" for t in treffer]
     if not teile:
         return ""
@@ -401,19 +413,19 @@ def bericht_erstellen(monat):
     netz = netz_fakten()
     if netz:
         daten += "\n\n" + netz
-    text, vorschlaege = _bericht_lesen(frage(system, daten, max_tokens=6000, denken=True, timeout=10 * 3600))
-    entwurf = json.dumps({"fazit": text, "vorschlaege": vorschlaege}, ensure_ascii=False)
+    text, vorschlaege, depot_text = _bericht_lesen(frage(system, daten, max_tokens=8000, denken=True, timeout=10 * 3600))
+    entwurf = json.dumps({"fazit": text, "vorschlaege": vorschlaege, "depot": depot_text}, ensure_ascii=False)
     try:
-        text, vorschlaege = _bericht_lesen(frage(
+        text, vorschlaege, depot_text = _bericht_lesen(frage(
             PRUEFUNG + "\n\nAnweisung:\n" + anweisung() + "\n\n" + FORMAT,
-            f"Daten:\n{daten}\n\nEntwurf:\n{entwurf}", max_tokens=6000, denken=True, timeout=10 * 3600))
+            f"Daten:\n{daten}\n\nEntwurf:\n{entwurf}", max_tokens=8000, denken=True, timeout=10 * 3600))
     except OSError as ex:
         print(f"KI (Bericht): Prüfung fehlgeschlagen, Entwurf bleibt ({ex})")
     try:
-        ausgaben.bericht_speichern(monat, text, vorschlaege, lokal=True)
+        ausgaben.bericht_speichern(monat, text, vorschlaege, lokal=True, zusatz={"depot": depot_text} if depot_text else None)
     except BuchFehler:
         # Eine erfundene Kategorie: dann die Vorschläge ohne Kategorie.
-        ausgaben.bericht_speichern(monat, text, [{**v, "kategorie": ""} for v in vorschlaege], lokal=True)
+        ausgaben.bericht_speichern(monat, text, [{**v, "kategorie": ""} for v in vorschlaege], lokal=True, zusatz={"depot": depot_text} if depot_text else None)
 
 
 def bericht_faellig(jetzt):
