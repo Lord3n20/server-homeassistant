@@ -240,6 +240,29 @@ def bericht_eingabe(monat):
     quellen = ", ".join(f"{q['name']} {q['betrag'] / 100:.2f}" for q in b["einnahmequellen"]) or "-"
     teile.append(f"Einnahmen im Monat: {b['einnahmen'] / 100:.2f} EUR ({quellen}); "
                  f"ins Depot: {b['ins_depot'] / 100:.2f} EUR; Sparquote: {quote}.")
+    # Rückblick über ein Jahr: Ausgaben, Einnahmen und die größten Kategorien je Monat.
+    rueckblick = [f"{jahr - (mon - k <= 0)}-{(mon - k - 1) % 12 + 1:02d}" for k in range(12, 0, -1)]
+    zeilen_rb = []
+    for r in rueckblick:
+        summen, anzahl = ausgaben.monatssummen(r)
+        if not anzahl:
+            continue
+        try:
+            ein = budget.monat(r)["einnahmen"]
+        except (BuchFehler, KeyError, ValueError):
+            ein = 0
+        groesste = ", ".join(f"{k.split(':', 1)[-1]} {v / 100:.0f}" for k, v in sorted(summen.items(), key=lambda x: -x[1])[:5])
+        zeilen_rb.append(f"- {r}: Ausgaben {sum(summen.values()) / 100:.2f}, Einnahmen {ein / 100:.2f} EUR ({groesste})")
+    if zeilen_rb:
+        teile.append("Rückblick der letzten 12 Monate (Ausgaben, Einnahmen, größte Kategorien in EUR):")
+        teile += zeilen_rb
+    berichte = json_laden(ausgaben.BERICHTE, {})
+    fruehere = [(k, (v.get("lokal") or {}).get("text") or v.get("text")) for k, v in sorted(berichte.items())
+                if "W" not in k and k < monat]
+    fruehere = [(k, t) for k, t in fruehere if t][-3:]
+    if fruehere:
+        teile.append("Deine früheren Fazits (wiederhole keine Tipps und keine Rezepte daraus):")
+        teile += [f"- {k}: {t[:600]}" for k, t in fruehere]
     teile.append("Kontostände heute:")
     teile += [f"- {k['pfad']}: {k['saldo'] / 100:.2f} EUR" for k in st["konten"]]
     teile.append(f"Vermögen: {st['vermoegen'] / 100:.2f} EUR, davon im Depot (zählt als erspart): {st['erspartes'] / 100:.2f} EUR.")

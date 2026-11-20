@@ -790,6 +790,7 @@ class BankAutomatik(Basis):
 
     def test_lokaler_monatsbericht(self):
         buch.buchen("ausgabe", "2026-11-03", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
+        buch.buchen("ausgabe", "2026-09-03", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 900}])
         self.assertEqual(self.ki.bericht_faellig(datetime(2026, 12, 1, 3)), "2026-11")
         self.assertIsNone(self.ki.bericht_faellig(datetime(2026, 12, 9, 3)))
         self.ki.bericht_erstellen("2026-11")
@@ -798,6 +799,7 @@ class BankAutomatik(Basis):
         self.assertTrue(FalscheKI.anfragen[-1][0].startswith("Du prüfst den Entwurf"))
         self.assertIn("Entwurf:", FalscheKI.anfragen[-1][1])
         self.assertIn("Händler je Kategorie", FalscheKI.anfragen[-1][1])
+        self.assertIn("Rückblick der letzten 12 Monate", FalscheKI.anfragen[-1][1])
         # Die lokale KI darf (anders als Claude) Einnahmen und Kontostände sehen (Enzo 20.11.).
         self.assertIn("GEHEIMDEPOT: 1234.56", FalscheKI.anfragen[-1][1])
         self.assertIn("Vermögen:", FalscheKI.anfragen[-1][1])
