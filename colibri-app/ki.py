@@ -39,7 +39,7 @@ def optionen():
         o = json.loads(Path("/data/options.json").read_text())
     except (OSError, ValueError):
         o = {}
-    return {"reserve": float(o.get("ram_reserve_gb", 2.0)), "threads": int(o.get("threads", 2)),
+    return {"reserve": float(o.get("ram_reserve_gb", 1.5)), "threads": int(o.get("threads", 2)),
             "cap": int(o.get("experten_je_schicht", 4)), "leerlauf": int(o.get("leerlauf_minuten", 10)) * 60}
 
 
