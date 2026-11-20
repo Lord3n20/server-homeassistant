@@ -31,6 +31,8 @@ PAAR_TAGE = 5  # so weit dürfen Ab- und Zugang einer Umbuchung zwischen zwei Ba
 AEHNLICH_TAGE = 5  # Suchfenster für ähnliche Einträge im Buch
 # Woran man im Namen oder Zweck erkennt, dass Geld zu einer der eigenen Banken geht.
 HINWEISE = {"tr": ("trade republic",), "gls": ("gls",), "tf": ("tf bank", "tfbank")}
+# Zahlungsdienste: dahinter stecken wechselnde Händler, also nie automatisch nach dem Namen buchen.
+ZAHLDIENSTE = {"paypal", "klarna", "sumup", "stripe", "adyen", "sofort", "giropay", "wero", "zettle", "payone"}
 # Wörter, die im Namensvergleich nichts sagen.
 FUELLWOERTER = {"gmbh", "sagt", "danke", "markt", "und", "der", "die", "das", "kg", "co", "se", "europe", "deutschland",
                 "sarl", "ltd", "inc", "filiale", "karte", "zahlung", "lastschrift", "kartenzahlung", "einkauf", "vom", "bei"}
@@ -119,6 +121,12 @@ def woerter(text):
             if len(w) > 2 and not w.isdigit() and w not in FUELLWOERTER}
 
 
+def haendler(name):
+    """Schlüssel für denselben Händler: die Wörter ohne Füllwörter und Nummern, sortiert (leer bei Zahldiensten)."""
+    w = woerter(name)
+    return "" if w & ZAHLDIENSTE else " ".join(sorted(w))
+
+
 def aehnlich(a, b):
     return bool(woerter(a) & woerter(b))
 
@@ -130,11 +138,21 @@ def einordnen(umsatz, kontoid, konten, buchungen, verknuepft):
     hatten alle dieselbe Ausgaben- oder Einnahmenkategorie.
     """
     name = umsatz["name"].lower()
-    gleiche = [g for g in (_gegenkonto(b, kontoid) for b in sorted(buchungen, key=lambda b: b["datum"], reverse=True)
-                           if b["beschreibung"].lower() == name and any(s["konto"] == kontoid for s in b["splits"]))
-               if g and not konten[g]["platzhalter"]]
+    schluessel = haendler(umsatz["name"])
+    auf_konto = sorted((b for b in buchungen if any(s["konto"] == kontoid for s in b["splits"])),
+                       key=lambda b: b["datum"], reverse=True)
+
+    def kategorien(passt):
+        return [g for g in (_gegenkonto(b, kontoid) for b in auf_konto if passt(b)) if g and not konten[g]["platzhalter"]]
+    gleiche = kategorien(lambda b: b["beschreibung"].lower() == name)
+    # Sonst derselbe Händler mit anderer Filial- oder Kassennummer („REWE Markt 4711“ wie „REWE Markt 4712“);
+    # sicher erst, wenn es mindestens zwei solche Buchungen gibt.
+    genug = 1
+    if not gleiche and schluessel:
+        gleiche, genug = kategorien(lambda b: haendler(b["beschreibung"]) == schluessel), 2
     vorschlag = gleiche[0] if gleiche else ""
-    sicher = bool(gleiche) and len(set(gleiche[:3])) == 1 and konten[vorschlag]["typ"] in ("EXPENSE", "INCOME")
+    sicher = (len(gleiche) >= genug and len(set(gleiche[:3])) == 1
+              and konten[vorschlag]["typ"] in ("EXPENSE", "INCOME") and not woerter(umsatz["name"]) & ZAHLDIENSTE)
     d = date.fromisoformat(umsatz["datum"])
     von, bis = (d - timedelta(days=3)).isoformat(), (d + timedelta(days=3)).isoformat()
     duplikat = next((b for b in buchungen if von <= b["datum"] <= bis and b["id"] not in verknuepft

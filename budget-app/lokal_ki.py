@@ -60,18 +60,24 @@ def _kategorien(konten):
     return sorted(k["pfad"] for k in konten.values() if k["typ"] in ("EXPENSE", "INCOME") and not k["platzhalter"])
 
 
-def _beispiele(konten, buchungen, anzahl=40):
-    """Frühere Zuordnungen (Beschreibung → Kategorie), die neuesten zuerst, je Beschreibung einmal."""
-    gesehen, zeilen = set(), []
+def _beispiele(konten, buchungen, umsaetze=(), anzahl=40):
+    """Frühere Zuordnungen (Beschreibung → Kategorie), je Beschreibung einmal.
+
+    Zuerst die, deren Wörter zu den gefragten Umsätzen passen (z. B. derselbe Händler mit anderer Nummer),
+    dann die neuesten.
+    """
+    gesucht = set()
+    for u in umsaetze:
+        gesucht |= bank.woerter(f"{u['name']} {u['zweck']}")
+    gesehen, passend, neueste = set(), [], []
     for b in sorted(buchungen, key=lambda b: b["datum"], reverse=True):
         art, _, pos, einfach = buch.einordnen(konten, b)
         name = b["beschreibung"].strip()
         if art in ("ausgabe", "einnahme") and einfach and len(pos) == 1 and name.lower() not in gesehen:
             gesehen.add(name.lower())
-            zeilen.append(f"{name[:60]} -> {konten[pos[0]['konto']]['pfad']}")
-            if len(zeilen) >= anzahl:
-                break
-    return zeilen
+            zeile = f"{name[:60]} -> {konten[pos[0]['konto']]['pfad']}"
+            (passend if bank.woerter(name) & gesucht else neueste).append(zeile)
+    return (passend[:anzahl // 2] + neueste)[:anzahl]
 
 
 def _zeile(u):
@@ -86,7 +92,7 @@ def kategorien_fragen(umsaetze, konten, buchungen):
     system = ("Du ordnest Bankumsätze eines Studenten aus Aachen genau einer Kategorie zu. Negative Beträge sind "
               "Ausgaben, positive Einnahmen oder Erstattungen (dann die Ausgabenkategorie des Kaufs). Kategorien:\n"
               + "\n".join(f"- {p}" for p in pfade) + f"\n- {UMBUCHUNG}\n\nFrühere Zuordnungen:\n"
-              + "\n".join(_beispiele(konten, buchungen)) +
+              + "\n".join(_beispiele(konten, buchungen, umsaetze)) +
               "\n\nAntworte je Umsatz mit genau einer Zeile 'Nummer: Kategorie', die Kategorie exakt wie in der Liste, sonst nichts.")
     nutzer = "\n".join(f"{i + 1}. {_zeile(u)}" for i, u in enumerate(umsaetze))
     antwort = frage(system, nutzer, max_tokens=40 * len(umsaetze) + 40)
@@ -190,12 +196,37 @@ def bericht_eingabe(monat):
         for k, v in summen.items():
             schnitt[k] = schnitt.get(k, 0) + v / 3
     zeilen = buch.ausgabezeilen(f"{monat}-01", f"{monat}-31")
-    posten = sorted(zeilen, key=lambda z: -z["gesamt"])[:60]
+    posten = sorted(zeilen, key=lambda z: -z["gesamt"])[:40]
+    # Was hinter den Kategorien steckt: je Kategorie die Händler mit Summe und Anzahl, damit die KI
+    # Unterschiede erklären kann statt zu raten.
+    je_kat = {}
+    for z in zeilen:
+        for p in z["positionen"]:
+            h = je_kat.setdefault(p["kategorie"], {}).setdefault(z["beschreibung"].strip()[:40], [0, 0])
+            h[0] += p["betrag"]
+            h[1] += 1
+    davor_summe = {}
+    for d in davor:
+        for z in buch.ausgabezeilen(f"{d}-01", f"{d}-31"):
+            for p in z["positionen"]:
+                k = davor_summe.setdefault(p["kategorie"], {})
+                k[z["beschreibung"].strip()[:40]] = k.get(z["beschreibung"].strip()[:40], 0) + p["betrag"] / 3
     fest = ausgaben.w_wiederkehrend({})["wiederkehrend"]
     teile = [f"Monat {monat}: {m['buchungen']} Ausgaben, gesamt {m['gesamt']:.2f} EUR (Vormonat {m['gesamt_vormonat']:.2f} EUR).",
              "Kategorien (Monat | Vormonat | Ø der 3 Monate davor):"]
     teile += [f"- {k['kategorie']}: {k['betrag']:.2f} | {k['vormonat']:.2f} | {schnitt.get(k['kategorie'], 0) / 100:.2f}"
               for k in m["kategorien"]]
+    teile.append("Händler je Kategorie (Summe, Anzahl, Ø pro Monat in den 3 Monaten davor):")
+    for k in m["kategorien"]:
+        haendler = sorted((je_kat.get(k["kategorie"]) or {}).items(), key=lambda x: -x[1][0])[:6]
+        if haendler:
+            teile.append(f"- {k['kategorie']}: " + "; ".join(
+                f"{n} {v[0] / 100:.2f} ({v[1]}x, Ø {davor_summe.get(k['kategorie'], {}).get(n, 0) / 100:.2f})" for n, v in haendler))
+    alt = (json_laden(ausgaben.BERICHTE, {}).get(davor[0]) or {})
+    alte_vorschlaege = alt.get("vorschlaege") or (alt.get("lokal") or {}).get("vorschlaege") or []
+    if alte_vorschlaege:
+        teile.append("Sparvorschläge aus dem Bericht zum Vormonat (prüfe, ob sie gewirkt haben):")
+        teile += [f"- {v['titel']}: {v['betrag'] / 100:.2f} EUR ({v.get('kategorie') or 'ohne Kategorie'})" for v in alte_vorschlaege]
     teile.append("Größte Posten:")
     teile += [f"- {z['datum']} {z['beschreibung'][:50]}: {z['gesamt'] / 100:.2f} EUR ({', '.join(sorted({p['kategorie'] for p in z['positionen']}))})"
               for z in posten]
@@ -233,9 +264,7 @@ def anweisung():
     return eigene or ANWEISUNG
 
 
-def bericht_erstellen(monat):
-    system = anweisung() + "\n\n" + FORMAT
-    antwort = frage(system, bericht_eingabe(monat), max_tokens=6000, denken=True, timeout=10 * 3600)
+def _bericht_lesen(antwort):
     try:
         roh = json.loads(antwort[antwort.index("{"):antwort.rindex("}") + 1])
         text = str(roh["fazit"]).strip()
@@ -243,6 +272,29 @@ def bericht_erstellen(monat):
                        for v in roh.get("vorschlaege") or [] if v.get("titel") and v.get("betrag") is not None]
     except (ValueError, KeyError, TypeError, AttributeError):
         raise OSError("KI: Bericht nicht lesbar")
+    if not text:
+        raise OSError("KI: Bericht leer")
+    return text, vorschlaege
+
+
+PRUEFUNG = ("Du prüfst den Entwurf eines Monatsberichts gegen die Daten und die Anweisung. Korrigiere jede Zahl, die "
+            "nicht zu den Daten passt, streiche Aussagen, die die Daten nicht belegen, und alles, was gegen die Regeln der "
+            "Anweisung verstößt. Sparvorschläge müssen realistisch sein (nicht mehr als die Ausgaben der Kategorie). "
+            "Ist der Entwurf gut, gib ihn unverändert zurück.")
+
+
+def bericht_erstellen(monat):
+    """Zwei Durchgänge: Entwurf, dann Prüfung gegen die Daten. Darf zusammen Stunden dauern."""
+    system = anweisung() + "\n\n" + FORMAT
+    daten = bericht_eingabe(monat)
+    text, vorschlaege = _bericht_lesen(frage(system, daten, max_tokens=6000, denken=True, timeout=10 * 3600))
+    entwurf = json.dumps({"fazit": text, "vorschlaege": vorschlaege}, ensure_ascii=False)
+    try:
+        text, vorschlaege = _bericht_lesen(frage(
+            PRUEFUNG + "\n\nAnweisung:\n" + anweisung() + "\n\n" + FORMAT,
+            f"Daten:\n{daten}\n\nEntwurf:\n{entwurf}", max_tokens=6000, denken=True, timeout=10 * 3600))
+    except OSError as ex:
+        print(f"KI (Bericht): Prüfung fehlgeschlagen, Entwurf bleibt ({ex})")
     try:
         ausgaben.bericht_speichern(monat, text, vorschlaege, lokal=True)
     except BuchFehler:

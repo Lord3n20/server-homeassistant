@@ -767,6 +767,19 @@ class BankAutomatik(Basis):
         for geheim in ("GEHEIMSTART", "GEHEIMDEPOT", "9876", "1234"):
             self.assertNotIn(geheim, gesendet)
 
+    def test_haendler_mit_anderer_nummer(self):
+        for d in ("2026-10-02", "2026-10-09"):
+            buch.buchen("ausgabe", d, f"REWE Markt GmbH {d[-2:]}11", GIRO, [{"konto": LEB, "betrag": 800}])
+        bank.einreichen("gls", [{"datum": "2026-11-03", "betrag": "-9", "name": "REWE Markt GmbH 4799", "zweck": ""}])
+        self.assertEqual(bank.automatisch_erledigt()[0]["auto"], "Bekannter Empfänger: Lebensmittel")
+        self.assertEqual(bank.haendler("REWE SAGT DANKE 4711"), "rewe")
+        # Hinter PayPal stecken wechselnde Händler: nur vorschlagen, nie automatisch.
+        for d in ("2026-10-02", "2026-10-09"):
+            buch.buchen("ausgabe", d, "PayPal Europe", GIRO, [{"konto": LEB, "betrag": 500}])
+        bank.einreichen("gls", [{"datum": date.today().isoformat(), "betrag": "-20", "name": "PayPal Europe", "zweck": "Steam"}])
+        paypal, = [u for u in bank.offene() if u["name"] == "PayPal Europe"]
+        self.assertEqual((paypal["vorschlag"], paypal["sicher"], paypal["ki"]), (LEB, False, "wartet"))
+
     def test_automatik_aus(self):
         buch.buchen("ausgabe", "2026-10-20", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
         bank.einstellungen_speichern({"konten": {"gls": GIRO}, "automatik": False})
@@ -781,6 +794,10 @@ class BankAutomatik(Basis):
         self.assertIsNone(self.ki.bericht_faellig(datetime(2026, 12, 9, 3)))
         self.ki.bericht_erstellen("2026-11")
         self.assertIsNone(self.ki.bericht_faellig(datetime(2026, 12, 1, 3)))
+        # Zweiter Durchgang prüft den Entwurf gegen die Daten.
+        self.assertTrue(FalscheKI.anfragen[-1][0].startswith("Du prüfst den Entwurf"))
+        self.assertIn("Entwurf:", FalscheKI.anfragen[-1][1])
+        self.assertIn("Händler je Kategorie", FalscheKI.anfragen[-1][1])
         # Die lokale KI darf (anders als Claude) Einnahmen und Kontostände sehen (Enzo 20.11.).
         self.assertIn("GEHEIMDEPOT: 1234.56", FalscheKI.anfragen[-1][1])
         self.assertIn("Vermögen:", FalscheKI.anfragen[-1][1])
@@ -796,7 +813,8 @@ class BankAutomatik(Basis):
         # Die Anweisung kommt aus der Konfiguration der App, das Antwortformat bleibt fest dran.
         buch.json_speichern(TMP / "options.json", {"bericht_anweisung": "Sei streng."})
         self.ki.bericht_erstellen("2026-11")
-        self.assertTrue(FalscheKI.anfragen[-1][0].startswith("Sei streng.\n\nAntworte nur mit JSON"))
+        self.assertTrue(FalscheKI.anfragen[-2][0].startswith("Sei streng.\n\nAntworte nur mit JSON"))
+        self.assertIn("Sei streng.", FalscheKI.anfragen[-1][0])
         self.assertEqual(budget.bericht("2026-11")["text"], "Von Claude")
 
 
