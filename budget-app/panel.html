@@ -351,6 +351,7 @@
 
     <div data-seite="depot">
       <div class="kopf"><h2>Depot</h2><span class="gedaempft" id="dStand"></span></div>
+      <section class="card" id="dUpdate" hidden><h2>Wochen-Update</h2><p class="fazit"></p><p class="gedaempft" style="margin:6px 0 0"></p></section>
       <div class="kacheln" id="dKacheln" hidden></div>
       <div class="reihe">
         <section class="card" id="dVergleich" hidden><h2>Wert und Kaufpreis je Position</h2><div class="legende" id="dLegende"></div><div id="dBalken"></div></section>
@@ -1275,6 +1276,11 @@ let dOffen = null;
 const depotLaden = sicher(async () => {
   const d = await api("api/depot");
   const mit = d.positionen.filter((p) => p.wert !== undefined);
+  $("#dUpdate").hidden = !(d.update && d.update.text);
+  if (d.update && d.update.text) {
+    $("#dUpdate .fazit").textContent = d.update.text;
+    $("#dUpdate .gedaempft").textContent = `Lokale KI, ${dmy(d.update.erstellt.slice(0, 10))}. Suchergebnisse können ungenau sein.`;
+  }
   $("#dStand").textContent = d.zeit ? `Ältester Kurs von ${new Date(d.zeit * 1000).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr` : "";
   for (const id of ["#dKacheln", "#dVergleich", "#dAnteil"]) $(id).hidden = !mit.length;
   if (mit.length) {

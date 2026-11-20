@@ -304,17 +304,7 @@ def bericht_eingabe(monat):
     teile.append("Kontostände heute:")
     teile += [f"- {k['pfad']}: {k['saldo'] / 100:.2f} EUR" for k in st["konten"]]
     teile.append(f"Vermögen: {st['vermoegen'] / 100:.2f} EUR, davon im Depot (zählt als erspart): {st['erspartes'] / 100:.2f} EUR.")
-    try:
-        dep = depot.uebersicht(warten=False)
-    except (OSError, BuchFehler, ValueError, KeyError):
-        dep = {"positionen": []}
-    mit_wert = [z for z in dep["positionen"] if "wert" in z]
-    if mit_wert:
-        gesamt = sum(z["wert"] for z in mit_wert) or 1
-        teile.append(f"Depot (Kurs von Tradegate/L&S): Wert {dep['wert'] / 100:.2f} EUR, Einstand {dep['einstand'] / 100:.2f} EUR"
-                     + (f", {dep['prozent']:+.1f} %" if dep.get("prozent") is not None else "") + ". Positionen:")
-        teile += [f"- {z['name']} ({z['isin']}): {z['wert'] / 100:.2f} EUR, {z['wert'] / gesamt * 100:.0f} % des Depots, "
-                  f"{z['prozent']:+.1f} % seit Kauf" for z in sorted(mit_wert, key=lambda z: -z["wert"])]
+    teile += depot_zeilen()
     if st["ziel"]:
         z = st["ziel"]
         teile.append(f"Sparziel: {z['betrag'] / 100:.2f} EUR Vermögen bis {z['datum']}, fehlt {z['fehlt'] / 100:.2f} EUR, "
@@ -358,7 +348,7 @@ PRUEFUNG = ("Du prüfst den Entwurf eines Monatsberichts gegen die Daten und die
             "Ist der Entwurf gut, gib ihn unverändert zurück.")
 
 
-def suchen(anfrage, anzahl=3, nachrichten=False):
+def suchen(anfrage, anzahl=3, nachrichten=False, zeitraum="month"):
     """Die ersten Treffer (Titel, Auszug, Adresse) über die eigene SearXNG-App; ohne sie oder bei Fehlern leer.
 
     nachrichten=True: nur News des letzten Monats, mit Datum."""
@@ -366,7 +356,7 @@ def suchen(anfrage, anzahl=3, nachrichten=False):
         return []
     parameter = {"q": anfrage, "format": "json", "language": "de-DE"}
     if nachrichten:
-        parameter.update(categories="news", time_range="month")
+        parameter.update(categories="news", time_range=zeitraum)
     url = f"{SUCHE}/search?" + urllib.parse.urlencode(parameter)
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
@@ -404,6 +394,69 @@ def netz_fakten():
         return ""
     return (f"Aus dem Netz (Suchergebnisse vom {heute.isoformat()}, können ungenau oder veraltet sein; nur nutzen, "
             "wenn sie zueinander passen, und dann die Quelle nennen):\n" + "\n".join(teile))
+
+
+def depot_zeilen():
+    """Depotpositionen mit Wert, Anteil, Gewinn seit Kauf und Tagesänderung (nur für die lokale KI)."""
+    try:
+        dep = depot.uebersicht(warten=False)
+    except (OSError, BuchFehler, ValueError, KeyError):
+        return []
+    mit_wert = [z for z in dep["positionen"] if "wert" in z]
+    if not mit_wert:
+        return []
+    gesamt = sum(z["wert"] for z in mit_wert) or 1
+    teile = [f"Depot (Kurs von Tradegate/L&S): Wert {dep['wert'] / 100:.2f} EUR, Einstand {dep['einstand'] / 100:.2f} EUR"
+             + (f", {dep['prozent']:+.1f} %" if dep.get("prozent") is not None else "") + ". Positionen:"]
+    teile += [f"- {z['name']} ({z['isin']}): {z['wert'] / 100:.2f} EUR, {z['wert'] / gesamt * 100:.0f} % des Depots, "
+              f"{z['prozent']:+.1f} % seit Kauf" + (f", heute {z['heute']:+.1f} %" if z.get("heute") is not None else "")
+              for z in sorted(mit_wert, key=lambda z: -z["wert"])]
+    return teile
+
+
+# ---------- Depot-Update jeden Sonntag ----------
+
+DEPOT_UPDATE = DATA / "depot_update.json"
+DEPOT_ANWEISUNG = ("Du schreibst Enzos kurzes Depot-Update für die vergangene Woche (er ist Student, legt langfristig an). "
+                   "Sprich ihn mit du an. 3 bis 6 Sätze auf Deutsch: die wichtigen Nachrichten der Woche zu seinen "
+                   "Positionen und was sie für ihn bedeuten, auffällige Kennzahlen, und nur wenn wirklich nötig ein "
+                   "Handlungshinweis (sachlich begründet, keine Kursprognosen, kein Hin und Her). Nenne zu jeder Nachricht "
+                   "kurz die Quelle. Nutze nur Suchergebnisse, die eindeutig zur Position passen; ist nichts Wichtiges "
+                   "passiert, sag das in einem Satz. Antworte nur mit dem Text.")
+
+
+def depot_update_erstellen():
+    zeilen = depot_zeilen()
+    if not zeilen:
+        return False
+    positionen = [z for z in depot.uebersicht(warten=False)["positionen"] if z.get("isin")]
+    netz = []
+    for z in positionen[:8]:
+        for f, news in ((z["name"], True), (f"{z['isin']} {z['name']} Kennzahlen", False)):
+            treffer = suchen(f, 4 if news else 2, news, "week")
+            if treffer:
+                netz.append(f"{'Nachrichten der Woche' if news else 'Kennzahlen'} „{f}“:")
+                netz += [f"- {t}" for t in treffer]
+    eigene = hinweise()
+    daten = "\n".join(zeilen + ([f"Enzos Hinweise: {eigene}"] if eigene else [])
+                      + (["Aus dem Netz (können ungenau sein):"] + netz if netz else ["Keine Suchergebnisse."]))
+    text = frage(DEPOT_ANWEISUNG, daten, max_tokens=4000, denken=True, timeout=6 * 3600).strip()
+    if not text or text.startswith("{"):
+        raise OSError("KI: Depot-Update leer oder unlesbar")
+    jahr, woche, _ = date.today().isocalendar()
+    json_speichern(DEPOT_UPDATE, {"woche": f"{jahr}-W{woche:02d}", "text": text[:4000],
+                                  "erstellt": time.strftime("%Y-%m-%d %H:%M")})
+    return True
+
+
+def depot_update_faellig(jetzt):
+    """Sonntags ab 3 Uhr, einmal je Kalenderwoche; nach einem Fehler frühestens 6 Stunden später."""
+    if jetzt.weekday() != 6 or jetzt.hour < 3:
+        return False
+    jahr, woche, _ = jetzt.date().isocalendar()
+    if json_laden(DEPOT_UPDATE, {}).get("woche") == f"{jahr}-W{woche:02d}":
+        return False
+    return time.time() - json_laden(ZUSTAND, {}).get("depot_versuch", 0) > 6 * 3600
 
 
 def bericht_erstellen(monat):
@@ -455,6 +508,12 @@ def schleife():
                     bericht_erstellen(monat)
                     zustand["bericht"] = ""
                     print(f"Lokaler Monatsbericht {monat} fertig")
+                if depot_update_faellig(datetime.now()) and buch.vorhanden():
+                    json_speichern(ZUSTAND, {**json_laden(ZUSTAND, {}), "depot_versuch": time.time()})
+                    zustand["bericht"] = "Depot-Update läuft"
+                    if depot_update_erstellen():
+                        print("Depot-Update fertig")
+                    zustand["bericht"] = ""
         except (OSError, BuchFehler) as ex:
             zustand["bericht"] = f"Monatsbericht: {ex}"
             print(f"KI (Bericht): {ex}")
