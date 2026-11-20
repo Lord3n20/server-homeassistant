@@ -14,6 +14,7 @@ import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta
 
@@ -24,6 +25,7 @@ import depot
 from buch import BuchFehler, DATA, json_laden, json_speichern, lock
 
 URL = os.environ.get("BUDGET_KI_URL", "").rstrip("/")
+SUCHE = os.environ.get("BUDGET_SUCHE_URL", "").rstrip("/")  # App „Suche (SearXNG)“
 ZUSTAND = DATA / "ki.json"
 RUECKMELDUNG = DATA / "rueckmeldung.json"  # 👍/👎 zu Sparvorschlägen: {monat: {titel: 1 | -1}}
 MAX_HINWEISE = 2000
@@ -353,10 +355,52 @@ PRUEFUNG = ("Du prüfst den Entwurf eines Monatsberichts gegen die Daten und die
             "Ist der Entwurf gut, gib ihn unverändert zurück.")
 
 
+def suchen(anfrage, anzahl=3):
+    """Die ersten Treffer (Titel, Auszug, Adresse) über die eigene SearXNG-App; ohne sie oder bei Fehlern leer."""
+    if not SUCHE:
+        return []
+    url = f"{SUCHE}/search?" + urllib.parse.urlencode({"q": anfrage, "format": "json", "language": "de-DE"})
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:
+            treffer = json.load(r).get("results") or []
+    except (OSError, ValueError):
+        return []
+    def kurz(text, laenge):
+        return " ".join(str(text or "").split())[:laenge]
+    return [f"{kurz(t.get('title'), 120)}: {kurz(t.get('content'), 300)} ({kurz(t.get('url'), 100)})"
+            for t in treffer[:anzahl] if t.get("content")]
+
+
+def netz_fakten():
+    """Aktuelles aus dem Netz für den Bericht. In die Suche gehen nur allgemeine Fragen und die ISINs, nie Beträge."""
+    if not SUCHE:
+        return ""
+    heute = date.today()
+    fragen = [f"Tagesgeld Zinsen Vergleich {heute.year}", "EZB Leitzins aktuell", f"Inflationsrate Deutschland {heute.year}"]
+    try:
+        positionen = [z for z in depot.uebersicht(warten=False)["positionen"] if z.get("isin")]
+    except (OSError, BuchFehler, ValueError, KeyError):
+        positionen = []
+    fragen += [f"{z['isin']} {z['name']} TER Fondsgröße" for z in positionen[:8]]
+    teile = []
+    for f in fragen:
+        treffer = suchen(f)
+        if treffer:
+            teile.append(f"Suche „{f}“:")
+            teile += [f"- {t}" for t in treffer]
+    if not teile:
+        return ""
+    return (f"Aus dem Netz (Suchergebnisse vom {heute.isoformat()}, können ungenau oder veraltet sein; nur nutzen, "
+            "wenn sie zueinander passen, und dann die Quelle nennen):\n" + "\n".join(teile))
+
+
 def bericht_erstellen(monat):
     """Zwei Durchgänge: Entwurf, dann Prüfung gegen die Daten. Darf zusammen Stunden dauern."""
     system = anweisung() + "\n\n" + FORMAT
     daten = bericht_eingabe(monat)
+    netz = netz_fakten()
+    if netz:
+        daten += "\n\n" + netz
     text, vorschlaege = _bericht_lesen(frage(system, daten, max_tokens=6000, denken=True, timeout=10 * 3600))
     entwurf = json.dumps({"fazit": text, "vorschlaege": vorschlaege}, ensure_ascii=False)
     try:

@@ -8,6 +8,7 @@ a federating Matrix homeserver (Continuwuity) that registers bridges dropped int
 the public-transport router of [SchnellWeg](https://github.com/Lord3n20/SchnellWeg), with `routing-jobs-app` (its data jobs: OSM extract
 and Valhalla tiles, started by an automation) and `valhalla-app` (Valhalla service on those tiles); all three use prebuilt images from GHCR.
 `budget-app` is a household ledger in GnuCash format with an admin panel; Claude reaches it through Home Assistant scripts and only ever sees expenses. It also ships as a desktop program without Home Assistant (Claude via Claude Desktop as a local MCP server) (macOS DMG, Windows EXE, Linux AppImage) under [Releases](https://github.com/Lord3n20/server-homeassistant/releases).
+`searxng-app` ("Suche (SearXNG)") is a private metasearch engine inside the app network that feeds current facts to the budget report.
 `colibri-app` ("KI (colibri)") runs a local language model ([colibri](https://github.com/JustVugg/colibri), Qwen3.6-35B-A3B) heavily throttled for the budget app: bank categorisation and a monthly report; it starts only on demand and keeps a RAM reserve.
 There is also `nextcloud-bruecke-app`, which serves Nextcloud folders read-only (rclone, no disk cache) over NFSv3 inside the app network, e.g. for Immich.
 `backup-upload-app` uploads the newest automatic HA backup to Nextcloud in chunks, for backups too large for one upload.

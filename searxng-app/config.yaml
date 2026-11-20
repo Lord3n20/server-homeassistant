@@ -1,0 +1,12 @@
+name: "Suche (SearXNG)"
+description: "Eigene Metasuchmaschine nur fürs App-Netz: liefert der lokalen KI der Budget-App aktuelle Fakten aus dem Netz"
+version: "0.1.0"
+slug: "searxng"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+environment:
+  TZ: "Europe/Berlin"
