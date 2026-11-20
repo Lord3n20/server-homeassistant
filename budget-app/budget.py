@@ -20,6 +20,7 @@ import buch
 import ausgaben
 import bank
 import depot
+import lokal_ki
 from buch import BuchFehler, DATA, cent, json_laden, json_speichern, lock
 
 PANEL = Path(__file__).with_name("panel.html")
@@ -376,8 +377,13 @@ def bericht(kennung):
 
     berichte = json_laden(ausgaben.BERICHTE, {})
     text = {} if gesamt else berichte.get(kennung) or {}
+    lokal = text.get("lokal") or {}
+
+    def vorschlaege_von(v):
+        # Claudes Vorschläge, sonst die der lokalen KI.
+        return v.get("vorschlaege") or (v.get("lokal") or {}).get("vorschlaege") or []
     # Die Gesamtübersicht zeigt die Sparvorschläge aus dem neuesten Monatsbericht.
-    mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and v.get("vorschlaege"))
+    mit_vorschlaegen = sorted(k for k, v in berichte.items() if "W" not in k and vorschlaege_von(v))
     quelle = (mit_vorschlaegen[-1] if mit_vorschlaegen else "") if gesamt else kennung
     return {
         "kennung": kennung, "titel": titel, "vergleich_titel": vergleich_titel, "von": von.isoformat(),
@@ -393,8 +399,9 @@ def bericht(kennung):
                    for z in sorted((z for z in jetzt if not ist_fix(z)), key=lambda z: -z["gesamt"])[:5]],
         "fest": fest_liste,
         "einnahmen_verlauf": ein_tage, "schnitt_verlauf": schnitt_tage, "schnitt_einnahmen": schnitt_ein, "schnitt_monate": schnitt_monate,
-        "trend": trend, "text": text.get("text", ""),
-        "vorschlaege": berichte.get(quelle, {}).get("vorschlaege", []), "vorschlaege_aus": quelle,
+        "trend": trend, "text": text.get("text") or lokal.get("text", ""),
+        "text_lokal": lokal.get("text", "") if text.get("text") else "",
+        "vorschlaege": vorschlaege_von(berichte.get(quelle, {})), "vorschlaege_aus": quelle,
     }
 
 
@@ -492,7 +499,8 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "/api/depot":
             return self.antwort(200, depot.uebersicht())
         if pfad == "/api/bank":
-            return self.antwort(200, {**bank.einstellungen_lesen(), "umsaetze": bank.offene()})
+            return self.antwort(200, {**bank.einstellungen_lesen(), "umsaetze": bank.offene(),
+                                      "automatisch": bank.automatisch_erledigt(), "ki": lokal_ki.an(), "ki_status": lokal_ki.status()})
         if pfad == "/api/bericht":
             return self.antwort(200, bericht(q.get("k", ["gesamt"])[0]))
         if pfad == "/api/einstellungen":
@@ -532,7 +540,10 @@ class Handler(BaseHTTPRequestHandler):
                 liste.append(wiederkehrend_pruefen(daten))
                 json_speichern(ausgaben.WIEDERKEHREND, liste)
             return self.antwort(200, {"gebucht": faellige_buchen()})
-        m = re.fullmatch(r"/api/bank/umsaetze/(\w+)/(buchen|ignorieren)", pfad)
+        m = re.fullmatch(r"/api/bank/umsaetze/(\w+)/(buchen|ignorieren|zuruecksetzen)", pfad)
+        if m and m[2] == "zuruecksetzen":
+            bank.umsatz_zuruecksetzen(m[1])
+            return self.antwort(200, {"ok": True})
         if m and m[2] == "buchen":
             return self.antwort(200, {"id": bank.umsatz_buchen(m[1], daten.get("gegenkonto"), daten.get("beschreibung"),
                                                                   cent(daten["gebuehr"]) if daten.get("gebuehr") else 0)})
@@ -616,6 +627,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     DATA.mkdir(parents=True, exist_ok=True)
     threading.Thread(target=faellige_schleife, daemon=True).start()
+    threading.Thread(target=lokal_ki.schleife, daemon=True).start()
     bank.aufraeumen()
     threading.Thread(target=ThreadingHTTPServer(("0.0.0.0", AUSGABEN_PORT), ausgaben.Handler).serve_forever, daemon=True).start()
     print(f"Budget läuft: Panel auf Port {PORT}, Ausgaben-Schnittstelle auf Port {AUSGABEN_PORT}")

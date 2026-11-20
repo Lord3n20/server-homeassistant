@@ -298,13 +298,17 @@ def w_wiederkehrend(_):
 
 
 def w_bericht(a):
-    monat = str(a.get("monat") or "")
-    text = str(a.get("text") or "").strip()
+    bericht_speichern(str(a.get("monat") or ""), str(a.get("text") or ""), a.get("vorschlaege") or [])
+    return {"ok": True}
+
+
+def bericht_speichern(monat, text, roh, lokal=False):
+    """Bericht von Claude oder (lokal=True) von der lokalen KI; der jeweils andere bleibt erhalten."""
+    text = text.strip()
     if not re.fullmatch(r"\d{4}-((0[1-9]|1[0-2])|W(0[1-9]|[1-4]\d|5[0-3]))", monat) or not text:
         raise BuchFehler("Monat (JJJJ-MM) oder Woche (JJJJ-Www) und Text angeben")
     if len(text) > 20000:
         raise BuchFehler("Der Bericht ist zu lang")
-    roh = a.get("vorschlaege") or []
     vorschlaege = [{"titel": str(v["titel"]).strip(), "betrag": cent(v["betrag"]), "kategorie": str(v.get("kategorie") or "").strip()}
                    for v in (json.loads(roh) if isinstance(roh, str) else roh)]
     if any(v["kategorie"] for v in vorschlaege):
@@ -324,14 +328,21 @@ def w_bericht(a):
         # Von den Wochenübersichten bleibt nur die neueste, Monatsberichte bleiben alle.
         if "W" in monat:
             berichte = {k: v for k, v in berichte.items() if "W" not in k}
-        berichte[monat] = {"text": text, "vorschlaege": vorschlaege, "erstellt": time.strftime("%Y-%m-%d %H:%M")}
+        alt = berichte.get(monat) or {}
+        neu = {"text": text, "vorschlaege": vorschlaege, "erstellt": time.strftime("%Y-%m-%d %H:%M")}
+        if lokal:
+            berichte[monat] = {**alt, "lokal": neu}
+        else:
+            berichte[monat] = {**neu, **({"lokal": alt["lokal"]} if alt.get("lokal") else {})}
         json_speichern(BERICHTE, berichte)
-    return {"ok": True}
 
 
 def w_bank_einreichen(a):
     """Nur für den Webhook der Chromium-Erweiterung (kein Skript für Claude): legt Umsätze ab, antwortet nur mit der Anzahl."""
-    return {"neu": bank.einreichen(str(a.get("bank") or ""), a.get("umsaetze"))}
+    neu = bank.einreichen(str(a.get("bank") or ""), a.get("umsaetze"))
+    import lokal_ki  # erst hier: lokal_ki braucht dieses Modul
+    lokal_ki.bank_anstossen()
+    return {"neu": neu}
 
 
 WERKZEUGE = {

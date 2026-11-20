@@ -14,7 +14,7 @@ import unittest
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import date
+from datetime import date, datetime
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -521,7 +521,7 @@ class Bankumsaetze(Basis):
     def test_einreichen_einordnen_und_buchen(self):
         buch.buchen("ausgabe", "2026-10-20", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
         buch.buchen("ausgabe", "2026-11-06", "Bäcker vom Bon", GIRO, [{"konto": LEB, "betrag": 300}])
-        bank.einstellungen_speichern({"konten": {"gls": GIRO}})
+        bank.einstellungen_speichern({"konten": {"gls": GIRO}, "automatik": False})  # hier: alles von Hand
         url = starten(ausgaben.Handler)
         r, roh = json.loads(anfrage(f"{url}/werkzeug/bank_einreichen", {"bank": "gls", "umsaetze": self.umsaetze()})[1]), None
         self.assertEqual(r, {"ok": True, "neu": 5})
@@ -646,10 +646,11 @@ class Kreditkarte(Basis):
         self.assertEqual(bank.einreichen("tf", [
             {"id": "tf-1", "datum": "2026-11-03", "betrag": "-50.00", "name": "Hotel", "zweck": "Kauf"},
             {"id": "tf-2", "datum": "2026-11-21", "betrag": "50.00", "name": "Zahlung", "zweck": ""}]), 2)
-        kauf, zahlung = bank.offene()
-        self.assertEqual(zahlung["duplikat"]["beschreibung"], "TF Bank")
+        # Die Zahlung steht schon im Buch: das erledigt die Automatik selbst.
+        kauf, = bank.offene()
+        zahlung, = bank.automatisch_erledigt()
+        self.assertEqual((zahlung["status"], zahlung["duplikat"]["beschreibung"]), ("ignoriert", "TF Bank"))
         bank.umsatz_buchen(kauf["id"], LEB)
-        bank.umsatz_ignorieren(zahlung["id"])
         self.assertEqual({k["pfad"]: k["saldo"] for k in budget.stand()["konten"]}["Aktiva:TF Bank:Mastercard Gold"], 0)
 
     def test_konto_art_ueber_die_api(self):
@@ -658,6 +659,142 @@ class Kreditkarte(Basis):
         self.assertEqual(code, 200, roh)
         konten, _ = buch.lesen()
         self.assertEqual(konten[json.loads(roh)["id"]]["typ"], "CREDIT")
+
+
+class FalscheKI:
+    """Antwortet wie die App „KI (colibri)“, je nach Aufgabe im Systemtext."""
+    anfragen = []
+
+    @staticmethod
+    def handler():
+        from http.server import BaseHTTPRequestHandler
+
+        class H(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_POST(self):
+                k = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                system, nutzer = k["messages"][0]["content"], k["messages"][1]["content"]
+                FalscheKI.anfragen.append((system, nutzer))
+                if "Buchstabe" in system:
+                    text = "\n".join(f"{i + 1}: {'a' if 'EXTRABLATT' in z else 'keine'}"
+                                      for i, z in enumerate(l for l in nutzer.splitlines() if "Umsatz:" in l))
+                elif "Kategorie" in system and "Frühere" in system:
+                    text = "\n".join(f"{i + 1}: {'Ausgaben:Lebensmittel' if 'Markt' in z else 'Erfunden'}"
+                                      for i, z in enumerate(nutzer.splitlines()))
+                else:
+                    text = ('<think>rechnen …</think>{"fazit": "GEHEIMFAZIT lokal", "vorschlaege": '
+                            '[{"titel": "Weniger Snacks", "betrag": 15, "kategorie": "Lebensmittel"}]}')
+                roh = json.dumps({"choices": [{"message": {"content": text}}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(roh)))
+                self.end_headers()
+                self.wfile.write(roh)
+        return H
+
+
+class BankAutomatik(Basis):
+    """Was sicher ist, erledigt die App selbst; den Rest beantwortet die lokale KI."""
+
+    def setUp(self):
+        super().setUp()
+        import lokal_ki
+        self.ki = lokal_ki
+        self.ki.URL = starten(FalscheKI.handler())
+        FalscheKI.anfragen.clear()
+        self.tr = buch.konto_anlegen("Trade Republic", AKTIVA)
+        bank.einstellungen_speichern({"konten": {"gls": GIRO, "tr": self.tr}})
+
+    def tearDown(self):
+        self.ki.URL = ""
+
+    def salden(self):
+        werte = {}
+        for b in buch.lesen()[1]:
+            for sp in b["splits"]:
+                werte[sp["konto"]] = werte.get(sp["konto"], 0) + sp["betrag"]
+        return werte
+
+    def test_umbuchung_zwischen_banken_und_rueckgaengig(self):
+        vorher = self.salden()
+        bank.einreichen("gls", [{"datum": "2026-11-10", "betrag": "-200", "name": "Trade Republic Bank", "zweck": "Einzahlung"}])
+        bank.einreichen("tr", [{"id": "t1", "datum": "2026-11-11", "betrag": "200", "name": "Einzahlung", "zweck": ""}])
+        self.assertEqual(bank.offene(), [])
+        ab, zu = sorted(bank.automatisch_erledigt(), key=lambda u: u["bank"])
+        self.assertEqual(ab["buchung_id"], zu["buchung_id"])
+        self.assertIn("Umbuchung GLS Bank → Trade Republic", ab["auto"])
+        self.assertEqual(self.salden()[self.tr], 20000)
+        url = starten(budget.Handler)
+        self.assertEqual(anfrage(f"{url}/api/bank/umsaetze/{ab['id']}/zuruecksetzen", {})[0], 200)
+        self.assertEqual(len(bank.offene()), 2)
+        self.assertEqual(self.salden().get(self.tr, 0), vorher.get(self.tr, 0))
+        # Zurückgenommenes bleibt von Hand: nichts wird erneut automatisch gebucht.
+        bank.einreichen("gls", [{"datum": "2026-11-12", "betrag": "-1", "name": "x", "zweck": ""}])
+        self.assertEqual(len([u for u in bank.offene() if u["betrag"] == -20000 or u["betrag"] == 20000]), 2)
+        # Bucht man eine Seite als Umbuchung auf die andere Bank, ist das Gegenstück mit erledigt.
+        offen = {u["bank"]: u for u in bank.offene() if abs(u["betrag"]) == 20000}
+        bank.umsatz_buchen(offen["gls"]["id"], self.tr)
+        self.assertEqual([u for u in bank.offene() if abs(u["betrag"]) == 20000], [])
+
+    def test_bekannt_doppelt_und_ki(self):
+        buch.buchen("ausgabe", "2026-10-20", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
+        buch.buchen("ausgabe", "2026-11-06", "Bäcker vom Bon", GIRO, [{"konto": LEB, "betrag": 300}])
+        buch.buchen("ausgabe", "2026-11-07", "Cafe Extrablatt", VERR, [{"konto": LEB, "betrag": 1000}])
+        neu = bank.einreichen("gls", [
+            {"datum": "2026-11-03", "betrag": "-12.50", "name": "REWE Markt", "zweck": "Karte"},
+            {"datum": "2026-11-06", "betrag": "-3", "name": "Bäcker", "zweck": ""},
+            {"datum": "2026-11-08", "betrag": "-11.50", "name": "CAFE EXTRABLATT AACHEN", "zweck": ""},
+            {"datum": "2026-11-09", "betrag": "-7.20", "name": "Hit Markt", "zweck": ""},
+            {"datum": "2026-11-09", "betrag": "-30", "name": "Unbekannt GmbH", "zweck": ""}])
+        self.assertEqual(neu, 5)
+        erledigt = {u["name"]: u for u in bank.automatisch_erledigt()}
+        self.assertEqual(erledigt["REWE Markt"]["auto"], "Bekannter Empfänger: Lebensmittel")
+        self.assertEqual(erledigt["Bäcker"]["status"], "ignoriert")
+        offen = {u["name"]: u for u in bank.offene()}
+        self.assertEqual(offen["CAFE EXTRABLATT AACHEN"]["kandidaten"][0]["beschreibung"], "Cafe Extrablatt")
+        self.assertEqual({u["ki"] for u in offen.values()}, {"wartet"})
+        self.ki.bank_einordnen()
+        offen = {u["name"]: u for u in bank.offene()}
+        # Bon mit anderem Betrag auf anderem Konto: die KI erkennt ihn, der Umsatz bleibt zum Abhaken.
+        self.assertEqual(offen["CAFE EXTRABLATT AACHEN"]["ki_duplikat"]["beschreibung"], "Cafe Extrablatt")
+        # Erfundene Kategorie: kein Vorschlag, bleibt offen.
+        self.assertNotIn("ki_vorschlag", offen["Unbekannt GmbH"])
+        self.assertEqual({u["name"]: u for u in bank.automatisch_erledigt()}["Hit Markt"]["auto"], "Kategorie von der KI: Lebensmittel")
+        self.assertEqual(set(offen), {"CAFE EXTRABLATT AACHEN", "Unbekannt GmbH"})
+        # An die KI gehen Umsätze, Kategorien und frühere Zuordnungen, aber keine Salden oder Depot.
+        gesendet = json.dumps(FalscheKI.anfragen)
+        for geheim in ("GEHEIMSTART", "GEHEIMDEPOT", "9876", "1234"):
+            self.assertNotIn(geheim, gesendet)
+
+    def test_automatik_aus(self):
+        buch.buchen("ausgabe", "2026-10-20", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
+        bank.einstellungen_speichern({"konten": {"gls": GIRO}, "automatik": False})
+        bank.einreichen("gls", [{"datum": "2026-11-03", "betrag": "-12.50", "name": "REWE Markt", "zweck": ""}])
+        self.ki.bank_einordnen()
+        self.assertEqual(len(bank.offene()), 1)
+        self.assertEqual(bank.automatisch_erledigt(), [])
+
+    def test_lokaler_monatsbericht(self):
+        buch.buchen("ausgabe", "2026-11-03", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
+        self.assertEqual(self.ki.bericht_faellig(datetime(2026, 12, 1, 3)), "2026-11")
+        self.assertIsNone(self.ki.bericht_faellig(datetime(2026, 12, 9, 3)))
+        self.ki.bericht_erstellen("2026-11")
+        self.assertIsNone(self.ki.bericht_faellig(datetime(2026, 12, 1, 3)))
+        self.assertNotIn("GEHEIM", json.dumps(FalscheKI.anfragen))  # nur Ausgaben, wie bei Claude
+        d = budget.bericht("2026-11")
+        self.assertEqual((d["text"], d["text_lokal"]), ("GEHEIMFAZIT lokal", ""))
+        self.assertEqual(d["vorschlaege"][0]["kategorie"], "Ausgaben:Lebensmittel")
+        # Claudes Bericht kommt dazu, der lokale bleibt daneben.
+        ausgaben.w_bericht({"monat": "2026-11", "text": "Von Claude", "vorschlaege": []})
+        d = budget.bericht("2026-11")
+        self.assertEqual((d["text"], d["text_lokal"]), ("Von Claude", "GEHEIMFAZIT lokal"))
+        self.assertEqual(d["vorschlaege"][0]["titel"], "Weniger Snacks")
+        # Die Anweisung kommt aus der Konfiguration der App, das Antwortformat bleibt fest dran.
+        buch.json_speichern(TMP / "options.json", {"bericht_anweisung": "Sei streng."})
+        self.ki.bericht_erstellen("2026-11")
+        self.assertTrue(FalscheKI.anfragen[-1][0].startswith("Sei streng.\n\nAntworte nur mit JSON"))
+        self.assertEqual(budget.bericht("2026-11")["text"], "Von Claude")
 
 
 class NeuesBuch(unittest.TestCase):
