@@ -88,6 +88,11 @@
   @media (max-width: 600px) { .position { grid-template-columns: 1fr 1fr; } }
   .aktionen { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .fazit { white-space: pre-wrap; max-width: 72ch; margin: 0; }
+  #aZeitraum { width: auto; }
+  .anweisung + .anweisung { margin-top: 10px; }
+  .anweisung summary { cursor: pointer; }
+  .anweisung form { margin-top: 8px; }
+  .anweisung textarea { font-size: 0.9rem; line-height: 1.4; resize: vertical; }
   .grafik { width: 100%; height: auto; display: block; overflow: visible; }
   .grafik text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
   .grafik .raster-linie { stroke: var(--line); stroke-width: 1; }
@@ -261,6 +266,7 @@
   <div id="app" hidden>
     <nav class="reiter" role="tablist">
       <button role="tab" data-t="uebersicht">Übersicht</button>
+      <button role="tab" data-t="analyse">Analyse</button>
       <button role="tab" data-t="buchungen">Buchungen</button>
       <button role="tab" data-t="eintragen">Eintragen</button>
       <button role="tab" data-t="wiederkehrend">Wiederkehrend</button>
@@ -295,7 +301,6 @@
       <div class="spalte" style="grid-area:seite">
         <section class="card" id="zielKarte" hidden></section>
         <section class="card" id="bSparenKarte" hidden><h2 id="bSparenTitel"></h2><div id="bSparen"></div><p class="gedaempft" id="bSparenQuelle" style="margin:6px 0 0"></p></section>
-        <section class="card" id="bFazit" hidden><h2>Fazit</h2><p class="fazit"></p><details id="bFazitLokal" hidden><summary class="gedaempft">Lokale KI</summary><p class="fazit"></p></details><details id="bDepotNews" hidden><summary class="gedaempft">Depot &amp; Nachrichten</summary><p class="fazit"></p></details></section>
         <section class="card"><h2>Größte Posten</h2><table id="bPosten"></table></section>
       </div>
     </div>
@@ -349,6 +354,28 @@
       <section class="card"><h2>Eingestellt</h2><table id="wListe"></table></section>
     </div>
 
+    <div data-seite="analyse">
+      <section class="card">
+        <div class="kopf" style="margin-bottom:6px"><h2 id="aTitel">Analyse</h2><select id="aZeitraum" aria-label="Zeitraum"></select></div>
+        <p class="gedaempft" id="aStatus" style="margin:0"></p>
+        <div class="aktionen" id="aNeuBox" hidden><button type="button" id="aNeu"></button></div>
+      </section>
+      <div id="aBloecke"></div>
+      <section class="card" id="aAnweisungenKarte" hidden>
+        <h2>Anweisungen an die lokale KI</h2>
+        <p class="gedaempft" style="margin:0 0 10px">Der ganze Auftrag, den die KI bekommt, zum Umschreiben. Die Daten (Ausgaben, Einnahmen, Konten, Depot, frühere Fazits, deine Hinweise und 👍/👎) hängt die App dahinter, dazu das Antwortformat, damit sie die Antwort lesen kann. „Vorgabe“ holt den ursprünglichen Text zurück. Gilt ab dem nächsten Bericht, mit „neu schreiben“ oben sofort.</p>
+        <div id="aAnweisungen"></div>
+      </section>
+      <section class="card" id="hinweiseKarte" hidden>
+        <h2>Hinweise an die lokale KI</h2>
+        <p class="gedaempft" style="margin:0 0 8px">Kommen zu jeder Anweisung dazu (Monatsbericht, Gesamtfazit, Depot-Update), z. B. Ziele („bis Juni 500 € fürs Fahrrad“) oder was gesetzt ist („Mensa bleibt“). Dazu zählen deine 👍/👎 bei den Sparvorschlägen.</p>
+        <form id="hinweiseForm">
+          <label>Hinweise<textarea id="kiHinweise" rows="4" maxlength="2000"></textarea></label>
+          <div class="aktionen"><button class="primaer">Speichern</button></div>
+        </form>
+      </section>
+    </div>
+
     <div data-seite="depot">
       <div class="kopf"><h2>Depot</h2><span class="gedaempft" id="dStand"></span></div>
       <section class="card" id="dUpdate" hidden><h2>Wochen-Update</h2><p class="fazit"></p><p class="gedaempft" style="margin:6px 0 0"></p></section>
@@ -398,14 +425,6 @@
           <label>Kontrast<input type="color" data-farbe="kontrast"></label>
           <label>Kritisch<input type="color" data-farbe="krit"></label>
           <div style="align-self:end"><button type="button" id="farbZurueck">Zurücksetzen</button></div>
-        </form>
-      </section>
-      <section class="card" id="hinweiseKarte" hidden>
-        <h2>Hinweise an die lokale KI</h2>
-        <p class="gedaempft" style="margin:0 0 8px">Bekommt die KI jeden Monat zum Bericht dazu, z. B. Ziele („bis Juni 500 € fürs Fahrrad“) oder was gesetzt ist („Mensa bleibt“). Dazu zählen deine 👍/👎 bei den Sparvorschlägen.</p>
-        <form id="hinweiseForm">
-          <label>Hinweise<textarea id="kiHinweise" rows="4" maxlength="2000"></textarea></label>
-          <div class="aktionen"><button class="primaer">Speichern</button></div>
         </form>
       </section>
       <section class="card">
@@ -477,6 +496,7 @@ function zeige(name) {
   if (name === "uebersicht" && bAktuell) berichtZeichnen(bAktuell);
   if (name === "buchungen") ladeBuchungen();
   if (name === "depot") depotLaden();
+  if (name === "analyse") analyseLaden();
   if (name === "einstellungen") einstellungenLaden();
   if (name === "bank") bankLaden();
 }
@@ -1198,12 +1218,6 @@ function berichtZeichnen(d) {
   bAktuell = d;
   const gesamt = d.kennung === "gesamt";
   const kurzM = (m) => MONATE[+m.slice(5) - 1].slice(0, 3);
-  $("#bFazit").hidden = !d.text && !d.depot_text;
-  $("#bDepotNews").hidden = !d.depot_text;
-  $("#bDepotNews p").textContent = d.depot_text || "";
-  $("#bFazit > p").textContent = d.text;
-  $("#bFazitLokal").hidden = !d.text_lokal;
-  $("#bFazitLokal p").textContent = d.text_lokal || "";
 
   const monatsSaeulen = (ziel, reihen, kopf, linie) => {
     const t = d.trend.map((x) => ({ ...x, kurz: kurzM(x.titel), lang: mName(x.titel) }));
@@ -1265,6 +1279,71 @@ function berichtZeichnen(d) {
 }
 let bUhr;
 addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="uebersicht"]').hidden) berichtZeichnen(bAktuell); }, 150); });
+// ---------- Analyse ----------
+let aZeitraum = "gesamt", aUhr = null;
+const zeitpunkt = (z) => z ? `${dmy(z.slice(0, 10))}${z.length > 10 ? `, ${z.slice(11, 16)} Uhr` : ""}` : "";
+const analyseLaden = sicher(async () => {
+  const a = await api(`api/analyse?k=${encodeURIComponent(aZeitraum)}`);
+  const gesamt = aZeitraum === "gesamt";
+  $("#aZeitraum").innerHTML = '<option value="gesamt">Gesamt</option>' + a.monate.map((m) => `<option value="${m}">${mName(m)}</option>`).join("");
+  $("#aZeitraum").value = aZeitraum;
+  $("#aTitel").textContent = gesamt ? `Gesamtfazit seit ${mName(a.monate[a.monate.length - 1])}` : `Fazit ${mName(aZeitraum)}`;
+  $("#aStatus").textContent = a.status || (a.ki ? "" : "Ohne lokale KI stehen hier nur die Berichte von Claude.");
+  // Blöcke: Gesamtfazit bzw. Bericht von Claude, lokale KI, Depot, Sparvorschläge.
+  const bloecke = [];
+  if (gesamt && a.gesamt && a.gesamt.text) bloecke.push(["Gesamtfazit", a.gesamt.text, `Lokale KI, ${zeitpunkt(a.gesamt.erstellt)}`]);
+  if (!gesamt) {
+    const m = a.monat;
+    if (m.claude.text) bloecke.push(["Bericht von Claude", m.claude.text, zeitpunkt(m.claude.erstellt)]);
+    if (m.lokal.text) bloecke.push(["Lokale KI", m.lokal.text, zeitpunkt(m.lokal.erstellt)]);
+    if (m.lokal.depot) bloecke.push(["Depot & Nachrichten", m.lokal.depot, "Suchergebnisse können ungenau sein."]);
+    if (m.vorschlaege.length) bloecke.push(["Sparvorschläge", m.vorschlaege.map((v) => `• ${v.titel}: ${eur(v.betrag)} pro Monat`).join("\n"), "👍/👎 dazu in der Übersicht beim Sparpotenzial."]);
+  }
+  $("#aBloecke").innerHTML = bloecke.length
+    ? bloecke.map(([t, x, q]) => `<section class="card"><h2>${esc(t)}</h2><p class="fazit">${esc(x)}</p>${q ? `<p class="gedaempft" style="margin:6px 0 0">${esc(q)}</p>` : ""}</section>`).join("")
+    : `<section class="card"><p class="gedaempft" style="margin:0">${gesamt ? "Noch kein Gesamtfazit. Es entsteht nach jedem Monatsbericht der lokalen KI, oder oben von Hand." : "Für diesen Monat gibt es noch keinen Bericht."}</p></section>`;
+  $("#aNeuBox").hidden = !a.ki;
+  $("#aNeu").textContent = gesamt ? "Gesamtfazit neu schreiben" : "Monatsbericht neu schreiben (danach Gesamtfazit)";
+  $("#aNeu").disabled = a.laeuft;
+  $("#aNeu").title = a.laeuft ? "Die lokale KI schreibt gerade, das kann Stunden dauern." : "";
+  $("#aAnweisungenKarte").hidden = !a.ki;
+  $("#hinweiseKarte").hidden = !a.ki;
+  // Nicht neu aufbauen, während Enzo tippt.
+  if (a.ki && !$("#aAnweisungen").contains(document.activeElement)) {
+    if (document.activeElement !== $("#kiHinweise")) $("#kiHinweise").value = a.hinweise || "";
+    const offen = new Set($$("#aAnweisungen details[open]").map((d) => d.dataset.name));
+    $("#aAnweisungen").innerHTML = a.anweisungen.map((w) => `<details class="anweisung" data-name="${w.name}"${offen.has(w.name) ? " open" : ""}>
+      <summary><b>${esc(w.titel)}</b> <span class="gedaempft">${w.eigen ? "· eigene Fassung" : "· Vorgabe"}</span></summary>
+      <form data-name="${w.name}">
+        <label>Anweisung<textarea rows="12" maxlength="8000">${esc(w.text)}</textarea></label>
+        <p class="gedaempft" style="margin:6px 0 0">Fest dahinter: ${esc(w.fest)}</p>
+        <div class="aktionen"><button class="primaer">Speichern</button><button type="button" data-vorgabe${w.eigen ? "" : " disabled"}>Vorgabe</button></div>
+      </form></details>`).join("");
+  }
+  clearTimeout(aUhr);
+  if (a.laeuft) aUhr = setTimeout(() => { if (!$('[data-seite="analyse"]').hidden) analyseLaden(); }, 30000);
+});
+$("#aZeitraum").onchange = (e) => { aZeitraum = e.target.value; analyseLaden(); };
+$("#aNeu").onclick = sicher(async () => {
+  await api("api/analyse/neu", json("POST", { ziel: aZeitraum }));
+  toast("Die lokale KI schreibt. Das kann Stunden dauern.");
+  await analyseLaden();
+});
+const anweisungSpeichern = async (name, text) => {
+  await api("api/analyse/anweisung", json("PUT", { name, text }));
+  toast(text ? "Gespeichert" : "Vorgabe wiederhergestellt");
+  document.activeElement.blur();
+  await analyseLaden();
+};
+$("#aAnweisungen").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  await anweisungSpeichern(e.target.dataset.name, e.target.querySelector("textarea").value);
+});
+$("#aAnweisungen").onclick = sicher(async (e) => {
+  const b = e.target.closest("[data-vorgabe]");
+  if (b) await anweisungSpeichern(b.closest("form").dataset.name, "");
+});
+
 // ---------- Depot ----------
 const prozent = (p) => `${p > 0 ? "+" : ""}${p.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 const plus = (c) => `${c > 0 ? "+" : ""}${eur(c)}`;
@@ -1344,8 +1423,6 @@ const einstellungenLaden = sicher(async () => {
   const e = await api("api/einstellungen");
   designZeigen(e.design, e.farben);
   $("#zBetrag").value = e.sparziel ? eingabe(e.sparziel) : "";
-  $("#hinweiseKarte").hidden = !e.ki;
-  $("#kiHinweise").value = e.ki_hinweise || "";
   $("#zDatum").value = e.sparziel_datum || "";
 });
 function optionenEltern() {
