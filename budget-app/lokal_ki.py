@@ -4,8 +4,9 @@ Nichts davon verlässt den Server. Ohne BUDGET_KI_URL (Desktop-Programm, Tests) 
 
 - Bank: Umsätze mit ki == "wartet" gehen in Paketen an die KI. Sie wählt die Kategorie (neue Empfänger) und
   sagt, ob ein ähnlicher Eintrag im Buch derselbe Einkauf ist. Danach erledigt bank.automatisch() den Rest.
-- Monatsbericht: in der Nacht zum 1. (bis zum 7. nachgeholt) für den Vormonat, mit denselben Daten wie
-  Claude (nur Ausgaben). Er steht im Bericht unter „lokal“; ein Bericht von Claude bleibt daneben erhalten.
+- Monatsbericht: in der Nacht zum 1. (bis zum 7. nachgeholt) für den Vormonat. Anders als Claude bekommt die
+  lokale KI auch Einnahmen, Kontostände, Depot und Sparziel (Enzo 20.11.). Er steht im Bericht unter „lokal“;
+  ein Bericht von Claude bliebe daneben erhalten.
 """
 import json
 import os
@@ -201,14 +202,25 @@ def bericht_eingabe(monat):
     if fest:
         teile.append("Feste wiederkehrende Ausgaben:")
         teile += [f"- {w['name']}: {w['betrag']:.2f} EUR alle {w['alle_monate']} Monat(e) ({w['kategorie']})" for w in fest]
+    # Nur für die lokale KI (bleibt auf dem Server): Einnahmen, Sparquote, Kontostände, Sparziel.
+    import budget  # erst hier: budget importiert dieses Modul
+    b, st = budget.bericht(monat), budget.stand()
+    quote = f"{(b['einnahmen'] - b['gesamt']) / b['einnahmen'] * 100:.0f} %" if b["einnahmen"] > 0 else "-"
+    quellen = ", ".join(f"{q['name']} {q['betrag'] / 100:.2f}" for q in b["einnahmequellen"]) or "-"
+    teile.append(f"Einnahmen im Monat: {b['einnahmen'] / 100:.2f} EUR ({quellen}); "
+                 f"ins Depot: {b['ins_depot'] / 100:.2f} EUR; Sparquote: {quote}.")
+    teile.append("Kontostände heute:")
+    teile += [f"- {k['pfad']}: {k['saldo'] / 100:.2f} EUR" for k in st["konten"]]
+    teile.append(f"Vermögen: {st['vermoegen'] / 100:.2f} EUR, davon im Depot (zählt als erspart): {st['erspartes'] / 100:.2f} EUR.")
+    if st["ziel"]:
+        z = st["ziel"]
+        teile.append(f"Sparziel: {z['betrag'] / 100:.2f} EUR Vermögen bis {z['datum']}, fehlt {z['fehlt'] / 100:.2f} EUR, "
+                     f"also {z['pro_monat'] / 100:.2f} EUR pro Monat.")
     return "\n".join(teile)
 
 
 # Vorgabe für die Anweisung; in der App unter Konfiguration → „bericht_anweisung“ änderbar.
-ANWEISUNG = ("Du bist ein nüchterner, freundlicher Finanzcoach für einen Studenten. Du bekommst nur seine Ausgaben. "
-             "Schreibe auf Deutsch ein kurzes Fazit zum Monat (3 bis 5 Sätze, konkrete Zahlen, Vergleich mit Vormonat und "
-             "Durchschnitt) und 2 bis 4 konkrete Sparvorschläge mit einem realistischen Betrag pro Monat in Euro. "
-             "Schlage nichts vor, was er nicht beeinflussen kann (Miete).")
+ANWEISUNG = 'Du schreibst Enzos Monatsbericht für sein Budget-Panel (er ist Student in Aachen). Sprich ihn mit du an. Das Panel zeichnet Verlauf, Kategorien, Händler und größte Posten selbst: wiederhole diese Zahlen nicht, sondern sag, was die Grafiken nicht von selbst zeigen. Fazit: höchstens drei kurze Sätze mit der wichtigsten Erkenntnis, auch zu Einnahmen, Sparquote, Kontoständen und Sparziel; wenn im Monat auffällig wenig gebucht ist, sag das. Danach eine eigene Zeile mit einem fleischfreien Rezepttipp in einem Satz. Dazu 2 bis 3 konkrete, realistische Sparvorschläge, Titel mit höchstens vier Wörtern, Betrag in Euro pro Monat. Regeln: ehrlich, ohne Vorwürfe. Fahrradteile nicht kommentieren. Einzelne Fast-Food-Besuche nicht hochrechnen und nicht als Muster werten. Fleisch fürs Wochenende ist gewollt und kein Sparpotenzial. Das Claude-Abo nie als Sparvorschlag. Die Wochenzeitung der Freitag ist gekündigt: nicht als Sparvorschlag nennen. Einkäufe bei dm sind bewusst, dort kein Sparpotenzial sehen. Getränke kosten wegen der Studentenverbindung mehr als üblich, Essen weniger. Bargeldabhebungen sind normale Ausgaben. Miete nicht als Sparpotenzial. Keine Anlageberatung.'
 # Fest angehängt, damit die App die Antwort lesen kann.
 FORMAT = ("Antworte nur mit JSON in dieser Form: "
           '{"fazit": "...", "vorschlaege": [{"titel": "...", "betrag": 12.5, "kategorie": "Ausgaben:Lebensmittel"}]} '
