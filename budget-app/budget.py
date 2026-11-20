@@ -404,6 +404,7 @@ def bericht(kennung):
         "trend": trend, "text": text.get("text") or lokal.get("text", ""),
         "text_lokal": lokal.get("text", "") if text.get("text") else "",
         "vorschlaege": vorschlaege_von(berichte.get(quelle, {})), "vorschlaege_aus": quelle,
+        "bewertungen": lokal_ki.bewertungen(quelle) if quelle else {}, "ki": lokal_ki.an(),
     }
 
 
@@ -506,7 +507,7 @@ class Handler(BaseHTTPRequestHandler):
         if pfad == "/api/bericht":
             return self.antwort(200, bericht(q.get("k", ["gesamt"])[0]))
         if pfad == "/api/einstellungen":
-            return self.antwort(200, {**json_laden(EINSTELLUNGEN, {}), **design()})
+            return self.antwort(200, {**json_laden(EINSTELLUNGEN, {}), **design(), "ki": lokal_ki.an()})
         if pfad == "/api/export":
             return self.antwort(200, typ="application/octet-stream", roh=buch.BUCH.read_bytes(), kopf={
                 "Content-Disposition": 'attachment; filename="haushaltsbuch.gnucash"'})
@@ -523,6 +524,9 @@ class Handler(BaseHTTPRequestHandler):
             konten, buchungen = buch.neu_anlegen({"Girokonto": cent(daten.get("giro") or 0),
                                                   "Bargeld": cent(daten.get("bargeld") or 0)})
             return self.antwort(200, {"konten": konten, "buchungen": buchungen})
+        if pfad == "/api/bericht/bewertung":
+            lokal_ki.bewerten(str(daten.get("monat") or ""), str(daten.get("titel") or ""), daten.get("wert"))
+            return self.antwort(200, {"ok": True})
         if pfad == "/api/buchungen":
             gebuehr = cent(daten["gebuehr"]) if daten.get("gebuehr") not in (None, "", 0) else 0
             if gebuehr and daten.get("art") != "umbuchung":
@@ -600,6 +604,12 @@ class Handler(BaseHTTPRequestHandler):
                 e["farben"] = f or None
             json_speichern(EINSTELLUNGEN, e)
             return self.antwort(200, design())
+        if pfad == "/api/einstellungen" and "ki_hinweise" in daten:
+            text = str(daten["ki_hinweise"] or "").strip()
+            if len(text) > lokal_ki.MAX_HINWEISE:
+                raise BuchFehler(f"Höchstens {lokal_ki.MAX_HINWEISE} Zeichen")
+            json_speichern(EINSTELLUNGEN, {**json_laden(EINSTELLUNGEN, {}), "ki_hinweise": text})
+            return self.antwort(200, {"ok": True})
         if pfad == "/api/einstellungen":
             ziel = cent(daten["sparziel"]) if daten.get("sparziel") not in (None, "") else 0
             termin = buch.tag(daten["sparziel_datum"]).isoformat() if daten.get("sparziel_datum") else ""
