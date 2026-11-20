@@ -1,0 +1,16 @@
+# Nur im App-Netz erreichbar (kein Port nach außen), Nutzer ist die Budget-App.
+use_default_settings: true
+general:
+  instance_name: "Budget-Suche"
+server:
+  limiter: false
+  image_proxy: false
+  public_instance: false
+search:
+  safe_search: 0
+  default_lang: "de-DE"
+  formats:
+    - html
+    - json
+outgoing:
+  request_timeout: 6.0

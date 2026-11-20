@@ -12,6 +12,7 @@ import threading
 import time
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import date, datetime
@@ -825,6 +826,27 @@ class BankAutomatik(Basis):
         # Das Sparziel bleibt dabei erhalten.
         anfrage(f"{url}/api/einstellungen", {"sparziel": "100", "sparziel_datum": "2027-01-01"}, "PUT")
         self.assertEqual(json.loads(anfrage(f"{url}/api/einstellungen")[1])["ki_hinweise"], "Mensa bleibt.")
+        # Mit der Suche: allgemeine Fragen und Treffer gehen mit, keine Beträge in die Anfragen.
+        gefragt = []
+        class Suche(__import__("http.server").server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_GET(self):
+                gefragt.append(urllib.parse.unquote_plus(self.path))
+                roh = json.dumps({"results": [{"title": "Zinsen", "content": "Tagesgeld 2,5 %", "url": "https://x.example"}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(roh)))
+                self.end_headers()
+                self.wfile.write(roh)
+        self.ki.SUCHE = starten(Suche)
+        try:
+            self.ki.bericht_erstellen("2026-11")
+        finally:
+            self.ki.SUCHE = ""
+        self.assertIn("Aus dem Netz", FalscheKI.anfragen[-2][1])
+        self.assertIn("Tagesgeld 2,5 %", FalscheKI.anfragen[-2][1])
+        self.assertTrue(gefragt and not any("8.00" in g or "9868" in g for g in gefragt))
         # Die Anweisung kommt aus der Konfiguration der App, das Antwortformat bleibt fest dran.
         buch.json_speichern(TMP / "options.json", {"bericht_anweisung": "Sei streng."})
         self.ki.bericht_erstellen("2026-11")
