@@ -290,6 +290,14 @@ def bericht_eingabe(monat):
     if fruehere:
         teile.append("Deine früheren Fazits (wiederhole keine Tipps und keine Rezepte daraus):")
         teile += [f"- {k}: {t[:600]}" for k, t in fruehere]
+    teile += rueckmeldung_zeilen()
+    teile += vermoegen_zeilen(st)
+    return "\n".join(teile)
+
+
+def rueckmeldung_zeilen():
+    """Enzos Hinweise und seine 👍/👎 der letzten zwölf Monate."""
+    teile = []
     eigene = hinweise()
     if eigene:
         teile.append(f"Enzos Hinweise an dich (beachte sie):\n{eigene}")
@@ -301,7 +309,12 @@ def bericht_eingabe(monat):
         teile.append("Sparvorschläge, die Enzo gut fand (in diese Richtung weiterdenken): " + "; ".join(gut))
     if schlecht:
         teile.append("Sparvorschläge, die Enzo unpassend fand (so etwas nicht mehr vorschlagen): " + "; ".join(schlecht))
-    teile.append("Kontostände heute:")
+    return teile
+
+
+def vermoegen_zeilen(st):
+    """Kontostände, Vermögen, Depot und Sparziel (nur für die lokale KI)."""
+    teile = ["Kontostände heute:"]
     teile += [f"- {k['pfad']}: {k['saldo'] / 100:.2f} EUR" for k in st["konten"]]
     teile.append(f"Vermögen: {st['vermoegen'] / 100:.2f} EUR, davon im Depot (zählt als erspart): {st['erspartes'] / 100:.2f} EUR.")
     teile += depot_zeilen()
@@ -309,10 +322,10 @@ def bericht_eingabe(monat):
         z = st["ziel"]
         teile.append(f"Sparziel: {z['betrag'] / 100:.2f} EUR Vermögen bis {z['datum']}, fehlt {z['fehlt'] / 100:.2f} EUR, "
                      f"also {z['pro_monat'] / 100:.2f} EUR pro Monat.")
-    return "\n".join(teile)
+    return teile
 
 
-# Vorgabe für die Anweisung; in der App unter Konfiguration → „bericht_anweisung“ änderbar.
+# Vorgabe für die Anweisung; im Reiter Analyse änderbar (früher nur Konfiguration → „bericht_anweisung“).
 ANWEISUNG = 'Du schreibst Enzos Monatsbericht für sein Budget-Panel (er ist Student in Aachen). Sprich ihn mit du an. Das Panel zeichnet Verlauf, Kategorien, Händler und größte Posten selbst: wiederhole diese Zahlen nicht, sondern sag, was die Grafiken nicht von selbst zeigen. Fazit: höchstens drei kurze Sätze mit der wichtigsten Erkenntnis, auch zu Einnahmen, Sparquote, Kontoständen, Depot und Sparziel; wenn im Monat auffällig wenig gebucht ist, sag das. Danach eine eigene Zeile mit einem fleischfreien Rezepttipp in einem Satz. Dazu 2 bis 3 konkrete, realistische Sparvorschläge, Titel mit höchstens vier Wörtern, Betrag in Euro pro Monat. Regeln: ehrlich, ohne Vorwürfe. Fahrradteile nicht kommentieren. Einzelne Fast-Food-Besuche nicht hochrechnen und nicht als Muster werten. Fleisch fürs Wochenende ist gewollt und kein Sparpotenzial. Das Claude-Abo nie als Sparvorschlag. Die Wochenzeitung der Freitag ist gekündigt: nicht als Sparvorschlag nennen. Einkäufe bei dm sind bewusst, dort kein Sparpotenzial sehen. Getränke kosten wegen der Studentenverbindung mehr als üblich, Essen weniger. Bargeldabhebungen sind normale Ausgaben. Miete nicht als Sparpotenzial. Zum Depot darfst du Tipps geben (Aufteilung, Kosten, Sparrate, Risiko, Notgroschen), sachlich begründet und ohne Kursprognosen.'
 # Fest angehängt, damit die App die Antwort lesen kann.
 FORMAT = ("Antworte nur mit JSON in dieser Form: "
@@ -323,9 +336,6 @@ FORMAT = ("Antworte nur mit JSON in dieser Form: "
 OPTIONEN = DATA / "options.json"  # von Home Assistant geschrieben
 
 
-def anweisung():
-    eigene = str(json_laden(OPTIONEN, {}).get("bericht_anweisung") or "").strip()
-    return eigene or ANWEISUNG
 
 
 def _bericht_lesen(antwort):
@@ -422,7 +432,8 @@ DEPOT_ANWEISUNG = ("Du schreibst Enzos kurzes Depot-Update für die vergangene W
                    "Positionen und was sie für ihn bedeuten, auffällige Kennzahlen, und nur wenn wirklich nötig ein "
                    "Handlungshinweis (sachlich begründet, keine Kursprognosen, kein Hin und Her). Nenne zu jeder Nachricht "
                    "kurz die Quelle. Nutze nur Suchergebnisse, die eindeutig zur Position passen; ist nichts Wichtiges "
-                   "passiert, sag das in einem Satz. Antworte nur mit dem Text.")
+                   "passiert, sag das in einem Satz.")
+DEPOT_FORMAT = "Antworte nur mit dem Text des Depot-Updates, ohne JSON."
 
 
 def depot_update_erstellen():
@@ -440,7 +451,7 @@ def depot_update_erstellen():
     eigene = hinweise()
     daten = "\n".join(zeilen + ([f"Enzos Hinweise: {eigene}"] if eigene else [])
                       + (["Aus dem Netz (können ungenau sein):"] + netz if netz else ["Keine Suchergebnisse."]))
-    text = frage(DEPOT_ANWEISUNG, daten, max_tokens=4000, denken=True, timeout=6 * 3600).strip()
+    text = frage(anweisung("depot") + "\n\n" + DEPOT_FORMAT, daten, max_tokens=4000, denken=True, timeout=6 * 3600).strip()
     if not text or text.startswith("{"):
         raise OSError("KI: Depot-Update leer oder unlesbar")
     jahr, woche, _ = date.today().isocalendar()
@@ -470,7 +481,7 @@ def bericht_erstellen(monat):
     entwurf = json.dumps({"fazit": text, "vorschlaege": vorschlaege, "depot": depot_text}, ensure_ascii=False)
     try:
         text, vorschlaege, depot_text = _bericht_lesen(frage(
-            PRUEFUNG + "\n\nAnweisung:\n" + anweisung() + "\n\n" + FORMAT,
+            anweisung("pruefung") + "\n\nAnweisung:\n" + anweisung() + "\n\n" + FORMAT,
             f"Daten:\n{daten}\n\nEntwurf:\n{entwurf}", max_tokens=8000, denken=True, timeout=10 * 3600))
     except OSError as ex:
         print(f"KI (Bericht): Prüfung fehlgeschlagen, Entwurf bleibt ({ex})")
@@ -479,6 +490,150 @@ def bericht_erstellen(monat):
     except BuchFehler:
         # Eine erfundene Kategorie: dann die Vorschläge ohne Kategorie.
         ausgaben.bericht_speichern(monat, text, [{**v, "kategorie": ""} for v in vorschlaege], lokal=True, zusatz={"depot": depot_text} if depot_text else None)
+
+
+# ---------- Gesamtfazit über den ganzen Zeitraum (Reiter Analyse) ----------
+
+GESAMT = DATA / "gesamtfazit.json"
+GESAMT_ANWEISUNG = ('Du schreibst Enzos Gesamtfazit über den ganzen Zeitraum seines Budgets (er ist Student in Aachen). '
+                    'Sprich ihn mit du an. Schau auf die Entwicklung über alle Monate statt auf einzelne: wie sich Ausgaben, '
+                    'Einnahmen und Sparquote entwickeln, welche Kategorien dauerhaft wachsen oder schrumpfen, ob er seinem '
+                    'Sparziel näherkommt und wie das Depot dasteht. Ordne ein, statt Zahlen aufzuzählen, die das Panel '
+                    'ohnehin zeigt. Erst 4 bis 6 kurze Sätze, dann bis zu drei Stichpunkte mit „- “, worauf er in den '
+                    'nächsten Monaten achten sollte. Regeln: ehrlich, ohne Vorwürfe. Fahrradteile nicht kommentieren. '
+                    'Einzelne Fast-Food-Besuche nicht als Muster werten. Fleisch fürs Wochenende ist gewollt. Das '
+                    'Claude-Abo, die Miete und Einkäufe bei dm sind kein Sparpotenzial. Die Wochenzeitung der Freitag ist '
+                    'gekündigt. Getränke kosten wegen der Studentenverbindung mehr als üblich, Essen weniger. '
+                    'Bargeldabhebungen sind normale Ausgaben. Zum Depot darfst du Tipps geben, sachlich begründet und '
+                    'ohne Kursprognosen.')
+GESAMT_FORMAT = "Antworte nur mit dem Text des Gesamtfazits, ohne JSON und ohne Überschrift."
+MAX_ANWEISUNG = 8000
+# Was Enzo im Reiter Analyse ändern kann: Titel, Vorgabe, was die App fest anhängt.
+ANWEISUNGEN = {
+    "bericht": ("Monatsbericht", ANWEISUNG, FORMAT),
+    "pruefung": ("Prüfung des Monatsberichts (zweiter Durchgang)", PRUEFUNG,
+                 "Danach folgen die Anweisung des Monatsberichts und dasselbe Antwortformat."),
+    "gesamt": ("Gesamtfazit", GESAMT_ANWEISUNG, GESAMT_FORMAT),
+    "depot": ("Depot-Update (sonntags)", DEPOT_ANWEISUNG, DEPOT_FORMAT),
+}
+
+
+def _eigene():
+    return json_laden(DATA / "einstellungen.json", {}).get("ki_anweisungen") or {}
+
+
+def vorgabe(name):
+    if name == "bericht":
+        # Was in der Konfiguration der App steht, gilt als Vorgabe (Desktop und Tests: der Text im Code).
+        return str(json_laden(OPTIONEN, {}).get("bericht_anweisung") or "").strip() or ANWEISUNG
+    return ANWEISUNGEN[name][1]
+
+
+def anweisung(name="bericht"):
+    return str(_eigene().get(name) or "").strip() or vorgabe(name)
+
+
+def anweisung_speichern(name, text):
+    """Leer stellt die Vorgabe wieder her."""
+    if name not in ANWEISUNGEN:
+        raise BuchFehler("Unbekannte Anweisung")
+    text = str(text or "").strip()
+    if len(text) > MAX_ANWEISUNG:
+        raise BuchFehler(f"Höchstens {MAX_ANWEISUNG} Zeichen")
+    with lock:
+        e = json_laden(DATA / "einstellungen.json", {})
+        eigene = {k: v for k, v in (e.get("ki_anweisungen") or {}).items() if k != name}
+        if text and text != vorgabe(name):
+            eigene[name] = text
+        e["ki_anweisungen"] = eigene
+        json_speichern(DATA / "einstellungen.json", e)
+
+
+def anweisungen_liste():
+    eigene = _eigene()
+    return [{"name": n, "titel": t, "text": anweisung(n), "vorgabe": vorgabe(n), "eigen": bool(eigene.get(n)), "fest": f}
+            for n, (t, _, f) in ANWEISUNGEN.items()]
+
+
+def gesamt_eingabe():
+    """Alles über den ganzen Zeitraum: Summen, jeder Monat einzeln, die Monatsfazits, Vermögen und Depot."""
+    import budget  # erst hier: budget importiert dieses Modul
+    konten, buchungen = buch.lesen()
+    monate = budget.messmonate(konten, buchungen)
+    laufend = date.today().strftime("%Y-%m")
+    g = budget.gesamtmonat()
+    voll = g["schnitt_monate"]
+    teile = [f"Zeitraum: {monate[0]} bis {monate[-1]}, davon {len(voll)} volle Monate"
+             + (f" ({laufend} läuft noch)." if laufend in monate else "."),
+             f"Gesamt: Ausgaben {g['ausgaben'] / 100:.2f} EUR, Einnahmen {g['einnahmen'] / 100:.2f} EUR, "
+             f"Kursgewinne {g['kurs'] / 100:.2f} EUR; Ø Ausgaben je vollem Monat {g['ausgaben_schnitt'] / 100:.2f} EUR.",
+             "Kategorien (Summe | Ø je vollem Monat, EUR):"]
+    teile += [f"- {k['pfad']}: {k['betrag'] / 100:.2f} | {k['schnitt'] / 100:.2f}" for k in g["kategorien"][:25]]
+    teile.append("Jeder Monat (Ausgaben, Einnahmen, Sparquote, größte Kategorien in EUR):")
+    for m in monate:
+        summen, anzahl = ausgaben.monatssummen(m)
+        try:
+            ein = budget.monat(m)["einnahmen"]
+        except (BuchFehler, KeyError, ValueError):
+            ein = 0
+        aus = sum(summen.values())
+        quote = f"{(ein - aus) / ein * 100:.0f} %" if ein > 0 else "-"
+        groesste = ", ".join(f"{k.split(':', 1)[-1]} {v / 100:.0f}" for k, v in sorted(summen.items(), key=lambda x: -x[1])[:5])
+        teile.append(f"- {m}{' (läuft)' if m == laufend else ''}: Ausgaben {aus / 100:.2f}, Einnahmen {ein / 100:.2f}, "
+                     f"Sparquote {quote}, {anzahl} Buchungen ({groesste or '-'})")
+    berichte = json_laden(ausgaben.BERICHTE, {})
+    fazits = [(k, (v.get("lokal") or {}).get("text") or v.get("text")) for k, v in sorted(berichte.items()) if "W" not in k]
+    fazits = [(k, t) for k, t in fazits if t]
+    if fazits:
+        teile.append("Die bisherigen Monatsfazits:")
+        teile += [f"- {k}: {t[:500]}" for k, t in fazits[-12:]]
+    teile += rueckmeldung_zeilen()
+    teile += vermoegen_zeilen(budget.stand())
+    return "\n".join(teile)
+
+
+def gesamt_erstellen():
+    text = frage(anweisung("gesamt") + "\n\n" + GESAMT_FORMAT, gesamt_eingabe(), max_tokens=8000, denken=True,
+                 timeout=10 * 3600).strip()
+    if not text or text.startswith("{"):
+        raise OSError("KI: Gesamtfazit leer oder unlesbar")
+    json_speichern(GESAMT, {"text": text[:6000], "erstellt": time.strftime("%Y-%m-%d %H:%M")})
+
+
+# Immer nur ein Bericht gleichzeitig (der Server hat wenig RAM): Schleife und Knopf im Reiter Analyse teilen sich das.
+_auftrag = threading.Lock()
+
+
+def laeuft():
+    return _auftrag.locked()
+
+
+def auftrag(ziel):
+    """Von Hand: Monatsbericht für ziel (JJJJ-MM) und danach das Gesamtfazit, oder ziel == "gesamt" nur das Gesamtfazit."""
+    if not an():
+        raise BuchFehler("Ohne lokale KI geht das nicht")
+    if ziel != "gesamt" and not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", str(ziel)):
+        raise BuchFehler("Monat (JJJJ-MM) oder gesamt angeben")
+    if not buch.vorhanden():
+        raise BuchFehler("Noch kein Buch")
+    if not _auftrag.acquire(blocking=False):
+        raise BuchFehler("Die lokale KI schreibt gerade schon einen Bericht")
+
+    def lauf():
+        try:
+            if ziel != "gesamt":
+                zustand["bericht"] = f"Monatsbericht {ziel} läuft"
+                bericht_erstellen(ziel)
+            zustand["bericht"] = "Gesamtfazit läuft"
+            gesamt_erstellen()
+            zustand["bericht"] = ""
+            print(f"Bericht von Hand fertig ({ziel})")
+        except (OSError, BuchFehler) as ex:
+            zustand["bericht"] = f"Bericht: {ex}"
+            print(f"KI (Bericht): {ex}")
+        finally:
+            _auftrag.release()
+    threading.Thread(target=lauf, daemon=True).start()
 
 
 def bericht_faellig(jetzt):
@@ -496,24 +651,35 @@ def bericht_faellig(jetzt):
     return monat
 
 
+def monatliches():
+    monat = bericht_faellig(datetime.now())
+    if monat and buch.vorhanden():
+        json_speichern(ZUSTAND, {**json_laden(ZUSTAND, {}), "bericht_versuch": {"monat": monat, "zeit": time.time()}})
+        zustand["bericht"] = f"Monatsbericht {monat} läuft"
+        bericht_erstellen(monat)
+        print(f"Lokaler Monatsbericht {monat} fertig")
+        zustand["bericht"] = "Gesamtfazit läuft"
+        gesamt_erstellen()
+        zustand["bericht"] = ""
+        print("Gesamtfazit fertig")
+    if depot_update_faellig(datetime.now()) and buch.vorhanden():
+        json_speichern(ZUSTAND, {**json_laden(ZUSTAND, {}), "depot_versuch": time.time()})
+        zustand["bericht"] = "Depot-Update läuft"
+        if depot_update_erstellen():
+            print("Depot-Update fertig")
+        zustand["bericht"] = ""
+
+
 def schleife():
     while True:
         try:
             if an():
                 bank_anstossen()
-                monat = bericht_faellig(datetime.now())
-                if monat and buch.vorhanden():
-                    json_speichern(ZUSTAND, {**json_laden(ZUSTAND, {}), "bericht_versuch": {"monat": monat, "zeit": time.time()}})
-                    zustand["bericht"] = f"Monatsbericht {monat} läuft"
-                    bericht_erstellen(monat)
-                    zustand["bericht"] = ""
-                    print(f"Lokaler Monatsbericht {monat} fertig")
-                if depot_update_faellig(datetime.now()) and buch.vorhanden():
-                    json_speichern(ZUSTAND, {**json_laden(ZUSTAND, {}), "depot_versuch": time.time()})
-                    zustand["bericht"] = "Depot-Update läuft"
-                    if depot_update_erstellen():
-                        print("Depot-Update fertig")
-                    zustand["bericht"] = ""
+            if an() and _auftrag.acquire(blocking=False):
+                try:
+                    monatliches()
+                finally:
+                    _auftrag.release()
         except (OSError, BuchFehler) as ex:
             zustand["bericht"] = f"Monatsbericht: {ex}"
             print(f"KI (Bericht): {ex}")

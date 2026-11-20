@@ -62,10 +62,17 @@ Läuft auf dem Server, nichts verlässt ihn. Ohne die App (oder im Desktop-Progr
   schreibt die KI ein kurzes Depot-Update, im Fazit unter „Depot & Nachrichten“. Er darf Stunden brauchen: erst ein Entwurf, dann prüft die KI ihn in einem zweiten Durchgang gegen die
   Daten und die Regeln. Sie bekommt dafür auch die Händler je Kategorie, die Sparvorschläge des Vormonats, einen Rückblick über
   12 Monate und die letzten drei Fazits (damit sich Tipps und Rezepte nicht wiederholen). Bessere Tipps über Rückmeldung: 👍/👎 an jedem
-  Sparvorschlag im Board und „Hinweise an die lokale KI“ unter Einstellungen (Ziele, was gesetzt ist) gehen in jeden
+  Sparvorschlag im Board und „Hinweise an die lokale KI“ im Reiter Analyse (Ziele, was gesetzt ist) gehen in jeden
   folgenden Bericht ein (`rueckmeldung.json`, `einstellungen.json`). Gibt es auch einen Bericht von Claude, steht
-  der lokale im Fazit unter „Lokale KI“; die Sparvorschläge kommen dann von Claude. Die Anweisung steht in der
-  Konfiguration der App (`bericht_anweisung`); das Antwortformat (JSON) hängt die App selbst an.
+  der lokale daneben unter „Lokale KI“; die Sparvorschläge kommen dann von Claude. Das Antwortformat (JSON) hängt die App selbst an.
+- **Reiter Analyse:** alle Fazits an einem Ort, Zeitraum wie in der Übersicht („Gesamt“ oder ein Monat). Für „Gesamt“
+  schreibt die lokale KI nach jedem Monatsbericht ein **Gesamtfazit** über den ganzen Zeitraum (jeder Monat mit Ausgaben,
+  Einnahmen und Sparquote, Summen je Kategorie, die Monatsfazits, Hinweise, 👍/👎, Konten, Depot, Sparziel;
+  `gesamtfazit.json`). Je Monat stehen dort Claudes Bericht, der lokale, „Depot & Nachrichten“ und die Sparvorschläge.
+  Knopf „neu schreiben“ startet Monatsbericht (danach Gesamtfazit) oder nur das Gesamtfazit von Hand; es läuft immer
+  nur ein Bericht gleichzeitig. Darunter sind die **ganzen Anweisungen** (Monatsbericht, Prüfung, Gesamtfazit,
+  Depot-Update) änderbar, „Vorgabe“ holt den Standard zurück (`einstellungen.json` → `ki_anweisungen`). Vorgabe für den
+  Monatsbericht ist `bericht_anweisung` aus der Konfiguration der App. Die Hinweise an die lokale KI stehen jetzt auch dort.
 - **Depot-Update jeden Sonntag** (ab 3 Uhr, einmal je Woche): Nachrichten der Woche und Kennzahlen je Position über die
   Suche, daraus 3 bis 6 Sätze; steht oben im Reiter Depot (`depot_update.json`, nur das neueste).
 - Beim Einordnen bekommt die KI Umsätze, Kategorien und frühere Zuordnungen, keine Salden; den Monatsbericht schreibt sie mit allen Zahlen. Nichts davon geht an Claude.

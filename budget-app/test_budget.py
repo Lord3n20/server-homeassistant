@@ -681,6 +681,8 @@ class FalscheKI:
                 if "Buchstabe" in system:
                     text = "\n".join(f"{i + 1}: {'a' if 'EXTRABLATT' in z else 'keine'}"
                                       for i, z in enumerate(l for l in nutzer.splitlines() if "Umsatz:" in l))
+                elif "Gesamtfazit" in system:
+                    text = "<think>…</think>GEHEIMGESAMT: läuft."
                 elif "Depot-Update" in system:
                     text = "<think>…</think>Ruhige Woche, nichts Wichtiges."
                 elif "Kategorie" in system and "Frühere" in system:
@@ -873,6 +875,65 @@ class BankAutomatik(Basis):
         self.assertTrue(FalscheKI.anfragen[-2][0].startswith("Sei streng.\n\nAntworte nur mit JSON"))
         self.assertIn("Sei streng.", FalscheKI.anfragen[-1][0])
         self.assertEqual(budget.bericht("2026-11")["text"], "Von Claude")
+
+    def test_analyse_gesamtfazit_und_anweisungen(self):
+        buch.buchen("ausgabe", "2026-10-03", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 900}])
+        buch.buchen("ausgabe", "2026-11-03", "REWE Markt", GIRO, [{"konto": LEB, "betrag": 800}])
+        ausgaben.w_bericht({"monat": "2026-10", "text": "Oktober von Claude", "vorschlaege": []})
+        url = starten(budget.Handler)
+        a = json.loads(anfrage(f"{url}/api/analyse")[1])
+        self.assertEqual((a["gesamt"], a["laeuft"], a["ki"]), ({}, False, True))
+        self.assertEqual([w["name"] for w in a["anweisungen"]], ["bericht", "pruefung", "gesamt", "depot"])
+        self.assertIn("2026-10", a["monate"])
+        m = json.loads(anfrage(f"{url}/api/analyse?k=2026-10")[1])["monat"]
+        self.assertEqual((m["claude"]["text"], m["lokal"]["text"]), ("Oktober von Claude", ""))
+        self.assertEqual(anfrage(f"{url}/api/analyse?k=quatsch")[0], 400)
+        # Gesamtfazit von Hand: bekommt den ganzen Zeitraum, die Monatsfazits und das Vermögen.
+        self.assertEqual(anfrage(f"{url}/api/analyse/neu", {"ziel": "gesamt"})[0], 200)
+        for _ in range(100):
+            if not self.ki.laeuft():
+                break
+            time.sleep(0.05)
+        system, nutzer = FalscheKI.anfragen[-1]
+        self.assertTrue(system.endswith(self.ki.GESAMT_FORMAT))
+        self.assertIn("Jeder Monat", nutzer)
+        self.assertIn("- 2026-10: Oktober von Claude", nutzer)
+        self.assertIn("Vermögen:", nutzer)
+        self.assertEqual(json.loads(anfrage(f"{url}/api/analyse")[1])["gesamt"]["text"], "GEHEIMGESAMT: läuft.")
+        self.assertEqual(anfrage(f"{url}/api/analyse/neu", {"ziel": "2026-13"})[0], 400)
+        # Monat von Hand: Monatsbericht, danach Gesamtfazit.
+        FalscheKI.anfragen.clear()
+        self.assertEqual(anfrage(f"{url}/api/analyse/neu", {"ziel": "2026-10"})[0], 200)
+        # Solange einer läuft, kein zweiter.
+        self.assertEqual(anfrage(f"{url}/api/analyse/neu", {"ziel": "gesamt"})[0], 400)
+        for _ in range(100):
+            if not self.ki.laeuft():
+                break
+            time.sleep(0.05)
+        self.assertEqual(len(FalscheKI.anfragen), 3)
+        self.assertEqual(budget.bericht("2026-10")["text_lokal"], "GEHEIMFAZIT lokal")
+        # Die ganze Anweisung ist änderbar; das Format bleibt dran, leer holt die Vorgabe zurück.
+        self.assertEqual(anfrage(f"{url}/api/analyse/anweisung", {"name": "gesamt", "text": "Nur ein Satz."}, "PUT")[0], 200)
+        self.assertEqual(anfrage(f"{url}/api/analyse/anweisung", {"name": "bericht", "text": "Sei knapp."}, "PUT")[0], 200)
+        self.assertEqual(anfrage(f"{url}/api/analyse/anweisung", {"name": "depot", "text": "Kurz."}, "PUT")[0], 200)
+        self.assertEqual(anfrage(f"{url}/api/analyse/anweisung", {"name": "gibtsnicht", "text": "x"}, "PUT")[0], 400)
+        self.assertEqual(anfrage(f"{url}/api/analyse/anweisung", {"name": "gesamt", "text": "x" * 9000}, "PUT")[0], 400)
+        self.ki.gesamt_erstellen()
+        self.assertEqual(FalscheKI.anfragen[-1][0], "Nur ein Satz.\n\n" + self.ki.GESAMT_FORMAT)
+        self.ki.bericht_erstellen("2026-10")
+        self.assertTrue(FalscheKI.anfragen[-2][0].startswith("Sei knapp.\n\nAntworte nur mit JSON"))
+        self.assertIn("Anweisung:\nSei knapp.", FalscheKI.anfragen[-1][0])
+        liste = {w["name"]: w for w in self.ki.anweisungen_liste()}
+        self.assertTrue(liste["gesamt"]["eigen"] and liste["bericht"]["eigen"])
+        self.assertEqual(liste["depot"]["text"], "Kurz.")
+        # Das Sparziel und die Hinweise bleiben dabei erhalten.
+        anfrage(f"{url}/api/einstellungen", {"ki_hinweise": "Mensa bleibt."}, "PUT")
+        self.assertEqual(anfrage(f"{url}/api/analyse/anweisung", {"name": "gesamt", "text": ""}, "PUT")[0], 200)
+        a = json.loads(anfrage(f"{url}/api/analyse")[1])
+        self.assertEqual(a["hinweise"], "Mensa bleibt.")
+        liste = {w["name"]: w for w in a["anweisungen"]}
+        self.assertEqual((liste["gesamt"]["eigen"], liste["gesamt"]["text"]), (False, self.ki.GESAMT_ANWEISUNG))
+        self.assertIn("Mensa bleibt.", self.ki.gesamt_eingabe())
 
 
 class NeuesBuch(unittest.TestCase):

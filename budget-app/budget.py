@@ -409,6 +409,26 @@ def bericht(kennung):
     }
 
 
+def analyse(kennung):
+    """Reiter Analyse: Fazit für „gesamt“ oder einen Monat, dazu die Anweisungen an die lokale KI."""
+    konten, buchungen = buch.lesen()
+    aus = {"monate": sorted(messmonate(konten, buchungen), reverse=True), "ki": lokal_ki.an(),
+           "laeuft": lokal_ki.laeuft(), "status": lokal_ki.zustand["bericht"]}
+    if lokal_ki.an():
+        aus.update(anweisungen=lokal_ki.anweisungen_liste(), hinweise=lokal_ki.hinweise())
+    if kennung == "gesamt":
+        aus["gesamt"] = json_laden(lokal_ki.GESAMT, {})
+        return aus
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", kennung):
+        raise BuchFehler("Zeitraum gesamt oder JJJJ-MM angeben")
+    b = json_laden(ausgaben.BERICHTE, {}).get(kennung) or {}
+    lokal = b.get("lokal") or {}
+    aus["monat"] = {"kennung": kennung, "claude": {"text": b.get("text", ""), "erstellt": b.get("erstellt", "")},
+                    "lokal": {"text": lokal.get("text", ""), "depot": lokal.get("depot", ""), "erstellt": lokal.get("erstellt", "")},
+                    "vorschlaege": vorschlaege_von(b)}
+    return aus
+
+
 def positionen_lesen(daten):
     return [{"konto": p.get("konto"), "betrag": cent(p.get("betrag")), "memo": str(p.get("memo") or "").strip()}
             for p in daten.get("positionen") or []]
@@ -509,6 +529,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.antwort(200, bericht(q.get("k", ["gesamt"])[0]))
         if pfad == "/api/einstellungen":
             return self.antwort(200, {**json_laden(EINSTELLUNGEN, {}), **design(), "ki": lokal_ki.an()})
+        if pfad == "/api/analyse":
+            return self.antwort(200, analyse(q.get("k", ["gesamt"])[0]))
         if pfad == "/api/export":
             return self.antwort(200, typ="application/octet-stream", roh=buch.BUCH.read_bytes(), kopf={
                 "Content-Disposition": 'attachment; filename="haushaltsbuch.gnucash"'})
@@ -525,6 +547,9 @@ class Handler(BaseHTTPRequestHandler):
             konten, buchungen = buch.neu_anlegen({"Girokonto": cent(daten.get("giro") or 0),
                                                   "Bargeld": cent(daten.get("bargeld") or 0)})
             return self.antwort(200, {"konten": konten, "buchungen": buchungen})
+        if pfad == "/api/analyse/neu":
+            lokal_ki.auftrag(str(daten.get("ziel") or ""))
+            return self.antwort(200, {"ok": True})
         if pfad == "/api/bericht/bewertung":
             lokal_ki.bewerten(str(daten.get("monat") or ""), str(daten.get("titel") or ""), daten.get("wert"))
             return self.antwort(200, {"ok": True})
@@ -588,6 +613,9 @@ class Handler(BaseHTTPRequestHandler):
                 liste[i] = wiederkehrend_pruefen(daten, liste[i])
                 json_speichern(ausgaben.WIEDERKEHREND, liste)
             return self.antwort(200, {"gebucht": faellige_buchen()})
+        if pfad == "/api/analyse/anweisung":
+            lokal_ki.anweisung_speichern(str(daten.get("name") or ""), daten.get("text"))
+            return self.antwort(200, {"anweisungen": lokal_ki.anweisungen_liste()})
         if pfad == "/api/bank/einstellungen":
             bank.einstellungen_speichern(daten)
             return self.antwort(200, {"ok": True})
