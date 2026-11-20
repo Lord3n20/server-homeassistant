@@ -812,6 +812,19 @@ class BankAutomatik(Basis):
         d = budget.bericht("2026-11")
         self.assertEqual((d["text"], d["text_lokal"]), ("Von Claude", "GEHEIMFAZIT lokal"))
         self.assertEqual(d["vorschlaege"][0]["titel"], "Weniger Snacks")
+        # Rückmeldung: 👍/👎 und Hinweise gehen in den nächsten Bericht.
+        url = starten(budget.Handler)
+        self.assertEqual(anfrage(f"{url}/api/bericht/bewertung", {"monat": "2026-11", "titel": "Weniger Snacks", "wert": -1})[0], 200)
+        self.assertEqual(anfrage(f"{url}/api/bericht/bewertung", {"monat": "2026-11", "titel": "x", "wert": 5})[0], 400)
+        self.assertEqual(anfrage(f"{url}/api/einstellungen", {"ki_hinweise": "Mensa bleibt."}, "PUT")[0], 200)
+        self.assertEqual(budget.bericht("2026-11")["bewertungen"], {"Weniger Snacks": -1})
+        self.assertEqual(json.loads(anfrage(f"{url}/api/einstellungen")[1])["ki_hinweise"], "Mensa bleibt.")
+        eingabe = self.ki.bericht_eingabe("2026-12")
+        self.assertIn("Mensa bleibt.", eingabe)
+        self.assertIn("unpassend fand (so etwas nicht mehr vorschlagen): Weniger Snacks (2026-11)", eingabe)
+        # Das Sparziel bleibt dabei erhalten.
+        anfrage(f"{url}/api/einstellungen", {"sparziel": "100", "sparziel_datum": "2027-01-01"}, "PUT")
+        self.assertEqual(json.loads(anfrage(f"{url}/api/einstellungen")[1])["ki_hinweise"], "Mensa bleibt.")
         # Die Anweisung kommt aus der Konfiguration der App, das Antwortformat bleibt fest dran.
         buch.json_speichern(TMP / "options.json", {"bericht_anweisung": "Sei streng."})
         self.ki.bericht_erstellen("2026-11")

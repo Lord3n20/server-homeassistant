@@ -20,10 +20,35 @@ from datetime import date, datetime, timedelta
 import ausgaben
 import bank
 import buch
+import depot
 from buch import BuchFehler, DATA, json_laden, json_speichern, lock
 
 URL = os.environ.get("BUDGET_KI_URL", "").rstrip("/")
 ZUSTAND = DATA / "ki.json"
+RUECKMELDUNG = DATA / "rueckmeldung.json"  # 👍/👎 zu Sparvorschlägen: {monat: {titel: 1 | -1}}
+MAX_HINWEISE = 2000
+
+
+def bewerten(monat, titel, wert):
+    """Enzos Rückmeldung zu einem Sparvorschlag; 0 nimmt sie zurück."""
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", str(monat)) or not str(titel).strip() or wert not in (1, -1, 0):
+        raise BuchFehler("Monat, Titel und Bewertung (1, -1 oder 0) angeben")
+    with lock:
+        daten = json_laden(RUECKMELDUNG, {})
+        je_monat = daten.setdefault(monat, {})
+        if wert:
+            je_monat[str(titel)[:200]] = wert
+        else:
+            je_monat.pop(str(titel)[:200], None)
+        json_speichern(RUECKMELDUNG, {m: v for m, v in daten.items() if v})
+
+
+def bewertungen(monat):
+    return json_laden(RUECKMELDUNG, {}).get(monat, {})
+
+
+def hinweise():
+    return str(json_laden(DATA / "einstellungen.json", {}).get("ki_hinweise") or "").strip()
 PAKET = 12
 UMBUCHUNG = "Umbuchung (eigenes Konto, Depot, Sparen)"
 zustand = {"bank": "", "bericht": ""}
@@ -263,9 +288,31 @@ def bericht_eingabe(monat):
     if fruehere:
         teile.append("Deine früheren Fazits (wiederhole keine Tipps und keine Rezepte daraus):")
         teile += [f"- {k}: {t[:600]}" for k, t in fruehere]
+    eigene = hinweise()
+    if eigene:
+        teile.append(f"Enzos Hinweise an dich (beachte sie):\n{eigene}")
+    gut, schlecht = [], []
+    for m, je in sorted(json_laden(RUECKMELDUNG, {}).items())[-12:]:
+        for titel, wert in je.items():
+            (gut if wert > 0 else schlecht).append(f"{titel} ({m})")
+    if gut:
+        teile.append("Sparvorschläge, die Enzo gut fand (in diese Richtung weiterdenken): " + "; ".join(gut))
+    if schlecht:
+        teile.append("Sparvorschläge, die Enzo unpassend fand (so etwas nicht mehr vorschlagen): " + "; ".join(schlecht))
     teile.append("Kontostände heute:")
     teile += [f"- {k['pfad']}: {k['saldo'] / 100:.2f} EUR" for k in st["konten"]]
     teile.append(f"Vermögen: {st['vermoegen'] / 100:.2f} EUR, davon im Depot (zählt als erspart): {st['erspartes'] / 100:.2f} EUR.")
+    try:
+        dep = depot.uebersicht(warten=False)
+    except (OSError, BuchFehler, ValueError, KeyError):
+        dep = {"positionen": []}
+    mit_wert = [z for z in dep["positionen"] if "wert" in z]
+    if mit_wert:
+        gesamt = sum(z["wert"] for z in mit_wert) or 1
+        teile.append(f"Depot (Kurs von Tradegate/L&S): Wert {dep['wert'] / 100:.2f} EUR, Einstand {dep['einstand'] / 100:.2f} EUR"
+                     + (f", {dep['prozent']:+.1f} %" if dep.get("prozent") is not None else "") + ". Positionen:")
+        teile += [f"- {z['name']} ({z['isin']}): {z['wert'] / 100:.2f} EUR, {z['wert'] / gesamt * 100:.0f} % des Depots, "
+                  f"{z['prozent']:+.1f} % seit Kauf" for z in sorted(mit_wert, key=lambda z: -z["wert"])]
     if st["ziel"]:
         z = st["ziel"]
         teile.append(f"Sparziel: {z['betrag'] / 100:.2f} EUR Vermögen bis {z['datum']}, fehlt {z['fehlt'] / 100:.2f} EUR, "
@@ -274,7 +321,7 @@ def bericht_eingabe(monat):
 
 
 # Vorgabe für die Anweisung; in der App unter Konfiguration → „bericht_anweisung“ änderbar.
-ANWEISUNG = 'Du schreibst Enzos Monatsbericht für sein Budget-Panel (er ist Student in Aachen). Sprich ihn mit du an. Das Panel zeichnet Verlauf, Kategorien, Händler und größte Posten selbst: wiederhole diese Zahlen nicht, sondern sag, was die Grafiken nicht von selbst zeigen. Fazit: höchstens drei kurze Sätze mit der wichtigsten Erkenntnis, auch zu Einnahmen, Sparquote, Kontoständen und Sparziel; wenn im Monat auffällig wenig gebucht ist, sag das. Danach eine eigene Zeile mit einem fleischfreien Rezepttipp in einem Satz. Dazu 2 bis 3 konkrete, realistische Sparvorschläge, Titel mit höchstens vier Wörtern, Betrag in Euro pro Monat. Regeln: ehrlich, ohne Vorwürfe. Fahrradteile nicht kommentieren. Einzelne Fast-Food-Besuche nicht hochrechnen und nicht als Muster werten. Fleisch fürs Wochenende ist gewollt und kein Sparpotenzial. Das Claude-Abo nie als Sparvorschlag. Die Wochenzeitung der Freitag ist gekündigt: nicht als Sparvorschlag nennen. Einkäufe bei dm sind bewusst, dort kein Sparpotenzial sehen. Getränke kosten wegen der Studentenverbindung mehr als üblich, Essen weniger. Bargeldabhebungen sind normale Ausgaben. Miete nicht als Sparpotenzial. Keine Anlageberatung.'
+ANWEISUNG = 'Du schreibst Enzos Monatsbericht für sein Budget-Panel (er ist Student in Aachen). Sprich ihn mit du an. Das Panel zeichnet Verlauf, Kategorien, Händler und größte Posten selbst: wiederhole diese Zahlen nicht, sondern sag, was die Grafiken nicht von selbst zeigen. Fazit: höchstens drei kurze Sätze mit der wichtigsten Erkenntnis, auch zu Einnahmen, Sparquote, Kontoständen, Depot und Sparziel; wenn im Monat auffällig wenig gebucht ist, sag das. Danach eine eigene Zeile mit einem fleischfreien Rezepttipp in einem Satz. Dazu 2 bis 3 konkrete, realistische Sparvorschläge, Titel mit höchstens vier Wörtern, Betrag in Euro pro Monat. Regeln: ehrlich, ohne Vorwürfe. Fahrradteile nicht kommentieren. Einzelne Fast-Food-Besuche nicht hochrechnen und nicht als Muster werten. Fleisch fürs Wochenende ist gewollt und kein Sparpotenzial. Das Claude-Abo nie als Sparvorschlag. Die Wochenzeitung der Freitag ist gekündigt: nicht als Sparvorschlag nennen. Einkäufe bei dm sind bewusst, dort kein Sparpotenzial sehen. Getränke kosten wegen der Studentenverbindung mehr als üblich, Essen weniger. Bargeldabhebungen sind normale Ausgaben. Miete nicht als Sparpotenzial. Zum Depot darfst du Tipps geben (Aufteilung, Kosten, Sparrate, Risiko, Notgroschen), sachlich begründet und ohne Kursprognosen.'
 # Fest angehängt, damit die App die Antwort lesen kann.
 FORMAT = ("Antworte nur mit JSON in dieser Form: "
           '{"fazit": "...", "vorschlaege": [{"titel": "...", "betrag": 12.5, "kategorie": "Ausgaben:Lebensmittel"}]} '

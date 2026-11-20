@@ -70,6 +70,8 @@
   .legende i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
   .kat { display: grid; grid-template-columns: minmax(90px, 200px) 1fr 84px 96px; gap: 2px 12px; align-items: center; padding: 5px 0; }
   .kat .schnitt { color: var(--muted); font-size: 0.85rem; }
+  .kat .daumen { display: flex; gap: 4px; justify-content: flex-end; }
+  .kat .daumen button { padding: 2px 6px; }
   .kat .balken { display: grid; gap: 2px; }
   .kat .b { height: 10px; border-radius: 0 4px 4px 0; background: var(--accent); min-width: 2px; }
   .kat .v { height: 5px; border-radius: 0 4px 4px 0; background: var(--vor); min-width: 2px; }
@@ -395,6 +397,14 @@
           <label>Kontrast<input type="color" data-farbe="kontrast"></label>
           <label>Kritisch<input type="color" data-farbe="krit"></label>
           <div style="align-self:end"><button type="button" id="farbZurueck">Zurücksetzen</button></div>
+        </form>
+      </section>
+      <section class="card" id="hinweiseKarte" hidden>
+        <h2>Hinweise an die lokale KI</h2>
+        <p class="gedaempft" style="margin:0 0 8px">Bekommt die KI jeden Monat zum Bericht dazu, z. B. Ziele („bis Juni 500 € fürs Fahrrad“) oder was gesetzt ist („Mensa bleibt“). Dazu zählen deine 👍/👎 bei den Sparvorschlägen.</p>
+        <form id="hinweiseForm">
+          <label>Hinweise<textarea id="kiHinweise" rows="4" maxlength="2000"></textarea></label>
+          <div class="aktionen"><button class="primaer">Speichern</button></div>
         </form>
       </section>
       <section class="card">
@@ -1233,6 +1243,22 @@ function berichtZeichnen(d) {
   $("#bSparenTitel").textContent = `Sparpotenzial: rund ${eur0(d.vorschlaege.reduce((a, v) => a + v.betrag, 0))} pro Monat`;
   $("#bSparenQuelle").textContent = d.vorschlaege_aus ? `Aus dem Bericht für ${mName(d.vorschlaege_aus)}.` : "";
   waagerecht("#bSparen", d.vorschlaege.map((v) => ({ name: v.titel, betrag: v.betrag })), "var(--s3)");
+  // Rückmeldung für die lokale KI: 👍/👎 je Vorschlag (nur mit KI).
+  if (d.ki && d.vorschlaege_aus) [...$("#bSparen").children].forEach((r, i) => {
+    const titel = d.vorschlaege[i].titel, wert = (d.bewertungen || {})[titel] || 0;
+    const box = document.createElement("span");
+    box.className = "daumen";
+    box.innerHTML = `<button type="button" class="klein" data-wert="1" aria-pressed="${wert === 1}" title="Guter Vorschlag">👍</button><button type="button" class="klein" data-wert="-1" aria-pressed="${wert === -1}" title="Passt nicht zu mir">👎</button>`;
+    box.onclick = sicher(async (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const neu = b.getAttribute("aria-pressed") === "true" ? 0 : +b.dataset.wert;
+      await api("api/bericht/bewertung", json("POST", { monat: d.vorschlaege_aus, titel, wert: neu }));
+      for (const x of box.children) x.setAttribute("aria-pressed", String(+x.dataset.wert === neu));
+      (d.bewertungen ||= {})[titel] = neu;
+    });
+    r.append(box);
+  });
 }
 let bUhr;
 addEventListener("resize", () => { clearTimeout(bUhr); bUhr = setTimeout(() => { if (bAktuell && !$('[data-seite="uebersicht"]').hidden) berichtZeichnen(bAktuell); }, 150); });
@@ -1310,6 +1336,8 @@ const einstellungenLaden = sicher(async () => {
   const e = await api("api/einstellungen");
   designZeigen(e.design, e.farben);
   $("#zBetrag").value = e.sparziel ? eingabe(e.sparziel) : "";
+  $("#hinweiseKarte").hidden = !e.ki;
+  $("#kiHinweise").value = e.ki_hinweise || "";
   $("#zDatum").value = e.sparziel_datum || "";
 });
 function optionenEltern() {
@@ -1342,6 +1370,11 @@ $("#farbZurueck").onclick = sicher(async () => {
   const e = await api("api/einstellungen", json("PUT", { farben: null }));
   for (const k of FARBNAMEN) document.documentElement.style.removeProperty(`--c-${k}`);
   designZeigen(e.design, e.farben);
+});
+$("#hinweiseForm").onsubmit = sicher(async (e) => {
+  e.preventDefault();
+  await api("api/einstellungen", json("PUT", { ki_hinweise: $("#kiHinweise").value }));
+  toast("Gespeichert");
 });
 $("#zielForm").onsubmit = sicher(async (e) => {
   e.preventDefault();
