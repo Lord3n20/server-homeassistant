@@ -56,7 +56,8 @@ Läuft auf dem Server, nichts verlässt ihn. Ohne die App (oder im Desktop-Progr
   Zurückgenommenes wird nicht noch einmal automatisch gebucht.
 - **Monatsbericht:** ab der Nacht zum 1. (bis zum 7. nachgeholt, neuer Versuch nach 6 Stunden) für den Vormonat. Anders als
   Claude bekommt die lokale KI auch Einnahmen, Kontostände, Depot und Sparziel. Er darf Stunden brauchen: erst ein Entwurf, dann prüft die KI ihn in einem zweiten Durchgang gegen die
-  Daten und die Regeln. Sie bekommt dafür auch die Händler je Kategorie und die Sparvorschläge des Vormonats. Gibt es auch einen Bericht von Claude, steht
+  Daten und die Regeln. Sie bekommt dafür auch die Händler je Kategorie, die Sparvorschläge des Vormonats, einen Rückblick über
+  12 Monate und die letzten drei Fazits (damit sich Tipps und Rezepte nicht wiederholen). Gibt es auch einen Bericht von Claude, steht
   der lokale im Fazit unter „Lokale KI“; die Sparvorschläge kommen dann von Claude. Die Anweisung steht in der
   Konfiguration der App (`bericht_anweisung`); das Antwortformat (JSON) hängt die App selbst an.
 - Beim Einordnen bekommt die KI Umsätze, Kategorien und frühere Zuordnungen, keine Salden; den Monatsbericht schreibt sie mit allen Zahlen. Nichts davon geht an Claude.
